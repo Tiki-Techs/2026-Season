@@ -80,19 +80,19 @@ public class RobotContainer {
         drivetrain.applyRequest(
             () ->
                 drive
-                    .withVelocityX(-m_driverController.getLeftY() * maxSpeed) // forward/back
-                    .withVelocityY(-m_driverController.getLeftX() * maxSpeed) // left/right
+                    .withVelocityX(m_driverController.getLeftY() * maxSpeed) // forward/back
+                    .withVelocityY(m_driverController.getLeftX() * maxSpeed) // left/right
                     .withRotationalRate(-m_driverController.getRightX() * maxAngularRate) // rotate
         )
     );
-    m_driverController.y().whileTrue(
+    m_driverController.leftBumper().whileTrue(
       drivetrain.applyRequest(
         () ->
             drive
                 .withVelocityX(m_Vision.limelight_range_proportional())
-                .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
+                .withVelocityY(0)
                 .withRotationalRate(m_Vision.limelight_aim_proportional())
-    
+
       )
     );
 
