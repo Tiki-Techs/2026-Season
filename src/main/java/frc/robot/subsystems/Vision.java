@@ -1,20 +1,29 @@
 package frc.robot.subsystems;
 
-import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.LimelightHelpers;
-import frc.robot.Constants.DriveConstants;
-import frc.robot.generated.TunerConstants;
 
 
 
 public class Vision extends SubsystemBase {
 
-    double ty = LimelightHelpers.getTY("limelight");
-    
-    public Vision() {
+  private final SwerveSubsystem drivetrain;
+  private final Field2d m_field = new Field2d();
+  private final StructPublisher<Pose2d> posePublisher;
 
+    public Vision(SwerveSubsystem drivetrain) {
+        this.drivetrain = drivetrain;
+        SmartDashboard.putData("Field", m_field);
+
+        // Publish pose for AdvantageScope 3D field
+        posePublisher = NetworkTableInstance.getDefault()
+            .getStructTopic("RobotPose", Pose2d.struct).publish();
     }
 
 
@@ -69,7 +78,8 @@ public class Vision extends SubsystemBase {
     // TY is in degrees - we'll use it directly as an error signal
     // Negative TY = target below center = drive forward
     double ty = LimelightHelpers.getTY("limelight");
-    double targetingForwardSpeed = ty * kP;
+    double error = ty + 6.0;  // stops at TY = -8.0
+    double targetingForwardSpeed = error * kP;
 
     return targetingForwardSpeed;
   }
@@ -79,9 +89,14 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
+        // Update field pose for Shuffleboard and AdvantageScope
+        Pose2d currentPose = drivetrain.getState().Pose;
+        m_field.setRobotPose(currentPose);
+        posePublisher.set(currentPose);
+
         boolean tv = LimelightHelpers.getTV("limelight");
         double tx = LimelightHelpers.getTX("limelight");
-        ty = LimelightHelpers.getTY("limelight");
+        double ty = LimelightHelpers.getTY("limelight");
 
         System.out.println("TV: " + tv + " TX: " + tx + " TY: " + ty);
 
@@ -90,6 +105,60 @@ public class Vision extends SubsystemBase {
         } else {
             LimelightHelpers.setLEDMode_ForceOff("limelight");
         }
+
+
+        
+    boolean useMegaTag2 = true; //set to false to use MegaTag1
+    boolean doRejectUpdate = false;
+    if(useMegaTag2 == false)
+    {
+      LimelightHelpers.PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+      
+      if(mt1.tagCount == 1 && mt1.rawFiducials.length == 1)
+      {
+        if(mt1.rawFiducials[0].ambiguity > .7)
+        {
+          doRejectUpdate = true;
+        }
+        if(mt1.rawFiducials[0].distToCamera > 3)
+        {
+          doRejectUpdate = true;
+        }
+      }
+      if(mt1.tagCount == 0)
+      {
+        doRejectUpdate = true;
+      }
+
+      if(!doRejectUpdate)
+      {
+        drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(.5,.5,9999999));
+        drivetrain.addVisionMeasurement(
+            mt1.pose,
+            mt1.timestampSeconds);
+      }
+    }
+    else if (useMegaTag2 == true)
+    {
+      LimelightHelpers.SetRobotOrientation("limelight", drivetrain.getState().Pose.getRotation().getDegrees(), 0, 0, 0, 0, 0);
+      LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
+      if(Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720) // if our angular velocity is greater than 720 degrees per second, ignore vision updates
+      {
+        doRejectUpdate = true;
+      }
+      if(mt2 == null || mt2.tagCount == 0)
+      {
+        doRejectUpdate = true;
+      }
+      if(!doRejectUpdate)
+      {
+        drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(.7,.7,9999999));
+        drivetrain.addVisionMeasurement(
+            mt2.pose,
+            mt2.timestampSeconds);
+      }
+    }
+  
 
     }
 }

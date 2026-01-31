@@ -11,9 +11,15 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -112,6 +118,9 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
     /* The SysId routine to test */
     private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
 
+    /* Swerve request for robot-relative driving (used by PathPlanner) */
+    private final SwerveRequest.ApplyRobotSpeeds m_pathApplyRobotSpeeds = new SwerveRequest.ApplyRobotSpeeds();
+
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
      * <p>
@@ -130,6 +139,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureAutoBuilder();
     }
 
     /**
@@ -154,6 +164,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureAutoBuilder();
     }
 
     /**
@@ -186,6 +197,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureAutoBuilder();
     }
 
     /**
@@ -196,6 +208,77 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
      */
     public Command applyRequest(Supplier<SwerveRequest> request) {
         return run(() -> this.setControl(request.get()));
+    }
+
+    /**
+     * Configures PathPlanner's AutoBuilder for autonomous path following.
+     */
+    private void configureAutoBuilder() {
+        RobotConfig config;
+        try {
+            config = RobotConfig.fromGUISettings();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+
+        AutoBuilder.configure(
+            this::getPose,
+            this::resetPose,
+            this::getRobotRelativeSpeeds,
+            (speeds, feedforwards) -> driveRobotRelative(speeds),
+            new PPHolonomicDriveController(
+                new PIDConstants(5.0, 0.0, 0.0), // Translation PID constants
+                new PIDConstants(5.0, 0.0, 0.0)  // Rotation PID constants
+            ),
+            config,
+            () -> {
+                // Flip path for red alliance
+                var alliance = DriverStation.getAlliance();
+                if (alliance.isPresent()) {
+                    return alliance.get() == DriverStation.Alliance.Red;
+                }
+                return false;
+            },
+            this
+        );
+    }
+
+    /**
+     * Returns the current pose of the robot.
+     *
+     * @return The current Pose2d of the robot
+     */
+    public Pose2d getPose() {
+        return getState().Pose;
+    }
+
+    /**
+     * Resets the robot's odometry to the specified pose.
+     *
+     * @param pose The pose to reset to
+     */
+    @Override
+    public void resetPose(Pose2d pose) {
+        super.resetPose(pose);
+    }
+
+    /**
+     * Returns the robot-relative chassis speeds.
+     *
+     * @return ChassisSpeeds relative to the robot
+     */
+    public ChassisSpeeds getRobotRelativeSpeeds() {
+        return getState().Speeds;
+    }
+
+    /**
+     * Drives the robot using robot-relative chassis speeds.
+     *
+     * @param speeds The robot-relative ChassisSpeeds to apply
+     */
+    public void driveRobotRelative(ChassisSpeeds speeds) {
+        setControl(m_pathApplyRobotSpeeds.withSpeeds(speeds));
     }
 
     /**
@@ -219,6 +302,9 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
     public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return m_sysIdRoutineToApply.dynamic(direction);
     }
+
+
+    
 
     @Override
     public void periodic() {
@@ -300,5 +386,9 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
     public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
     }
+
+
+
+    
 
 }
