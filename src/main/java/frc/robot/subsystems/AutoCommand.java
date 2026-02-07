@@ -19,7 +19,7 @@
 //     private final SendableChooser<Command> autoChooser;
 
 //     public AutoCommand(){
-//     NamedCommands.registerCommand("runShooter", RobotContainer.m_shooter.runShooter(1.0));
+//     NamedCommands.registerCommand("runShooter", RobotContainer.runShooter(1.0));
 
 //     autoChooser = AutoBuilder.buildAutoChooser();
 //     SmartDashboard.putData("Auto Chooser", autoChooser);

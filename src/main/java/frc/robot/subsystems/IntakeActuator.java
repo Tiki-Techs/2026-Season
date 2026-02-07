@@ -34,6 +34,15 @@ public class IntakeActuator extends SubsystemBase{
         );
     }
 
+    public Command stopArmPivot(){
+        return new RunCommand(()->{
+            pivotArm.set(stopSpeed);
+        },
+        this
+        );
+    }
+
+
     // Press and hold verision
     public Command lowerArmManual(){
         return new RunCommand(() -> {

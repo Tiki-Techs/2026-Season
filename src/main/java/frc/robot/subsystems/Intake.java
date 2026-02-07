@@ -60,6 +60,14 @@ public class Intake extends SubsystemBase{
         );
     }
 
+    public Command stopIntake(){
+        return new InstantCommand(()->
+            leaderIntake.set(stopSpeed)
+            // followerIntake.set(stopSpeed)
+            ,this
+        );
+    };
+
 
     public Command stopAll(){
         return new RunCommand(()->{

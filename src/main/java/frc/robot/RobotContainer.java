@@ -7,8 +7,10 @@ package frc.robot;
 import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.fasterxml.jackson.databind.util.Named;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
 import edu.wpi.first.math.MathUtil;
@@ -61,8 +63,6 @@ public class RobotContainer {
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
-
-
 
     // Speed limits for drive
     private final double maxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -232,6 +232,28 @@ public class RobotContainer {
 
   //   // X - Index
   //   m_driverController.x().whileTrue(m_Index.runIndex(1.0));
+    
+    
+    NamedCommands.registerCommand("runIntake", m_intake.runIntake());
+    NamedCommands.registerCommand("runReverseIntake", m_intake.runReverseIntake());
+    NamedCommands.registerCommand("intake_stopAll", m_intake.stopIntake());
+
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(60));
+    NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1));
+    NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1));
+    NamedCommands.registerCommand("stopShooter", m_shooter.stopShooter());
+
+    NamedCommands.registerCommand("runIndex", m_index.runIndex(1));
+    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-1));
+    NamedCommands.registerCommand("stopIndex", m_index.stopIndex());
+
+    NamedCommands.registerCommand("lowerArmAuto", m_intakeActuator.lowerArmAuto());
+    NamedCommands.registerCommand("raiseArmAuto", m_intakeActuator.raiseArmAuto());
+    NamedCommands.registerCommand("stopArmPivot", m_intakeActuator.stopArmPivot());
+
+    // autoChooser
+    autoChooser.setDefaultOption("Example Auto", new PathPlannerAuto("Example Auto"));
+
 
 
 
@@ -259,5 +281,11 @@ public class RobotContainer {
     // return Autos.exampleAuto();
     return autoChooser.getSelected();
 
+
+
+    // This method loads the auto when it is called, however, it is recommended
+    // to first load your paths/autos when code starts, then return the
+    // pre-loaded auto/path
+    // return new PathPlannerAuto("Example Auto");
   }
 }
