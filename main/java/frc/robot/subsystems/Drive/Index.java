@@ -1,0 +1,70 @@
+package frc.robot.subsystems.Drive;
+import com.ctre.phoenix6.hardware.TalonFX;
+
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+
+public class Index extends SubsystemBase{
+    // 3, 2x belt index
+    // up/down movement on belt arms?
+    // or (manually) adjustable belts, thats only runs?
+    // do we need encoders/limit switches here
+    private final TalonFX intake21 = new TalonFX(21);
+
+    public Command runIndex(CommandXboxController controllerValue){
+        return new RunCommand(() -> 
+            intake21.set(controllerValue.getRightTriggerAxis())
+            ,this
+    );}
+    public Command runReverseIndex(CommandXboxController controllerValue){
+        return new RunCommand(() -> 
+            intake21.set(-controllerValue.getRightTriggerAxis())
+            ,this
+    );}
+
+    public Command runIndex(double speed){
+        return new RunCommand(() -> 
+            intake21.set(speed)
+            ,this
+    );}
+    // public Command runReverseIndex(){
+    //     return new RunCommand(() -> 
+    //         intake21.set(-1)
+    //         ,this
+    // );}
+
+    public Command stopIndex(){
+        return new InstantCommand(()->
+            intake21.set(0)
+            ,this
+        );
+    }
+
+    public Command stopAll(){
+        return new RunCommand(()->{
+                intake21.set(0);
+            },
+            // ", this" makes sure that only the shooter subsystem object can only run command at a time
+            this
+        );
+    }
+
+@Override
+public void periodic() {
+
+    SmartDashboard.putNumber("Shooter 21" , intake21.get());
+    SmartDashboard.putNumber("Shooter 21 motor output", intake21.getMotorOutputStatus().getValueAsDouble());
+    SmartDashboard.putNumber("Shooter 21 voltage", intake21.getMotorVoltage().getValueAsDouble());
+    SmartDashboard.putNumber("Shooter 21 stator current", intake21.getStatorCurrent().getValueAsDouble());
+    SmartDashboard.putNumber("Shooter 21 supply voltage", intake21.getSupplyVoltage().getValueAsDouble());
+    SmartDashboard.putNumber("Shooter target velocity", intake21.getVelocity().getValueAsDouble());
+
+    SmartDashboard.putData("Run index regular", runIndex(1));
+    SmartDashboard.putData("Run index reversed", runIndex(-1));
+}   
+} 
