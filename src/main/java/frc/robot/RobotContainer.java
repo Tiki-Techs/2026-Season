@@ -16,22 +16,27 @@ import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.commands.Autos;
-import frc.robot.commands.ExampleCommand;
+// import frc.robot.commands.Autos;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.Index;
+import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+
+
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -40,14 +45,23 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-  // Create Drivetrain from generated constants
+
+    // Create Drivetrain from generated constants
     private final SwerveSubsystem drivetrain = TunerConstants.createDrivetrain();
+    // Instance of Vision Class, which will handle all limelight processing and calculations. It takes the drivetrain as a parameter to get the robot's current pose for its calculations.
     private final Vision m_Vision = new Vision(drivetrain);
+    // Slow Drive Train for testing and tuning purposes, it will limit the max speed of the drivetrain to 50% of its potential. It is not used in any commands by default, but can be used for testing and tuning by applying it to the drivetrain in a command.
     private final SlowDriveTrain m_SlowDriveTrain = new SlowDriveTrain();
+    // Subsystems
     private final Shooter m_shooter = new Shooter();
+    private final Index m_Index = new Index();
+    private final Intake m_intake = new Intake();
+    private final IntakeActuator m_intakeActuator = new IntakeActuator();
+    
+    // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
 
-// ehllo
+
 
     // Speed limits for drive
     private final double maxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -97,6 +111,7 @@ public class RobotContainer {
    * joysticks}.
    */
   private void configureBindings() {
+
     // Default drive command with acceleration limiting
     drivetrain.setDefaultCommand(
         drivetrain.applyRequest(
@@ -107,41 +122,47 @@ public class RobotContainer {
                     .withRotationalRate(rotLimiter.calculate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate)) // rotate
         )
     );
-    m_driverController.leftBumper().whileTrue(
+
+
+    // Left trigger - Brake
+    m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+
+    // Left bumper - Intake
+    m_driverController.leftBumper().whileTrue(m_intake.runIntake());
+
+    // D-pad up - IntakeActuator raise
+    m_driverController.povUp().whileTrue(m_intakeActuator.raiseArmManual());
+
+    // D-pad down - IntakeActuator lower
+    m_driverController.povDown().whileTrue(m_intakeActuator.lowerArmManual());
+
+    // Right trigger - Shooter
+    m_driverController.rightTrigger().whileTrue(m_shooter.runShooter(m_driverController));
+
+    // X - Index
+    m_driverController.x().whileTrue(m_Index.runIndex(1.0));
+
+    // A - Limelight assisted drive
+    m_driverController.a().whileTrue(
       drivetrain.applyRequest(
         () ->
             limelight
                 .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
                 .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
                 .withRotationalRate(m_Vision.limelight_aim_proportional())
-
       ));
 
-      m_shooter.setDefaultCommand(
-        m_shooter.stopAll()
-    );
-
-    m_driverController.rightTrigger().whileTrue(m_shooter.runShooterIntake(m_driverController));
-    m_driverController.leftTrigger().whileTrue(m_shooter.runShooter(m_driverController));
-
-    
-    // Idle (coast) when x is held while disabled
-    final var idle = new SwerveRequest.Idle();
-    m_driverController.x().and(RobotModeTriggers.disabled())
-      .whileTrue(drivetrain.applyRequest(() -> idle).ignoringDisable(true));
+    // Default commands to stop when not active
+    m_shooter.setDefaultCommand(m_shooter.stopAll());
+    m_intake.setDefaultCommand(m_intake.stopAll());
+    m_intakeActuator.setDefaultCommand(m_intakeActuator.stopAll());
+    m_Index.setDefaultCommand(m_Index.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()
       .onTrue(Commands.runOnce(() -> LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 150)));
     RobotModeTriggers.teleop().or(RobotModeTriggers.autonomous())
       .onTrue(Commands.runOnce(() -> LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 0)));
-
-    // Brake when a is pressed
-    m_driverController.a().whileTrue(drivetrain.applyRequest(() -> brake));
-    // Point wheels when b is pressed
-    m_driverController.b().whileTrue(drivetrain.applyRequest(() ->
-    point.withModuleDirection(new Rotation2d(-m_driverController.getLeftY(), -m_driverController.getLeftX()))
-    ));
 
   }
 
