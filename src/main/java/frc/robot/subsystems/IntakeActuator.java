@@ -119,11 +119,5 @@ public class IntakeActuator extends SubsystemBase{
 
     @Override
     public void periodic() {
-        // This method will be called once per scheduler run
-        SmartDashboard.putBoolean("lower limit", lowerLimitSwitch.get());
-        SmartDashboard.putBoolean("upper limit", upperLimitSwitch.get());
-
-        SmartDashboard.putData("Auto lower intake command", lowerArmAuto());
-        SmartDashboard.putData("Toggle intake test command", raiseArmAuto());
     }
 }

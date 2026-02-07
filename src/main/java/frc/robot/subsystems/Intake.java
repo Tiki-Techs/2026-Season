@@ -72,13 +72,6 @@ public class Intake extends SubsystemBase{
 
     @Override
     public void periodic() {
-        // This method will be called once per scheduler run
-
-        SmartDashboard.putData("run intake", runIntake());
-        SmartDashboard.putData("run reverse intake", runReverseIntake());
-
-        // activating commands with a button test via SmartDashboard
-        SmartDashboard.putData("run intake command", runIntake());
-        SmartDashboard.putData("run reverse intake command", runReverseIntake());
+     
     }
 }
