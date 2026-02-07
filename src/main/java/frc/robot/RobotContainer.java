@@ -193,7 +193,7 @@ public class RobotContainer {
     m_driverController.b().toggleOnTrue(m_intake.runIntake());
     
     // X - Index forward and reverse
-    m_driverController.x().whileTrue(
+    m_driverController.x().toggleOnTrue(
       new ConditionalCommand(
        m_index.runIndex(-1),
        m_index.runIndex(1),
