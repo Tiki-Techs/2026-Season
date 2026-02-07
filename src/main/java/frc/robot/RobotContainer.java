@@ -17,6 +17,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -54,7 +55,7 @@ public class RobotContainer {
     private final SlowDriveTrain m_SlowDriveTrain = new SlowDriveTrain();
     // Subsystems
     private final Shooter m_shooter = new Shooter();
-    private final Index m_Index = new Index();
+    private final Index m_index = new Index();
     private final Intake m_intake = new Intake();
     private final IntakeActuator m_intakeActuator = new IntakeActuator();
     
@@ -112,6 +113,13 @@ public class RobotContainer {
    */
   private void configureBindings() {
 
+
+    // Default commands to stop when not active
+    m_shooter.setDefaultCommand(m_shooter.stopAll());
+    m_intake.setDefaultCommand(m_intake.stopAll());
+    m_intakeActuator.setDefaultCommand(m_intakeActuator.stopAll());
+    m_index.setDefaultCommand(m_index.stopAll());
+
     // Default drive command with acceleration limiting
     drivetrain.setDefaultCommand(
         drivetrain.applyRequest(
@@ -123,24 +131,74 @@ public class RobotContainer {
         )
     );
 
+    // test override commands
+    // Start button - Toggle override for all commands
+    m_driverController.start()
+    .onTrue(new InstantCommand(()-> Constants.overrideEnabled = true))
+    .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
 
-    // Left trigger - Brake
-    m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+    // D-pad up - IntakeActuator auto raise and override manual raise
+    m_driverController.povUp().whileTrue(
+      new ConditionalCommand(
+        m_intakeActuator.raiseArmManual(),  //  if override = true, run manual raise intake
+        m_intakeActuator.raiseArmAuto(),  // if override = false, run auto raise intake
+        ()-> Constants.overrideEnabled)
+    );
+    // D-pad down - IntakeActuator auto lower and override manual lower
+    m_driverController.povDown().whileTrue(
+      new ConditionalCommand(
+        m_intakeActuator.lowerArmManual(),  //  if override = true, run manual raise intake
+        m_intakeActuator.lowerArmAuto(),  // if override = false, run auto raise intake
+        ()-> Constants.overrideEnabled)
+    );
 
-    // Left bumper - Intake
-    m_driverController.leftBumper().whileTrue(m_intake.runIntake());
+    // Left DPAD -
+    // m_driverController.povLeft();
+    // Right DPAD - 
+    // m_driverController.povRight();
 
-    // D-pad up - IntakeActuator raise
-    m_driverController.povUp().whileTrue(m_intakeActuator.raiseArmManual());
+    // Left bumper - Run intake forward and reverse
+    m_driverController.leftBumper().whileTrue(
+      new ConditionalCommand(
+       m_intake.runReverseIntake(),
+       m_intake.runIntake(),
+      () -> Constants.overrideEnabled)
+      );
 
-    // D-pad down - IntakeActuator lower
-    m_driverController.povDown().whileTrue(m_intakeActuator.lowerArmManual());
+    // Right bumper - Enable PID shooter and reverse shooter
+    m_driverController.rightBumper().whileTrue(
+      new ConditionalCommand(
+       m_shooter.runShooter(-1),
+       m_shooter.runPIDShooter(60),
+      () -> Constants.overrideEnabled)
+      );    
+    
+    // Left Trigger - Shooter forward and reverse
+    m_driverController.leftTrigger().whileTrue(
+      new ConditionalCommand(
+        m_shooter.runReverseShooter(m_driverController),
+        m_shooter.runShooter(m_driverController),
+        () -> Constants.overrideEnabled)
+      );
 
-    // Right trigger - Shooter
-    m_driverController.rightTrigger().whileTrue(m_shooter.runShooter(m_driverController));
+    // Right Trigger - Index forward and reverse
+    m_driverController.rightTrigger().whileTrue(
+      new ConditionalCommand(
+        m_index.runReverseIndex(m_driverController),
+        m_index.runIndex(m_driverController),
+        () -> Constants.overrideEnabled)
+      );
 
-    // X - Index
-    m_driverController.x().whileTrue(m_Index.runIndex(1.0));
+    // B - Run intake toggle
+    m_driverController.b().toggleOnTrue(m_intake.runIntake());
+    
+    // X - Index forward and reverse
+    m_driverController.x().whileTrue(
+      new ConditionalCommand(
+       m_index.runIndex(-1),
+       m_index.runIndex(1),
+      () -> Constants.overrideEnabled)
+      );
 
     // A - Limelight assisted drive
     m_driverController.a().whileTrue(
@@ -150,13 +208,34 @@ public class RobotContainer {
                 .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
                 .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
                 .withRotationalRate(m_Vision.limelight_aim_proportional())
-      ));
+      ));    
+      //  Y - 
+      // m_driverController.y();
 
-    // Default commands to stop when not active
-    m_shooter.setDefaultCommand(m_shooter.stopAll());
-    m_intake.setDefaultCommand(m_intake.stopAll());
-    m_intakeActuator.setDefaultCommand(m_intakeActuator.stopAll());
-    m_Index.setDefaultCommand(m_Index.stopAll());
+
+  // // m_driverController.x().toggleOnTrue(m_index.runIndex(1));
+
+  //   // Left trigger - Brake
+  //   m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+
+  //   // Left bumper - Intake
+  //   m_driverController.leftBumper().whileTrue(m_intake.runIntake());
+
+  //   // D-pad up - IntakeActuator raise
+  //   m_driverController.povUp().whileTrue(m_intakeActuator.raiseArmManual());
+
+  //   // D-pad down - IntakeActuator lower
+  //   m_driverController.povDown().whileTrue(m_intakeActuator.lowerArmManual());
+
+  //   // Right trigger - Shooter
+  //   m_driverController.rightTrigger().whileTrue(m_shooter.runShooter(m_driverController));
+
+  //   // X - Index
+  //   m_driverController.x().whileTrue(m_Index.runIndex(1.0));
+
+
+
+
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()

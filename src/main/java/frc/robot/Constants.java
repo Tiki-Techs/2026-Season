@@ -4,10 +4,6 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Radian;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-
 import edu.wpi.first.math.util.Units;
 import frc.robot.generated.TunerConstants;
 import static edu.wpi.first.units.Units.*;
@@ -23,6 +19,9 @@ import static edu.wpi.first.units.Units.*;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
+
+  public static boolean overrideEnabled = false; 
+
   
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
