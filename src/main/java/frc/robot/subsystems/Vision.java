@@ -78,10 +78,10 @@ public class Vision extends SubsystemBase {
     // TY is in degrees - we'll use it directly as an error signal
     // Negative TY = target below center = drive forward
     double ty = LimelightHelpers.getTY("limelight");
-    double error = ty + 6.0;  // stops at TY = -8.0
+    double error = ty + 6.0;  // stops at TY = 
     double targetingForwardSpeed = error * kP;
 
-    return targetingForwardSpeed;
+    return targetingForwardSpeed * -1.0;
   }
     
 
