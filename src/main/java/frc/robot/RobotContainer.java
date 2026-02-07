@@ -26,7 +26,7 @@ import frc.robot.Constants.OperatorConstants;
 // import frc.robot.commands.Autos;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Hood;
+// import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
@@ -59,7 +59,7 @@ public class RobotContainer {
     private final Index m_Index = new Index();
     private final Intake m_intake = new Intake();
     private final IntakeActuator m_intakeActuator = new IntakeActuator();
-    private final Hood m_hood = new Hood();
+    // private final Hood m_hood = new Hood();
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
@@ -148,7 +148,6 @@ public class RobotContainer {
     // X - Index
     m_driverController.x().whileTrue(m_Index.runIndex(1.0));
 
-    // 
 
     // A - Limelight assisted drive
     m_driverController.a().whileTrue(
@@ -165,7 +164,7 @@ public class RobotContainer {
     m_intake.setDefaultCommand(m_intake.stopAll());
     m_intakeActuator.setDefaultCommand(m_intakeActuator.stopAll());
     m_Index.setDefaultCommand(m_Index.stopAll());
-    m_hood.setDefaultCommand(m_hood.stopAll());
+    // m_hood.setDefaultCommand(m_hood.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()

@@ -210,33 +210,7 @@ public class Shooter extends SubsystemBase{
 
     @Override
     public void periodic(){
-        SmartDashboard.putData("Run shooter forward", runShooter(1));
-        SmartDashboard.putData("Run shooter backward", runShooter(-1));
-        SmartDashboard.putData("Run PID shooter", runPIDShooter(60));
-
-        SmartDashboard.putNumber("Shooter 23" , shooter23.get());
-        SmartDashboard.putNumber("Shooter 23 motor output", shooter23.getMotorOutputStatus().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 23 voltage", shooter23.getMotorVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 23 stator current", shooter23.getStatorCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 23 supply voltage", shooter23.getSupplyVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter target velocity", shooter23.getVelocity().getValueAsDouble());
-
-
-        SmartDashboard.putNumber("Shooter 24" , shooter24.get());
-        SmartDashboard.putNumber("Shooter 24 motor output", shooter24.getMotorOutputStatus().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 24 voltage", shooter24.getMotorVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 24 stator current", shooter24.getStatorCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 24 supply voltage", shooter24.getSupplyVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter target velocity", shooter24.getVelocity().getValueAsDouble());
-
-
-        SmartDashboard.putNumber("Shooter 25" , shooter25.get());
-        SmartDashboard.putNumber("Shooter 25 motor output", shooter25.getMotorOutputStatus().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 25 voltage", shooter25.getMotorVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 25 stator current", shooter25.getStatorCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter 25 supply voltage", shooter25.getSupplyVoltage().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter target velocity", shooter25.getVelocity().getValueAsDouble());
-
+        
 
     }
 }

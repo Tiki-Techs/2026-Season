@@ -16,12 +16,12 @@ public class Index extends SubsystemBase{
     // do we need encoders/limit switches here
     private final TalonFX intake21 = new TalonFX(21);
 
-    public Command runIndex(CommandXboxController controllerValue){
+    public Command runIndex(CommandXboxController controllerValue) {
         return new RunCommand(() -> 
             intake21.set(controllerValue.getRightTriggerAxis())
             ,this
     );}
-    public Command runReverseIndex(CommandXboxController controllerValue){
+    public Command runReverseIndex(CommandXboxController controllerValue) {
         return new RunCommand(() -> 
             intake21.set(-controllerValue.getRightTriggerAxis())
             ,this
@@ -32,6 +32,7 @@ public class Index extends SubsystemBase{
             intake21.set(speed)
             ,this
     );}
+    
     // public Command runReverseIndex(){
     //     return new RunCommand(() -> 
     //         intake21.set(-1)
@@ -57,13 +58,5 @@ public class Index extends SubsystemBase{
 @Override
 public void periodic() {
 
-    SmartDashboard.putNumber("Shooter 21" , intake21.get());
-    SmartDashboard.putNumber("Shooter 21 motor output", intake21.getMotorOutputStatus().getValueAsDouble());
-    SmartDashboard.putNumber("Shooter 21 voltage", intake21.getMotorVoltage().getValueAsDouble());
-    SmartDashboard.putNumber("Shooter 21 stator current", intake21.getStatorCurrent().getValueAsDouble());
-    SmartDashboard.putNumber("Shooter 21 supply voltage", intake21.getSupplyVoltage().getValueAsDouble());
-    SmartDashboard.putNumber("Shooter target velocity", intake21.getVelocity().getValueAsDouble());
-
-    SmartDashboard.putData("Run index regular", runIndex(1));
 }   
 } 
