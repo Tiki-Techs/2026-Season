@@ -27,10 +27,10 @@ import frc.robot.Constants.OperatorConstants;
 // import frc.robot.commands.Autos;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
-// import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.IntakeActuator;
+import frc.robot.subsystems.IntakePivot;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
@@ -59,8 +59,8 @@ public class RobotContainer {
     private final Shooter m_shooter = new Shooter();
     private final Index m_index = new Index();
     private final Intake m_intake = new Intake();
-    private final IntakeActuator m_intakeActuator = new IntakeActuator();
-    // private final Hood m_hood = new Hood();
+    private final IntakePivot m_intakePivot = new IntakePivot();
+    private final Hood m_hood = new Hood();
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
@@ -80,6 +80,10 @@ public class RobotContainer {
     // Field oriented drive request
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
             .withDeadband(maxSpeed * 0.1).withRotationalDeadband(maxAngularRate * 0.1) // Add a 10% deadband
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
+    // Robot oriented drive request
+    private final SwerveRequest.RobotCentric rDrive = new SwerveRequest.RobotCentric()
+            .withDeadband(maxSpeed * .1).withRotationalDeadband(maxAngularRate * .1) // Add a 10% deadband
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
     // Brake request
     private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
@@ -118,60 +122,70 @@ public class RobotContainer {
    * joysticks}.
    */
   private void configureBindings() {
-
+    
     // Default drive command with acceleration limiting
     drivetrain.setDefaultCommand(
-        drivetrain.applyRequest(
-            () ->
-                drive
-                    .withVelocityX(xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), .15) * maxSpeed)) // forward/back
-                    .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed)) // left/right
-                    .withRotationalRate(rotLimiter.calculate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate)) // rotate
+      drivetrain.applyRequest(
+        () ->
+        drive
+        .withVelocityX(xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), .15) * maxSpeed)) // forward/back
+        .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed)) // left/right
+        .withRotationalRate(rotLimiter.calculate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate)) // rotate
         )
-    );
-
-
+        );
+        
+        
+    // Left trigger - Brake
+    m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+        
+        
     
-
-        // test override commands
+    // Y - Toggle override for all commands
+    m_driverController.y()
+      .onTrue(new InstantCommand(()-> Constants.overrideEnabled = true))
+      .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
     
-    // D-pad up - IntakeActuator auto raise and override manual raise
+    // D-pad up - IntakePivot auto raise and override manual raise
     m_driverController.povUp().whileTrue(
       new ConditionalCommand(
-        m_intakeActuator.raiseArmManual(),  //  if override = true, run manual raise intake
-        m_intakeActuator.raiseArmAuto(),  // if override = false, run auto raise intake
+        m_intakePivot.raiseArmManual(),  //  if override = true, run manual raise intake
+        m_intakePivot.raiseArmAuto(),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
     );
-    // D-pad down - IntakeActuator auto lower and override manual lower
+
+    // D-pad down - IntakePivot auto lower and override manual lower
     m_driverController.povDown().whileTrue(
       new ConditionalCommand(
-        m_intakeActuator.lowerArmManual(),  //  if override = true, run manual raise intake
-        m_intakeActuator.lowerArmAuto(),  // if override = false, run auto raise intake
+        m_intakePivot.lowerArmManual(),  //  if override = true, run manual raise intake
+        m_intakePivot.lowerArmAuto(),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
-    );
-
-    // Left DPAD -
-    // m_driverController.povLeft();
-    // Right DPAD - 
-    // m_driverController.povRight();
-
+        );
+        
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runReverseIntake(),
-       m_intake.runIntake(),
+       m_intake.runReverseIntake(), // if override = true, run reverse intake 
+       m_intake.runIntake(), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
+      // X - Index forward and reverse
+      m_driverController.x().toggleOnTrue(
+        new ConditionalCommand(
+         m_index.runIndex(-1), // override = true, run reverse
+         m_index.runIndex(1), // override = false, run forward
+        () -> Constants.overrideEnabled)
+        );
+      
     // Right bumper - Enable PID shooter and reverse shooter
     m_driverController.rightBumper().whileTrue(
       new ConditionalCommand(
-       m_shooter.runShooter(-1),
-       m_shooter.runPIDShooter(60),
+       m_shooter.runShooter(-1), // override = true, reverse run shooter
+       m_shooter.runPIDShooter(60), // override = false, run normal pid
       () -> Constants.overrideEnabled)
-      );    
+      );
     
-    // Right Trigger - Shooter forward and reverse
+    // Right Trigger - Shooter forward and reverse for testing purposes (no pid)
     m_driverController.rightTrigger().whileTrue(
       new ConditionalCommand(
         m_shooter.runReverseShooter(m_driverController),
@@ -179,28 +193,16 @@ public class RobotContainer {
         () -> Constants.overrideEnabled)
       );
 
-    // Left trigger - Brake
-    m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
-
-
-    // Left Trigger - Index forward and reverse
-    // m_driverController.x().whileTrue(
-    //   new ConditionalCommand(
-    //     m_index.runReverseIndex(m_driverController),
-    //     m_index.runIndex(m_driverController),
-    //     () -> Constants.overrideEnabled)
-    //   );
-
-    // B - Run intake toggle
-    m_driverController.b().toggleOnTrue(m_intake.runIntake());
-    
-    // X - Index forward and reverse
-    m_driverController.x().toggleOnTrue(
+    // B - Hood forward and reverse
+    m_driverController.b().whiletrue(
       new ConditionalCommand(
-       m_index.runIndex(-1),
-       m_index.runIndex(1),
-      () -> Constants.overrideEnabled)
-      );
+        m_hood.runHood(-.1),
+        m_hood.runHood(.1),
+        () -> Constants.overrideEnabled)
+    );
+      
+    
+    
 
     // A - Limelight assisted drive
     m_driverController.a().whileTrue(
@@ -210,46 +212,25 @@ public class RobotContainer {
                 .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
                 .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
                 .withRotationalRate(m_Vision.limelight_aim_proportional())
-      ));    
+      ));
+      
 
-      // Y - Toggle override for all commands
-    m_driverController.y()
-      .onTrue(new InstantCommand(()-> Constants.overrideEnabled = true))
-      .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
+    // Start - Reset gyro heading to 0 degrees
+    m_driverController.start()
+      .onTrue(new InstantCommand(() ->
+        drivetrain.resetPose(new edu.wpi.first.math.geometry.Pose2d(
+          drivetrain.getState().Pose.getTranslation(),
+          new Rotation2d()
+        ))
+      ));
 
-
-    // // Left bumper - Intake
-    // m_driverController.leftBumper().whileTrue(m_intake.runIntake());
-
-    // // D-pad up - IntakeActuator raise
-    // m_driverController.povUp().whileTrue(m_intakeActuator.raiseArmManual());
-
-    // // D-pad down - IntakeActuator lower
-    // m_driverController.povDown().whileTrue(m_intakeActuator.lowerArmManual());
-
-    // // Right trigger - Shooter
-    // m_driverController.rightTrigger().whileTrue(m_shooter.runShooter(m_driverController));
-
-    // // X - Index
-    // m_driverController.x().whileTrue(m_Index.runIndex(1.0));
-
-
-    // // A - Limelight assisted drive
-    // m_driverController.a().whileTrue(
-    //   drivetrain.applyRequest(
-    //     () ->
-    //         limelight
-    //             .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-    //             .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
-    //             .withRotationalRate(m_Vision.limelight_aim_proportional())
-    //   ));
 
     // Default commands to stop when not active
     m_shooter.setDefaultCommand(m_shooter.stopAll());
     m_intake.setDefaultCommand(m_intake.stopAll());
-    m_intakeActuator.setDefaultCommand(m_intakeActuator.stopAll());
+    m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
     m_index.setDefaultCommand(m_index.stopAll());
-    // m_hood.setDefaultCommand(m_hood.stopAll());
+    m_hood.setDefaultCommand(m_hood.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()

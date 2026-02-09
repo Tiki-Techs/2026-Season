@@ -9,7 +9,7 @@ import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class IntakeActuator extends SubsystemBase{
+public class IntakePivot extends SubsystemBase{
 
 
     // private final SparkMax leaderIntake = new SparkMax(24, MotorType.kBrushless);
@@ -59,6 +59,7 @@ public class IntakeActuator extends SubsystemBase{
         , this
         );
     }
+    
 // // test code for auto deploy
 //     private boolean intakeDeployed = true;
     // public Command toggleIntake(){
