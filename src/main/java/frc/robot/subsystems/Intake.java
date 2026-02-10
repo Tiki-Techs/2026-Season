@@ -39,31 +39,40 @@ public class Intake extends SubsystemBase{
     // private final SparkFlex pivotArm = new SparkFlex(28, MotorType.kBrushless);
 
     private final double stopSpeed = 0.0;
-    private final double setSpeed = 0.1;
+    // private final double setSpeed = 0.1;
 
     
-    public Command runIntake(){
+    public Command runIntake(double speed){
         return new RunCommand(() -> {
-            leaderIntake.set(setSpeed);
+            leaderIntake.set(speed);
             // followerIntake.set(-setSpeed);
         }
         , this 
         );
     }
 
-    public Command runReverseIntake(){
-        return new RunCommand(() -> {
-            leaderIntake.set(-setSpeed);
-            // followerIntake.set(-setSpeed);
-        }
-        , this 
-        );
-    }
+    // public Command runReverseIntake(){
+    //     return new RunCommand(() -> {
+    //         leaderIntake.set(-setSpeed);
+    //         // followerIntake.set(-setSpeed);
+    //     }
+    //     , this 
+    //     );
+    // }
 
 
     public Command stopAll(){
         return new RunCommand(()->{
             leaderIntake.set(stopSpeed);
+            // followerIntake.set(stopSpeed);
+        },
+        this
+        );
+    }
+
+    public Command stopIntake(){
+        return new RunCommand(()->{
+            leaderIntake.set(0);
             // followerIntake.set(stopSpeed);
         },
         this

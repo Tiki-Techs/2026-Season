@@ -24,15 +24,15 @@ public class Climb extends SubsystemBase {
         climbMotor.setPosition(0);
     }
 
-    public Command climbUp(DoubleSupplier speed) {
-        return new RunCommand(() ->
-            climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
-    }
+    // public Command climbUp(DoubleSupplier speed) {
+    //     return new RunCommand(() ->
+    //         climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
+    // }
 
-    public Command climbDown(DoubleSupplier speed) {
-        return new RunCommand(() ->
-            climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
-    }
+    // public Command climbDown(DoubleSupplier speed) {
+    //     return new RunCommand(() ->
+    //         climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
+    // }
 
     public Command stopAll() {
         return new RunCommand(() ->

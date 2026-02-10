@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -26,7 +27,15 @@ public class IntakePivot extends SubsystemBase{
 
     private boolean intakeDeployed = true; 
     
-     public Command stopAll(){
+    public Command stopAll(){
+        return new RunCommand(()->{
+            pivotArm.set(stopSpeed);
+        },
+        this
+        );
+    }
+
+    public Command stopArmPivot(){
         return new RunCommand(()->{
             pivotArm.set(stopSpeed);
         },
@@ -112,6 +121,12 @@ public class IntakePivot extends SubsystemBase{
             if (!interrupted) {
                 intakeDeployed = false;
             }
+        });
+    }
+
+    public Command changeDeployState(){
+        return new InstantCommand(()->{
+            intakeDeployed = !intakeDeployed;
         });
     }
 
