@@ -103,7 +103,31 @@ public class RobotContainer {
   public RobotContainer() {
 
     // Register named commands for PathPlanner (must be done before building auto chooser)
+    // Shooter commands
     NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
+    NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(60));
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.stopShooter());
+
+    // Index commands
+    NamedCommands.registerCommand("runIndex", m_index.runIndex(1));
+    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-1));
+    NamedCommands.registerCommand("stopIndex", m_index.stopIndex());
+
+    // Intake commands
+    NamedCommands.registerCommand("runIntake", m_intake.runIntake(1));
+    NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-1));
+    NamedCommands.registerCommand("stopIntake", m_intake.stopIntake());
+
+    // Intake Pivot commands
+    NamedCommands.registerCommand("raiseArmAuto", m_intakePivot.raiseArmAuto());
+    NamedCommands.registerCommand("lowerArmAuto", m_intakePivot.lowerArmAuto());
+    NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopArmPivot());
+    NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState());
+
+    // Hood commands
+
+    // Climb commands
 
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Chooser", autoChooser);
@@ -164,8 +188,8 @@ public class RobotContainer {
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runReverseIntake(), // if override = true, run reverse intake 
-       m_intake.runIntake(), // if override = false, run normal
+       m_intake.runIntake(-1), // if override = true, run reverse intake 
+       m_intake.runIntake(1), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
@@ -194,7 +218,7 @@ public class RobotContainer {
       );
 
     // B - Hood forward and reverse
-    m_driverController.b().whiletrue(
+    m_driverController.b().whileTrue(
       new ConditionalCommand(
         m_hood.runHood(-.1),
         m_hood.runHood(.1),
@@ -253,6 +277,6 @@ public class RobotContainer {
     // An example command will be run in autonomous
     // return Autos.exampleAuto();
     return autoChooser.getSelected();
-
+    // test commit
   }
 }

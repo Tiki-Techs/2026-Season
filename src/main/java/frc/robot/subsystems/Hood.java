@@ -1,10 +1,12 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.hardware.TalonFX;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -12,14 +14,14 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.LimelightHelpers;
 
 public class Hood extends SubsystemBase {
-
-    private final SparkFlex hoodMotor = new SparkFlex(30, MotorType.kBrushless);
-    private final RelativeEncoder encoder = hoodMotor.getEncoder();
+    private final TalonFX hoodMotor = new TalonFX(30);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
+    
 
     // PID controller for position control - tune these values
     private final PIDController pidController = new PIDController(0.1, 0, 0);
 
-    // Lookup table: TY (degrees) -> Hood position (encoder rotations)
+    // Lookup table: TY (degrees) -> Hood position (hoodMotor rotations)
     // Add your tuned values here after testing
     private final InterpolatingDoubleTreeMap tyToHoodPosition = new InterpolatingDoubleTreeMap();
 
@@ -30,8 +32,8 @@ public class Hood extends SubsystemBase {
     private double targetPosition = 0.0;
 
     public Hood() {
-        // Reset encoder on startup
-        encoder.setPosition(0);
+        // Reset hoodMotor on startup
+        hoodMotor.setPosition(0);
 
         // Placeholder lookup table values - TUNE THESE WITH REAL DATA
         // Format: tyToHoodPosition.put(tyAngle, hoodEncoderPosition);
@@ -63,7 +65,7 @@ public class Hood extends SubsystemBase {
                 double ty = LimelightHelpers.getTY("limelight");
                 targetPosition = getHoodPositionForTY(ty);
             }
-            double output = pidController.calculate(encoder.getPosition(), targetPosition);
+            double output = pidController.calculate(hoodMotor.getPosition().getValueAsDouble(), targetPosition);
             hoodMotor.set(output);
         }, this);
     }
@@ -74,7 +76,7 @@ public class Hood extends SubsystemBase {
     public Command setPosition(double position) {
         return new RunCommand(() -> {
             targetPosition = Math.max(minPosition, Math.min(maxPosition, position));
-            double output = pidController.calculate(encoder.getPosition(), targetPosition);
+            double output = pidController.calculate(hoodMotor.getPosition().getValueAsDouble(), targetPosition);
             hoodMotor.set(output);
         }, this);
     }
@@ -90,21 +92,32 @@ public class Hood extends SubsystemBase {
 
     public Command stopAll() {
         return new RunCommand(() -> {
-            hoodMotor.set(0);
+            hoodMotor.set(0.0);
         }, this);
     }
 
     public double getPosition() {
-        return encoder.getPosition();
+        return hoodMotor.getPosition().getValueAsDouble();
     }
 
     public boolean atTarget() {
         return pidController.atSetpoint();
     }
 
+    
+    public Command resetPosition() {
+        return new RunCommand(() -> {
+            hoodMotor.set(-0.1);
+        }, this).until(()->lowerLimitSwitch.get())
+        .andThen(()->{
+        hoodMotor.set(0.0);
+        hoodMotor.setPosition(0.0);
+        });
+    }
+
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Hood/Position", encoder.getPosition());
+        SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Hood/Target", targetPosition);
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
 
