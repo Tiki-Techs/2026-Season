@@ -32,14 +32,13 @@ public class Intake extends SubsystemBase{
     // private final TalonFX leaderIntake = new TalonFX(24);
     // private final TalonFX followerIntake = new TalonFX(25);
     private final SparkFlex leaderIntake = new SparkFlex(24, MotorType.kBrushless); // Neo brushless vortex
-    
+    private boolean intakeDeployed = true; // true if the intake is currently deployed, false if it is currently stowed.
 
 
     // pivotArm.setIdleMode(IdleMode.kBrake);
     // private final SparkFlex pivotArm = new SparkFlex(28, MotorType.kBrushless);
 
-    private final double stopSpeed = 0.0;
-    // private final double setSpeed = 0.1;
+
 
     
     public Command runIntake(double speed){
@@ -51,25 +50,14 @@ public class Intake extends SubsystemBase{
         );
     }
 
-    // public Command runReverseIntake(){
-    //     return new RunCommand(() -> {
-    //         leaderIntake.set(-setSpeed);
-    //         // followerIntake.set(-setSpeed);
-    //     }
-    //     , this 
-    //     );
-    // }
-
-
-    public Command stopAll(){
-        return new RunCommand(()->{
-            leaderIntake.set(stopSpeed);
-            // followerIntake.set(stopSpeed);
-        },
-        this
+    public Command runReverseIntake(double speed){
+        return new RunCommand(() -> {
+            leaderIntake.set(-speed);
+            // followerIntake.set(-setSpeed);
+        }
+        , this 
         );
     }
-
     public Command stopIntake(){
         return new RunCommand(()->{
             leaderIntake.set(0);
@@ -77,6 +65,21 @@ public class Intake extends SubsystemBase{
         },
         this
         );
+    }
+
+    public Command stopAll(){
+        return new RunCommand(()->{
+            leaderIntake.set(0);
+            // followerIntake.set(stopSpeed);
+        },
+        this
+        );
+    }
+
+    public Command changeDeployState(){
+        return new InstantCommand(()->{
+            intakeDeployed = !intakeDeployed;
+        });
     }
 
     @Override

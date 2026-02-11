@@ -27,15 +27,7 @@ public class IntakePivot extends SubsystemBase{
 
     private boolean intakeDeployed = true; 
     
-    public Command stopAll(){
-        return new RunCommand(()->{
-            pivotArm.set(stopSpeed);
-        },
-        this
-        );
-    }
-
-    public Command stopArmPivot(){
+     public Command stopAll(){
         return new RunCommand(()->{
             pivotArm.set(stopSpeed);
         },
@@ -99,6 +91,7 @@ public class IntakePivot extends SubsystemBase{
             pivotArm.set(pivotSpeed);
         }
         , this)
+        
         .until(()-> !lowerLimitSwitch.get()) // runs until limit switch is triggered
         .unless(()-> !lowerLimitSwitch.get()) // prevents running if limit switch is already triggered
         .finallyDo(interrupted -> { 
@@ -124,12 +117,12 @@ public class IntakePivot extends SubsystemBase{
         });
     }
 
+
     public Command changeDeployState(){
         return new InstantCommand(()->{
             intakeDeployed = !intakeDeployed;
         });
     }
-
 
 
 

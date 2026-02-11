@@ -37,6 +37,7 @@ import frc.robot.subsystems.Vision;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.subsystems.Climb;
 
 
 
@@ -61,6 +62,7 @@ public class RobotContainer {
     private final Intake m_intake = new Intake();
     private final IntakePivot m_intakePivot = new IntakePivot();
     private final Hood m_hood = new Hood();
+    private final Climb m_climb = new Climb();
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
@@ -102,6 +104,7 @@ public class RobotContainer {
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
 
+
     // Register named commands for PathPlanner (must be done before building auto chooser)
     // Shooter commands
     NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
@@ -122,13 +125,12 @@ public class RobotContainer {
     // Intake Pivot commands
     NamedCommands.registerCommand("raiseArmAuto", m_intakePivot.raiseArmAuto());
     NamedCommands.registerCommand("lowerArmAuto", m_intakePivot.lowerArmAuto());
-    NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopArmPivot());
+    NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll());
     NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState());
 
     // Hood commands
 
     // Climb commands
-
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Chooser", autoChooser);
 
@@ -188,24 +190,24 @@ public class RobotContainer {
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runIntake(-1), // if override = true, run reverse intake 
-       m_intake.runIntake(1), // if override = false, run normal
+       m_intake.runReverseIntake(1.0), // if override = true, run reverse intake 
+       m_intake.runIntake(1.0), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
       // X - Index forward and reverse
       m_driverController.x().toggleOnTrue(
         new ConditionalCommand(
-         m_index.runIndex(-1), // override = true, run reverse
-         m_index.runIndex(1), // override = false, run forward
+         m_index.runIndex(-1.0), // override = true, run reverse
+         m_index.runIndex(1.0), // override = false, run forward
         () -> Constants.overrideEnabled)
         );
       
     // Right bumper - Enable PID shooter and reverse shooter
     m_driverController.rightBumper().whileTrue(
       new ConditionalCommand(
-       m_shooter.runShooter(-1), // override = true, reverse run shooter
-       m_shooter.runPIDShooter(60), // override = false, run normal pid
+       m_shooter.runShooter(-1.0), // override = true, reverse run shooter
+       m_shooter.runPIDShooter(60.0), // override = false, run normal pid
       () -> Constants.overrideEnabled)
       );
     
@@ -255,6 +257,7 @@ public class RobotContainer {
     m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
     m_index.setDefaultCommand(m_index.stopAll());
     m_hood.setDefaultCommand(m_hood.stopAll());
+    m_climb.setDefaultCommand(m_climb.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()
@@ -277,6 +280,6 @@ public class RobotContainer {
     // An example command will be run in autonomous
     // return Autos.exampleAuto();
     return autoChooser.getSelected();
-    // test commit
+
   }
 }
