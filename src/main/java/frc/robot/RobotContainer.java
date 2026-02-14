@@ -75,9 +75,9 @@ public class RobotContainer {
 
     // Slew rate limiters to control acceleration (units per second)
     // Lower values = slower acceleration, higher values = snappier response
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(3.0);  // 3 m/s per second
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(3.0);  // 3 m/s per second
-    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(3.0); // 3 rad/s per second
+    // private final SlewRateLimiter xLimiter = new SlewRateLimiter(3.0);  // 3 m/s per second
+    // private final SlewRateLimiter yLimiter = new SlewRateLimiter(3.0);  // 3 m/s per second
+    // private final SlewRateLimiter rotLimiter = new SlewRateLimiter(3.0); // 3 rad/s per second
 
     // Field oriented drive request
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -107,8 +107,8 @@ public class RobotContainer {
 
     // Register named commands for PathPlanner (must be done before building auto chooser)
     // Shooter commands
-    NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
-    NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
+    // NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
+    // NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
     NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(60));
     NamedCommands.registerCommand("runPIDShooter", m_shooter.stopShooter());
 
@@ -155,9 +155,13 @@ public class RobotContainer {
       drivetrain.applyRequest(
         () ->
         drive
-        .withVelocityX(xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), .15) * maxSpeed)) // forward/back
-        .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed)) // left/right
-        .withRotationalRate(rotLimiter.calculate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate)) // rotate
+        .withVelocityX((MathUtil.applyDeadband(m_driverController.getLeftY(), .15) * maxSpeed)) // forward/back
+        .withVelocityY(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed) // left/right
+        .withRotationalRate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate) // rotate
+          
+        // .withVelocityX(xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), .15) * maxSpeed)) // forward/back
+        // .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed)) // left/right
+        // .withRotationalRate(rotLimiter.calculate(-MathUtil.applyDeadband(m_driverController.getRightX(), .15) * maxAngularRate)) // rotate
         )
         );
         
@@ -191,13 +195,13 @@ public class RobotContainer {
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runReverseIntake(0.75), // if override = true, run reverse intake 
-       m_intake.runIntake(0.75), // if override = false, run normal
+       m_intake.runReverseIntake(0.60), // if override = true, run reverse intake 
+       m_intake.runIntake(0.60), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
       // X - Index forward and reverse
-      m_driverController.x().toggleOnTrue(
+      m_driverController.x().whileTrue(
         new ConditionalCommand(
          m_index.runIndex(-1.0), // override = true, run reverse
          m_index.runIndex(1.0), // override = false, run forward
@@ -207,18 +211,12 @@ public class RobotContainer {
     // Right bumper - Enable PID shooter and reverse shooter
     m_driverController.rightBumper().whileTrue(
       new ConditionalCommand(
-       m_shooter.runShooter(-1.0), // override = true, reverse run shooter
-       m_shooter.runPIDShooter(60.0), // override = false, run normal pid
+       m_shooter.runPIDShooter(-100.0), // override = true, reverse run shooter
+       m_shooter.runPIDShooter(100.0), // override = false, run normal pid
       () -> Constants.overrideEnabled)
-      );
+    );
+
     
-    // Right Trigger - Shooter forward and reverse for testing purposes (no pid)
-    m_driverController.rightTrigger().whileTrue(
-      new ConditionalCommand(
-        m_shooter.runReverseShooter(m_driverController),
-        m_shooter.runShooter(m_driverController),
-        () -> Constants.overrideEnabled)
-      );
 
     // // B - Hood forward and reverse
     // m_driverController.b().whileTrue(
@@ -232,14 +230,14 @@ public class RobotContainer {
     
 
     // A - Limelight assisted drive
-    m_driverController.a().whileTrue(
-      drivetrain.applyRequest(
-        () ->
-            limelight
-                .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-                .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
-                .withRotationalRate(m_Vision.limelight_aim_proportional())
-      ));
+    // m_driverController.a().whileTrue(
+    //   drivetrain.applyRequest(
+    //     () ->
+    //         limelight
+    //             .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+    //             .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), .15) * maxSpeed))
+    //             .withRotationalRate(m_Vision.limelight_aim_proportional())
+    //   ));
       
 
     // Start - Reset gyro heading to 0 degrees

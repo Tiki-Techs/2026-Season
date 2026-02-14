@@ -1,6 +1,10 @@
 package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -16,16 +20,22 @@ public class IntakePivot extends SubsystemBase{
     // private final SparkMax leaderIntake = new SparkMax(24, MotorType.kBrushless);
     // private final SparkMax followerIntake = new SparkMax(25, MotorType.kBrushless);
 
-    private final SparkMax pivotArm = new SparkMax(25, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
+    private final SparkMax pivotArm = new SparkMax(24, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
 
     // when requesting a digital input, the boolean value will always be true if it is unplugged. 
     private final DigitalInput lowerLimitSwitch = new DigitalInput(3);
     private final DigitalInput upperLimitSwitch = new DigitalInput(2);
 
-    private final double pivotSpeed = 0.35;
+    private final double pivotSpeed = 0.50; //this is MUCH faster than normal, normal was .25!!!!
     private final double stopSpeed = 0.0;
 
     private boolean intakeDeployed = true; 
+
+    public IntakePivot() {
+        SparkMaxConfig config = new SparkMaxConfig();
+        config.idleMode(IdleMode.kBrake);
+        pivotArm.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    }
     
      public Command stopAll(){
         return new RunCommand(()->{
@@ -61,22 +71,6 @@ public class IntakePivot extends SubsystemBase{
         );
     }
     
-// // test code for auto deploy
-//     private boolean intakeDeployed = true;
-    // public Command toggleIntake(){
-    //     return new InstantCommand(()->{
-    //         if(intakeDeployed){
-    //             raiseIntakeAuto()
-    //             .schedule();
-    //         } else {
-    //             lowerIntakeAuto()
-    //             .schedule();
-    //         }
-    //         intakeDeployed = !intakeDeployed;
-    //     }
-    //     // , this 
-    //     );
-    // }
 
     public Command toggleArm(){
         return new ConditionalCommand(

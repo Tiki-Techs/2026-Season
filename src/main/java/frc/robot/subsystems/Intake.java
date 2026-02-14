@@ -31,7 +31,7 @@ public class Intake extends SubsystemBase{
     
     // private final TalonFX leaderIntake = new TalonFX(24);
     // private final TalonFX followerIntake = new TalonFX(25);
-    private final SparkFlex leaderIntake = new SparkFlex(24, MotorType.kBrushless); // Neo brushless vortex
+    private final SparkFlex leaderIntake = new SparkFlex(25, MotorType.kBrushless); // Neo brushless vortex
     private boolean intakeDeployed = true; // true if the intake is currently deployed, false if it is currently stowed.
 
 

@@ -32,12 +32,7 @@ public class Index extends SubsystemBase{
             intake21.set(speed)
             ,this
     );}
-    
-    // public Command runReverseIndex(){
-    //     return new RunCommand(() -> 
-    //         intake21.set(-1)
-    //         ,this
-    // );}
+
 
     public Command stopIndex(){
         return new InstantCommand(()->

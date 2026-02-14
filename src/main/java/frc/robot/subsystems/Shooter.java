@@ -11,6 +11,9 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+
+import java.util.function.DoubleSupplier;
+
 import com.ctre.phoenix6.configs.CANcoderConfigurator;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
@@ -21,9 +24,9 @@ import com.ctre.phoenix6.signals.InvertedValue;
 
 public class Shooter extends SubsystemBase{
 
-    private final TalonFX shooter23 = new TalonFX(22);
-    private final TalonFX shooter24 = new TalonFX(22);
-    private final TalonFX shooter25 = new TalonFX(22);
+    private final TalonFX shooter21 = new TalonFX(21);
+    private final TalonFX shooter22 = new TalonFX(22);
+    // private final TalonFX shooter25 = new TalonFX(22);
 
     // Bang-bang control parameters
     private double shooterTargetVelocity = 0; // Target velocity in rotations per second
@@ -65,15 +68,15 @@ public class Shooter extends SubsystemBase{
         slot0Configs.kI = 0; // no output for integrated error
         slot0Configs.kD = 0; // no output for error derivative
 
-        shooter23.getConfigurator().apply(slot0Configs);
-        shooter24.getConfigurator().apply(slot0Configs);
-        shooter25.getConfigurator().apply(slot0Configs);
+        shooter21.getConfigurator().apply(slot0Configs);
+        shooter22.getConfigurator().apply(slot0Configs);
+        // shooter25.getConfigurator().apply(slot0Configs);
         // Setting motor rotation orientation test this once we can get more time with the shooter. 
         // var motorConfig = new TalonFXConfiguration();
         // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // shooter23.getConfigurator().apply(motorConfig);
+        // shooter21.getConfigurator().apply(motorConfig);
         // motorConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        // shooter24.getConfigurator().apply(motorConfig);
+        // shooter22.getConfigurator().apply(motorConfig);
         // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         // shooter25.getConfigurator().apply(motorConfig);
     }
@@ -81,59 +84,30 @@ public class Shooter extends SubsystemBase{
     public Command runPIDShooter(double targetRPS){
         return new RunCommand(()->{
             // motor id,  set controls, target RPS, with feedforward to overcome gravity and friction
-            shooter23.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooter24.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
-            shooter25.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooter21.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooter22.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            // shooter25.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this 
-        );}
-
-    public Command runShooter(CommandXboxController controllerValue){
-        return new RunCommand(()-> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooter23.set(-speed);
-            shooter24.set(speed);
-            shooter25.set(-speed);
-        }
-        ,this
         );
-    };
+    }
+    
+    public Command runShooter(double speed) {
+        return new RunCommand(() -> {
+            shooter21.set(speed);
+            shooter22.set(speed);
+            // shooter25.set(speed.getAsDouble());
+        });
+        
+    }
 
-    public Command runShooter(double speed){
-        return new RunCommand(()-> {
-            shooter23.set(-speed);
-            shooter24.set(speed);
-            shooter25.set(-speed);
-        }
-        ,this
-        );
-    };
 
-    public Command runReverseShooter(CommandXboxController controllerValue){
-        return new RunCommand(()-> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooter23.set(speed);
-            shooter24.set(-speed);
-            shooter25.set(speed);
-        }
-        ,this
-        );
-    };
 
-    // public Command runReverseShooter(double speed){
-    //     return new RunCommand(()-> {
-    //         shooter23.set(speed);
-    //         shooter24.set(-speed);
-    //         shooter25.set(speed);
-    //     }
-    //     ,this
-    //     );
-    // };
  
     public Command stopShooter(){
         return new InstantCommand(()->{
-            shooter23.set(0);
-            shooter24.set(0);
-            shooter25.set(0);
+            shooter21.set(0);
+            shooter22.set(0);
+            // shooter25.set(0);
         }
         ,this
         );
@@ -141,9 +115,9 @@ public class Shooter extends SubsystemBase{
 
     public Command stopAll(){
         return new RunCommand(()->{
-                shooter23.set(0);
-                shooter24.set(0);
-                shooter25.set(0);
+                shooter21.set(0);
+                shooter22.set(0);
+                // shooter25.set(0);
 
             },
             // ", this" makes sure that only the shooter subsystem object can only run command at a time
@@ -166,7 +140,7 @@ public class Shooter extends SubsystemBase{
      * @return Current velocity in rotations per second
      */
     public double getShooterVelocity() {
-        return shooter23.getVelocity().getValueAsDouble();
+        return shooter21.getVelocity().getValueAsDouble();
     }
 
     /**
@@ -177,13 +151,13 @@ public class Shooter extends SubsystemBase{
         double currentVelocity = getShooterVelocity();
 
         if (currentVelocity < shooterTargetVelocity) {
-            shooter23.set(-BANG_BANG_ON_POWER);
-            shooter24.set(BANG_BANG_ON_POWER);
-            shooter25.set(-BANG_BANG_ON_POWER);
+            shooter21.set(-BANG_BANG_ON_POWER);
+            shooter22.set(BANG_BANG_ON_POWER);
+            // shooter25.set(-BANG_BANG_ON_POWER);
         } else {
-            shooter23.set(BANG_BANG_OFF_POWER);
-            shooter24.set(BANG_BANG_OFF_POWER);
-            shooter25.set(BANG_BANG_OFF_POWER);
+            shooter21.set(BANG_BANG_OFF_POWER);
+            shooter22.set(BANG_BANG_OFF_POWER);
+            // shooter25.set(BANG_BANG_OFF_POWER);
         }
     }
 
