@@ -43,7 +43,7 @@ public class Intake extends SubsystemBase{
     
     public Command runIntake(double speed){
         return new RunCommand(() -> {
-            leaderIntake.set(speed);
+            leaderIntake.set(-speed); // negative to make it spin the right direction, fix with motor configs later
             // followerIntake.set(-setSpeed);
         }
         , this 
@@ -52,7 +52,7 @@ public class Intake extends SubsystemBase{
 
     public Command runReverseIntake(double speed){
         return new RunCommand(() -> {
-            leaderIntake.set(-speed);
+            leaderIntake.set(speed); // positive to make it spin the right direction, fix with motor configs later
             // followerIntake.set(-setSpeed);
         }
         , this 

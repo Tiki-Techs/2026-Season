@@ -21,9 +21,9 @@ import com.ctre.phoenix6.signals.InvertedValue;
 
 public class Shooter extends SubsystemBase{
 
-    private final TalonFX shooter23 = new TalonFX(23);
-    private final TalonFX shooter24 = new TalonFX(24);
-    private final TalonFX shooter25 = new TalonFX(25);
+    private final TalonFX shooter23 = new TalonFX(22);
+    private final TalonFX shooter24 = new TalonFX(22);
+    private final TalonFX shooter25 = new TalonFX(22);
 
     // Bang-bang control parameters
     private double shooterTargetVelocity = 0; // Target velocity in rotations per second

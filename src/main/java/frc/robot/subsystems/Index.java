@@ -14,7 +14,7 @@ public class Index extends SubsystemBase{
     // up/down movement on belt arms?
     // or (manually) adjustable belts, thats only runs?
     // do we need encoders/limit switches here
-    private final TalonFX intake21 = new TalonFX(21);
+    private final TalonFX intake21 = new TalonFX(25);
 
     public Command runIndex(CommandXboxController controllerValue) {
         return new RunCommand(() -> 

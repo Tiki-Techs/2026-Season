@@ -27,7 +27,7 @@ import frc.robot.Constants.OperatorConstants;
 // import frc.robot.commands.Autos;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Hood;
+// import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakePivot;
@@ -37,7 +37,7 @@ import frc.robot.subsystems.Vision;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.subsystems.Climb;
+// import frc.robot.subsystems.Climb;
 
 
 
@@ -61,8 +61,8 @@ public class RobotContainer {
     private final Index m_index = new Index();
     private final Intake m_intake = new Intake();
     private final IntakePivot m_intakePivot = new IntakePivot();
-    private final Hood m_hood = new Hood();
-    private final Climb m_climb = new Climb();
+    // private final Hood m_hood = new Hood();
+    // private final Climb m_climb = new Climb();
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
@@ -129,6 +129,7 @@ public class RobotContainer {
     NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState());
 
     // Hood commands
+    
 
     // Climb commands
     autoChooser = AutoBuilder.buildAutoChooser();
@@ -175,7 +176,7 @@ public class RobotContainer {
     m_driverController.povUp().whileTrue(
       new ConditionalCommand(
         m_intakePivot.raiseArmManual(),  //  if override = true, run manual raise intake
-        m_intakePivot.raiseArmAuto(),  // if override = false, run auto raise intake
+        m_intakePivot.raiseArmManual(),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
     );
 
@@ -183,15 +184,15 @@ public class RobotContainer {
     m_driverController.povDown().whileTrue(
       new ConditionalCommand(
         m_intakePivot.lowerArmManual(),  //  if override = true, run manual raise intake
-        m_intakePivot.lowerArmAuto(),  // if override = false, run auto raise intake
+        m_intakePivot.lowerArmManual(),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
         );
         
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runReverseIntake(1.0), // if override = true, run reverse intake 
-       m_intake.runIntake(1.0), // if override = false, run normal
+       m_intake.runReverseIntake(0.75), // if override = true, run reverse intake 
+       m_intake.runIntake(0.75), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
@@ -219,13 +220,13 @@ public class RobotContainer {
         () -> Constants.overrideEnabled)
       );
 
-    // B - Hood forward and reverse
-    m_driverController.b().whileTrue(
-      new ConditionalCommand(
-        m_hood.runHood(-.1),
-        m_hood.runHood(.1),
-        () -> Constants.overrideEnabled)
-    );
+    // // B - Hood forward and reverse
+    // m_driverController.b().whileTrue(
+    //   new ConditionalCommand(
+    //     m_hood.runHood(-.1),
+    //     m_hood.runHood(.1),
+    //     () -> Constants.overrideEnabled)
+    // );
       
     
     
@@ -256,8 +257,8 @@ public class RobotContainer {
     m_intake.setDefaultCommand(m_intake.stopAll());
     m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
     m_index.setDefaultCommand(m_index.stopAll());
-    m_hood.setDefaultCommand(m_hood.stopAll());
-    m_climb.setDefaultCommand(m_climb.stopAll());
+    // m_hood.setDefaultCommand(m_hood.stopAll());
+    // m_climb.setDefaultCommand(m_climb.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()

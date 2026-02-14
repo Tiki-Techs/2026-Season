@@ -14,7 +14,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.LimelightHelpers;
 
 public class Hood extends SubsystemBase {
-    private final TalonFX hoodMotor = new TalonFX(30);
+    private final TalonFX hoodMotor = new TalonFX(12);
     private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
     
 

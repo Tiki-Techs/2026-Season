@@ -16,13 +16,13 @@ public class IntakePivot extends SubsystemBase{
     // private final SparkMax leaderIntake = new SparkMax(24, MotorType.kBrushless);
     // private final SparkMax followerIntake = new SparkMax(25, MotorType.kBrushless);
 
-    private final SparkMax pivotArm = new SparkMax(28, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
+    private final SparkMax pivotArm = new SparkMax(25, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
 
     // when requesting a digital input, the boolean value will always be true if it is unplugged. 
     private final DigitalInput lowerLimitSwitch = new DigitalInput(3);
     private final DigitalInput upperLimitSwitch = new DigitalInput(2);
 
-    private final double pivotSpeed = 0.1;
+    private final double pivotSpeed = 0.35;
     private final double stopSpeed = 0.0;
 
     private boolean intakeDeployed = true; 
@@ -91,7 +91,7 @@ public class IntakePivot extends SubsystemBase{
             pivotArm.set(pivotSpeed);
         }
         , this)
-        
+
         .until(()-> !lowerLimitSwitch.get()) // runs until limit switch is triggered
         .unless(()-> !lowerLimitSwitch.get()) // prevents running if limit switch is already triggered
         .finallyDo(interrupted -> { 
@@ -128,5 +128,6 @@ public class IntakePivot extends SubsystemBase{
 
     @Override
     public void periodic() {
+        SmartDashboard.putNumber("pivot Arm", pivotArm.getAppliedOutput());
     }
 }
