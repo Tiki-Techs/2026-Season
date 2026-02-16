@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.IntakePivotConstants;
 
 public class IntakePivot extends SubsystemBase{
 
@@ -20,14 +21,14 @@ public class IntakePivot extends SubsystemBase{
     // private final SparkMax leaderIntake = new SparkMax(24, MotorType.kBrushless);
     // private final SparkMax followerIntake = new SparkMax(25, MotorType.kBrushless);
 
-    private final SparkMax pivotArm = new SparkMax(24, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
+    private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.PIVOT_ARM, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
 
     // when requesting a digital input, the boolean value will always be true if it is unplugged. 
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(3);
-    private final DigitalInput upperLimitSwitch = new DigitalInput(2);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(IntakePivotConstants.LOWER_LIMIT_SWITCH);
+    private final DigitalInput upperLimitSwitch = new DigitalInput(IntakePivotConstants.UPPER_LIMIT_SWITCH);
 
-    private final double pivotSpeed = 0.50; //this is MUCH faster than normal, normal was .25!!!!
-    private final double stopSpeed = 0.0;
+    // private final double pivotSpeed = 0.50; //this is MUCH faster than normal, normal was .25!!!!
+    private final double stopSpeed = 0.0; // can add to constants. 
 
     private boolean intakeDeployed = true; 
 
@@ -40,13 +41,13 @@ public class IntakePivot extends SubsystemBase{
      public Command stopAll(){
         return new RunCommand(()->{
             pivotArm.set(stopSpeed);
-        },
-        this
+        }
+        , this
         );
     }
 
     // Press and hold verision
-    public Command lowerArmManual(){
+    public Command lowerArmManual(double pivotSpeed){
         return new RunCommand(() -> {
             if (!lowerLimitSwitch.get()){
                 pivotArm.set(stopSpeed);  // CONFIRM ROTATION DIRECTION BEFORE RUNNING THIS CODE
@@ -59,7 +60,7 @@ public class IntakePivot extends SubsystemBase{
         );
     }
      // Press and hold verision
-    public Command raiseArmManual(){
+    public Command raiseArmManual(double pivotSpeed){
         return new RunCommand(() -> {
             if (!upperLimitSwitch.get()){ 
                 pivotArm.set(stopSpeed); // CONFIRM ROTATION DIRECTION BEFORE RUNNING THIS CODE
@@ -72,38 +73,36 @@ public class IntakePivot extends SubsystemBase{
     }
     
 
-    public Command toggleArm(){
+    public Command toggleArm(double pivotSpeed){
         return new ConditionalCommand(
-            raiseArmAuto(), // runs when intakeDeployed = true
-            lowerArmAuto(), // runs when intakeDeployed = false
+            raiseArmAuto(pivotSpeed), // runs when intakeDeployed = true
+            lowerArmAuto(pivotSpeed), // runs when intakeDeployed = false
             () -> intakeDeployed // the condition used to determine what command to run
         );
     }
     
-    public Command lowerArmAuto(){
+    public Command lowerArmAuto(double pivotSpeed){
         return new RunCommand(()->{
             pivotArm.set(pivotSpeed);
         }
         , this)
 
-        .until(()-> !lowerLimitSwitch.get()) // runs until limit switch is triggered
-        .unless(()-> !lowerLimitSwitch.get()) // prevents running if limit switch is already triggered
-        .finallyDo(interrupted -> { 
-            pivotArm.set(stopSpeed); 
+        .until(()-> !lowerLimitSwitch.get()) //  runs until limit switch is triggered
+        .finallyDo(interrupted -> {  // interrupted checks if another commmand has "interrupted" this command/taken control of subsystem. 
+            pivotArm.set(stopSpeed);  // So if its true, it will stop motor. If its false, the status wont change, but will still stop the motor.
             if (!interrupted) {
                 intakeDeployed = true;
             }
         });
     }
 
-    public Command raiseArmAuto(){
+    public Command raiseArmAuto(double pivotSpeed){
         return new RunCommand(()->{
             pivotArm.set(-pivotSpeed);
         }
         , this)
         .until(()-> !upperLimitSwitch.get())
-        .unless(()-> !upperLimitSwitch.get())
-        .finallyDo(interrupted -> {
+        .finallyDo(interrupted -> { 
             pivotArm.set(stopSpeed);
             if (!interrupted) {
                 intakeDeployed = false;

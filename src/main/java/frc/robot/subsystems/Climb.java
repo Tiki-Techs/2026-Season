@@ -12,12 +12,13 @@
 // import edu.wpi.first.wpilibj2.command.Command;
 // import edu.wpi.first.wpilibj2.command.RunCommand;
 // import edu.wpi.first.wpilibj2.command.SubsystemBase;
+// import frc.robot.Constants.ClimbConstants;
 
 // public class Climb extends SubsystemBase {
 
-//     private final TalonFX climbMotor = new TalonFX(30);
-//     private final DigitalInput lowerLimitSwitch = new DigitalInput(4);
-//     private final DigitalInput upperLimitSwitch = new DigitalInput(5);
+//     private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR);
+//     private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
+//     private final DigitalInput upperLimitSwitch = new DigitalInput(ClimbConstants.UPPER_LIMIT_SWITCH);
 
 
 

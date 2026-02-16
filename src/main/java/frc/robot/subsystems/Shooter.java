@@ -19,14 +19,15 @@ import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.InvertedValue;
+import frc.robot.Constants.ShooterConstants;
 
 
 
 public class Shooter extends SubsystemBase{
 
-    private final TalonFX shooter21 = new TalonFX(21);
-    private final TalonFX shooter22 = new TalonFX(22);
-    // private final TalonFX shooter25 = new TalonFX(22);
+    private final TalonFX centerShooter = new TalonFX(ShooterConstants.CENTER_SHOOTER_ID);
+    // private final TalonFX leftShooter = new TalonFX(Shooter.Constants.LEFT_SHOOTER_ID);
+    // private final TalonFX rightShooter = new TalonFX(Shooter.Constants.RIGHT_SHOOTER_ID);
 
     // Bang-bang control parameters
     private double shooterTargetVelocity = 0; // Target velocity in rotations per second
@@ -40,8 +41,8 @@ public class Shooter extends SubsystemBase{
     public Shooter() {
     //     // Configure shooter motors to coast mode for better bang-bang control
     //     shooterMotor.setNeutralMode(NeutralModeValue.Coast);
-    //     MotorFollower.setNeutralMode(NeutralModeValue.Coast);
-    //     MotorFollower2.setNeutralMode(NeutralModeValue.Coast);
+    //     leftShooter.setNeutralMode(NeutralModeValue.Coast);
+    //     rightShooter.setNeutralMode(NeutralModeValue.Coast);
 
     //     // Intake can stay in brake mode for better control
     //     intakeMotor.setNeutralMode(NeutralModeValue.Brake);
@@ -55,8 +56,8 @@ public class Shooter extends SubsystemBase{
 
     //     // Current limitors for bang bang testing
     //     shooterMotor.getConfigurator().apply(currentLimits);
-    //     MotorFollower.getConfigurator().apply(currentLimits);
-    //     MotorFollower2.getConfigurator().apply(currentLimits);
+    //     leftShooter.getConfigurator().apply(currentLimits);
+    //     rightShooter.getConfigurator().apply(currentLimits);
     //     intakeMotor.getConfigurator().apply(currentLimits);
 
         // in init function, set slot 0 gains
@@ -68,35 +69,35 @@ public class Shooter extends SubsystemBase{
         slot0Configs.kI = 0; // no output for integrated error
         slot0Configs.kD = 0; // no output for error derivative
 
-        shooter21.getConfigurator().apply(slot0Configs);
-        shooter22.getConfigurator().apply(slot0Configs);
-        // shooter25.getConfigurator().apply(slot0Configs);
+        centerShooter.getConfigurator().apply(slot0Configs);
+        // leftShooter.getConfigurator().apply(slot0Configs);
+        // rightShooter.getConfigurator().apply(slot0Configs);
+
         // Setting motor rotation orientation test this once we can get more time with the shooter. 
         // var motorConfig = new TalonFXConfiguration();
         // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // shooter21.getConfigurator().apply(motorConfig);
+        // centerShooter.getConfigurator().apply(motorConfig);
         // motorConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        // shooter22.getConfigurator().apply(motorConfig);
+        // leftShooter.getConfigurator().apply(motorConfig);
         // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // shooter25.getConfigurator().apply(motorConfig);
+        // rightShooter.getConfigurator().apply(motorConfig);
     }
 
     public Command runPIDShooter(double targetRPS){
         return new RunCommand(()->{
             // motor id,  set controls, target RPS, with feedforward to overcome gravity and friction
-            shooter21.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooter22.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            // shooter25.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            centerShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            // leftShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            // rightShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this 
         );
     }
     
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
-            shooter22.set(speed);
-            shooter21.set(speed);
-            
-            // shooter25.set(speed.getAsDouble());
+            centerShooter.set(speed);
+            // leftShooter.set(speed);
+            // rightShooter.set(speed.getAsDouble());
         });
         
     }
@@ -106,9 +107,9 @@ public class Shooter extends SubsystemBase{
  
     public Command stopShooter(){
         return new InstantCommand(()->{
-            shooter21.set(0);
-            shooter22.set(0);
-            // shooter25.set(0);
+            centerShooter.set(0);
+            // leftShooter.set(0);
+            // rightShooter.set(0);
         }
         ,this
         );
@@ -116,9 +117,9 @@ public class Shooter extends SubsystemBase{
 
     public Command stopAll(){
         return new RunCommand(()->{
-                shooter21.set(0);
-                shooter22.set(0);
-                // shooter25.set(0);
+                centerShooter.set(0);
+                // leftShooter.set(0);
+                // rightShooter.set(0);
 
             },
             // ", this" makes sure that only the shooter subsystem object can only run command at a time
@@ -141,7 +142,7 @@ public class Shooter extends SubsystemBase{
      * @return Current velocity in rotations per second
      */
     public double getShooterVelocity() {
-        return shooter21.getVelocity().getValueAsDouble();
+        return centerShooter.getVelocity().getValueAsDouble();
     }
 
     /**
@@ -152,13 +153,13 @@ public class Shooter extends SubsystemBase{
         double currentVelocity = getShooterVelocity();
 
         if (currentVelocity < shooterTargetVelocity) {
-            shooter21.set(-BANG_BANG_ON_POWER);
-            shooter22.set(BANG_BANG_ON_POWER);
-            // shooter25.set(-BANG_BANG_ON_POWER);
+            centerShooter.set(-BANG_BANG_ON_POWER);
+            // leftShooter.set(BANG_BANG_ON_POWER);
+            // rightShooter.set(-BANG_BANG_ON_POWER);
         } else {
-            shooter21.set(BANG_BANG_OFF_POWER);
-            shooter22.set(BANG_BANG_OFF_POWER);
-            // shooter25.set(BANG_BANG_OFF_POWER);
+            centerShooter.set(BANG_BANG_OFF_POWER);
+            // leftShooter.set(BANG_BANG_OFF_POWER);
+            // rightShooter.set(BANG_BANG_OFF_POWER);
         }
     }
 
@@ -183,9 +184,9 @@ public class Shooter extends SubsystemBase{
         return Math.abs(getShooterVelocity() - shooterTargetVelocity) <= tolerance;
     }
 
-    @Override
-    public void periodic(){
+    // @Override
+    // public void periodic(){
         
 
-    }
+    // }
 }

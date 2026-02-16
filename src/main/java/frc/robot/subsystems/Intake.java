@@ -24,23 +24,20 @@ import java.util.Set;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import frc.robot.Constants.IntakeConstants;
 
 
 
 public class Intake extends SubsystemBase{
     
-    // private final TalonFX leaderIntake = new TalonFX(24);
-    // private final TalonFX followerIntake = new TalonFX(25);
-    private final SparkFlex leaderIntake = new SparkFlex(25, MotorType.kBrushless); // Neo brushless vortex
+    
+    private final SparkFlex leaderIntake = new SparkFlex(IntakeConstants.LEADER_INTAKE, MotorType.kBrushless); // Neo brushless vortex
     private boolean intakeDeployed = true; // true if the intake is currently deployed, false if it is currently stowed.
 
 
     // pivotArm.setIdleMode(IdleMode.kBrake);
     // private final SparkFlex pivotArm = new SparkFlex(28, MotorType.kBrushless);
 
-
-
-    
     public Command runIntake(double speed){
         return new RunCommand(() -> {
             leaderIntake.set(-speed); // negative to make it spin the right direction, fix with motor configs later
@@ -58,6 +55,7 @@ public class Intake extends SubsystemBase{
         , this 
         );
     }
+    
     public Command stopIntake(){
         return new RunCommand(()->{
             leaderIntake.set(0);

@@ -19,11 +19,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.Constants.OperatorConstants;
 // import frc.robot.commands.Autos;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
@@ -38,6 +38,11 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 // import frc.robot.subsystems.Climb;
+import frc.robot.Constants.*;
+import frc.robot.subsystems.ShooterIntake;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 
 
 
@@ -63,6 +68,7 @@ public class RobotContainer {
     private final IntakePivot m_intakePivot = new IntakePivot();
     // private final Hood m_hood = new Hood();
     // private final Climb m_climb = new Climb();
+    private final ShooterIntake m_shooterIntake = new ShooterIntake();
     
     // Create New Sendable Chooser for autonomous command selection on the dashboard
     private final SendableChooser<Command> autoChooser;
@@ -109,24 +115,26 @@ public class RobotContainer {
     // Shooter commands
     // NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
     // NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
-    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(100));
-    NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter());
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.PID_TARGET_RPS).withTimeout(5));
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.stopShooter().withTimeout(0.1));
 
     // Index commands
-    NamedCommands.registerCommand("runIndex", m_index.runIndex(0.60));
-    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-0.60));
-    NamedCommands.registerCommand("stopIndex", m_index.stopIndex());
+    NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(5)); // test timout code/ 
+    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(5));
+    NamedCommands.registerCommand("stopIndex", m_index.stopIndex().withTimeout(0.1));
 
     // Intake commands
-    NamedCommands.registerCommand("runIntake", m_intake.runIntake(1));
-    NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-1));
-    NamedCommands.registerCommand("stopIntake", m_intake.stopIntake());
+    NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(3));
+    NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(3));
+    NamedCommands.registerCommand("stopIntake", m_intake.stopIntake().withTimeout(0.1));
 
     // Intake Pivot commands
-    NamedCommands.registerCommand("raiseArmAuto", m_intakePivot.raiseArmAuto());
-    NamedCommands.registerCommand("lowerArmAuto", m_intakePivot.lowerArmAuto());
-    NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll());
-    NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState());
+    // NamedCommands.registerCommand("raiseArmAuto", m_intakePivot.raiseArmAuto()); // NO LIMIT SWITCHES CURRENTLY
+    // NamedCommands.registerCommand("lowerArmAuto", m_intakePivot.lowerArmAuto());
+    NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED).withTimeout(1));
+    NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED).withTimeout(1));
+    NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll().withTimeout(0.1));
+    NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState().withTimeout(0.1));
 
     // Hood commands
     
@@ -179,44 +187,71 @@ public class RobotContainer {
     // D-pad up - IntakePivot auto raise and override manual raise
     m_driverController.povUp().whileTrue(
       new ConditionalCommand(
-        m_intakePivot.raiseArmManual(),  //  if override = true, run manual raise intake
-        m_intakePivot.raiseArmManual(),  // if override = false, run auto raise intake
+        m_intakePivot.raiseArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED),  //  if override = true, run manual raise intake
+        m_intakePivot.raiseArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
     );
 
     // D-pad down - IntakePivot auto lower and override manual lower
     m_driverController.povDown().whileTrue(
       new ConditionalCommand(
-        m_intakePivot.lowerArmManual(),  //  if override = true, run manual raise intake
-        m_intakePivot.lowerArmManual(),  // if override = false, run auto raise intake
+        m_intakePivot.lowerArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED),  //  if override = true, run manual raise intake
+        m_intakePivot.lowerArmManual(IntakePivotConstants.INTAKE_PIVOT_SPEED),  // if override = false, run auto raise intake
         ()-> Constants.overrideEnabled)
         );
         
     // Left bumper - Run intake forward and reverse
     m_driverController.leftBumper().whileTrue(
       new ConditionalCommand(
-       m_intake.runReverseIntake(0.60), // if override = true, run reverse intake 
-       m_intake.runIntake(0.60), // if override = false, run normal
+       m_intake.runReverseIntake(IntakeConstants.INTAKE_SPEED), // if override = true, run reverse intake 
+       m_intake.runIntake(IntakeConstants.INTAKE_SPEED), // if override = false, run normal
       () -> Constants.overrideEnabled)
       );
 
       // X - Index forward and reverse
       m_driverController.x().whileTrue(
         new ConditionalCommand(
-         m_index.runIndex(-1.0), // override = true, run reverse
-         m_index.runIndex(1.0), // override = false, run forward
+         m_index.runIndex(-IndexConstants.INDEX_SPEED), // override = true, run reverse
+         m_index.runIndex(IndexConstants.INDEX_SPEED), // override = false, run forward
         () -> Constants.overrideEnabled)
         );
       
-    // Right bumper - Enable PID shooter and reverse shooter
+    // // Right bumper - Enable PID shooter and reverse shooter
+    // m_driverController.rightBumper().whileTrue(
+    //   new ConditionalCommand(
+    //    m_shooter.runShooter(-1.0), // override = true, reverse run shooter
+    //    m_shooter.runPIDShooter(ShooterConstants.PID_TARGET_RPS), // override = false, run normal pid
+    //   () -> Constants.overrideEnabled)
+    // );
+
+    // Right bumper - Enable PID shooter and reverse shooter TEST CODE TEST CODE TEST CODE
     m_driverController.rightBumper().whileTrue(
       new ConditionalCommand(
-       m_shooter.runPIDShooter(-100.0), // override = true, reverse run shooter
-       m_shooter.runPIDShooter(100.0), // override = false, run normal pid
-      () -> Constants.overrideEnabled)
+        m_shooter.runShooter(-ShooterConstants.SHOOTER_DEFAULT_SPEED),         // TRUE (override enabled): reverse shooter while held
+
+        new SequentialCommandGroup(         // FALSE (normal): wind up 2s, then feed while held, one command after the other
+          new ParallelDeadlineGroup( // runs while deadline isnt completed
+            new WaitCommand(2.0), // deadline
+            m_shooter.runPIDShooter(ShooterConstants.PID_TARGET_RPS)
+          ),
+          new ParallelCommandGroup( // runs all commands below
+            m_shooter.runPIDShooter(ShooterConstants.PID_TARGET_RPS), 
+            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+          )
+        ),
+        // override condition
+        () -> Constants.overrideEnabled
+      )
     );
 
-    
+     // B - Shooter Intake forward and reverse
+    m_driverController.b().whileTrue(
+      new ConditionalCommand(
+        m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
+        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
+        () -> Constants.overrideEnabled)
+    );
+
 
     // // B - Hood forward and reverse
     // m_driverController.b().whileTrue(
@@ -226,9 +261,6 @@ public class RobotContainer {
     //     () -> Constants.overrideEnabled)
     // );
       
-    
-    
-
     // A - Limelight assisted drive
     // m_driverController.a().whileTrue(
     //   drivetrain.applyRequest(
@@ -257,6 +289,7 @@ public class RobotContainer {
     m_index.setDefaultCommand(m_index.stopAll());
     // m_hood.setDefaultCommand(m_hood.stopAll());
     // m_climb.setDefaultCommand(m_climb.stopAll());
+    m_shooterIntake.setDefaultCommand(m_shooterIntake.stopAll());
 
     // Limelight throttle: 150 when disabled, 0 when enabled
     RobotModeTriggers.disabled()
