@@ -12,10 +12,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.LimelightHelpers;
+import frc.robot.Constants.HoodConstants;
 
 public class Hood extends SubsystemBase {
-    private final TalonFX hoodMotor = new TalonFX(12);
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
+    private final TalonFX hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.LOWER_LIMIT_SWITCH);
     
 
     // PID controller for position control - tune these values

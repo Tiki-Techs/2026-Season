@@ -14,36 +14,37 @@ public class Index extends SubsystemBase{
     // up/down movement on belt arms?
     // or (manually) adjustable belts, thats only runs?
     // do we need encoders/limit switches here
-    private final TalonFX intake21 = new TalonFX(25);
+    private final TalonFX indexMotor = new TalonFX(25);
 
     public Command runIndex(CommandXboxController controllerValue) {
         return new RunCommand(() -> 
-            intake21.set(controllerValue.getRightTriggerAxis())
+            indexMotor.set(controllerValue.getRightTriggerAxis())
             ,this
     );}
+    
     public Command runReverseIndex(CommandXboxController controllerValue) {
         return new RunCommand(() -> 
-            intake21.set(-controllerValue.getRightTriggerAxis())
+            indexMotor.set(-controllerValue.getRightTriggerAxis())
             ,this
     );}
 
     public Command runIndex(double speed){
         return new RunCommand(() -> 
-            intake21.set(speed)
+            indexMotor.set(speed)
             ,this
     );}
 
 
     public Command stopIndex(){
         return new InstantCommand(()->
-            intake21.set(0)
+            indexMotor.set(0)
             ,this
         );
     }
 
     public Command stopAll(){
         return new RunCommand(()->{
-                intake21.set(0);
+                indexMotor.set(0);
             },
             // ", this" makes sure that only the shooter subsystem object can only run command at a time
             this
