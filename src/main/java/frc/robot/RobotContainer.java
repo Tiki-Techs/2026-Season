@@ -109,12 +109,12 @@ public class RobotContainer {
     // Shooter commands
     // NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
     // NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
-    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(60));
-    NamedCommands.registerCommand("runPIDShooter", m_shooter.stopShooter());
+    NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(100));
+    NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter());
 
     // Index commands
-    NamedCommands.registerCommand("runIndex", m_index.runIndex(1));
-    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-1));
+    NamedCommands.registerCommand("runIndex", m_index.runIndex(0.60));
+    NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-0.60));
     NamedCommands.registerCommand("stopIndex", m_index.stopIndex());
 
     // Intake commands
@@ -241,7 +241,7 @@ public class RobotContainer {
       
 
     // Start - Reset gyro heading to 0 degrees
-    m_driverController.start()
+    m_driverController.a()
       .onTrue(new InstantCommand(() ->
         drivetrain.resetPose(new edu.wpi.first.math.geometry.Pose2d(
           drivetrain.getState().Pose.getTranslation(),

@@ -93,8 +93,9 @@ public class Shooter extends SubsystemBase{
     
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
-            shooter21.set(speed);
             shooter22.set(speed);
+            shooter21.set(speed);
+            
             // shooter25.set(speed.getAsDouble());
         });
         
