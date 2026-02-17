@@ -36,7 +36,7 @@ public class Intake extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Main intake roller motor - SparkFlex with NEO Vortex brushless motor */
-    private final SparkFlex leaderIntake = new SparkFlex(IntakeConstants.intakeMotor, MotorType.kBrushless);
+    private final SparkFlex leaderIntake = new SparkFlex(IntakeConstants.INTAKE_MOTOR, MotorType.kBrushless);
 
     // ==================== CONSTANTS ====================
 

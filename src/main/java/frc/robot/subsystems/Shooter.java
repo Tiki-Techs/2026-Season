@@ -29,7 +29,7 @@ public class Shooter extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Center shooter motor */
-    private final TalonFX centerShooter = new TalonFX(ShooterConstants.centerShooter);
+    private final TalonFX centerShooter = new TalonFX(ShooterConstants.CENTER_SHOOTER);
 
     // ==================== CONTROL PARAMETERS ====================
 
@@ -46,11 +46,11 @@ public class Shooter extends SubsystemBase {
     public Shooter() {
         // Configure PID gains for velocity control (Slot 0)
         var slot0Configs = new Slot0Configs();
-        slot0Configs.kS = ShooterConstants.kS;
-        slot0Configs.kV = ShooterConstants.kV;
-        slot0Configs.kP = ShooterConstants.kP;
-        slot0Configs.kI = ShooterConstants.kI;
-        slot0Configs.kD = ShooterConstants.kD;
+        slot0Configs.kS = ShooterConstants.KS;
+        slot0Configs.kV = ShooterConstants.KV;
+        slot0Configs.kP = ShooterConstants.KP;
+        slot0Configs.kI = ShooterConstants.KI;
+        slot0Configs.kD = ShooterConstants.KD;
 
         // Apply PID configuration to both shooter motors
         centerShooter.getConfigurator().apply(slot0Configs);

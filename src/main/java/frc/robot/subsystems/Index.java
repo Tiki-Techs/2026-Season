@@ -20,7 +20,7 @@ public class Index extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Index motor that drives the belt system */
-    private final TalonFX intake25 = new TalonFX(IndexConstants.indexMotor);
+    private final TalonFX intake25 = new TalonFX(IndexConstants.INDEX_MOTOR);
 
     // ==================== CONTROL COMMANDS ====================
 
