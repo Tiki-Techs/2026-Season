@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.IntakePivotConstants;
 
 /**
  * IntakePivot subsystem that controls the intake arm pivot mechanism.
@@ -22,25 +23,25 @@ public class IntakePivot extends SubsystemBase {
 
     // ==================== HARDWARE ====================
 
-    /** Pivot arm motor - SparkMax with NEO brushless motor (CAN ID 24) */
-    private final SparkMax pivotArm = new SparkMax(24, MotorType.kBrushless);
+    /** Pivot arm motor - SparkMax with NEO brushless motor */
+    private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.pivotMotor, MotorType.kBrushless);
 
     /**
-     * Lower limit switch (DIO port 3).
+     * Lower limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(3);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(IntakePivotConstants.lowerLimitSwitch);
 
     /**
-     * Upper limit switch (DIO port 2).
+     * Upper limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput upperLimitSwitch = new DigitalInput(2);
+    private final DigitalInput upperLimitSwitch = new DigitalInput(IntakePivotConstants.upperLimitSwitch);
 
     // ==================== CONSTANTS ====================
 
     /** Speed for raising/lowering the pivot arm (0.0 to 1.0) */
-    private final double pivotSpeed = 0.25;
+    private final double pivotSpeed = IntakePivotConstants.pivotSpeed;
 
     /** Speed value used to stop the pivot motor */
     private final double stopSpeed = 0.0;
@@ -83,7 +84,7 @@ public class IntakePivot extends SubsystemBase {
      *
      * @return Command that lowers the arm until released or limit reached
      */
-    public Command lowerArmManual() {
+    public Command lowerArmManual(double pivotSpeed) {
         return new RunCommand(() -> {
             if (!lowerLimitSwitch.get()) {
                 // Limit switch triggered - stop the motor
@@ -102,7 +103,7 @@ public class IntakePivot extends SubsystemBase {
      *
      * @return Command that raises the arm until released or limit reached
      */
-    public Command raiseArmManual() {
+    public Command raiseArmManual(double pivotSpeed) {
         return new RunCommand(() -> {
             if (!upperLimitSwitch.get()) {
                 // Limit switch triggered - stop the motor

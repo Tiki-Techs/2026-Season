@@ -24,6 +24,7 @@ import java.util.Set;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import frc.robot.Constants.IntakeConstants;
 
 /**
  * Intake subsystem that controls the roller mechanism for collecting game pieces.
@@ -35,7 +36,7 @@ public class Intake extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Main intake roller motor - SparkFlex with NEO Vortex brushless motor */
-    private final SparkFlex leaderIntake = new SparkFlex(25, MotorType.kBrushless);
+    private final SparkFlex leaderIntake = new SparkFlex(IntakeConstants.intakeMotor, MotorType.kBrushless);
 
     // ==================== CONSTANTS ====================
 

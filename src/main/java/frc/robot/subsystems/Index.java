@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Constants.IndexConstants;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
@@ -18,8 +19,8 @@ public class Index extends SubsystemBase {
 
     // ==================== HARDWARE ====================
 
-    /** Index motor that drives the belt system (CAN ID 25) */
-    private final TalonFX intake25 = new TalonFX(25);
+    /** Index motor that drives the belt system */
+    private final TalonFX intake25 = new TalonFX(IndexConstants.indexMotor);
 
     // ==================== CONTROL COMMANDS ====================
 

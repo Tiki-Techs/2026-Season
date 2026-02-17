@@ -4,7 +4,6 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -19,11 +18,21 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.IndexConstants;
+import frc.robot.Constants.IntakeConstants;
+import frc.robot.Constants.IntakePivotConstants;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.ShooterConstants;
+import frc.robot.Constants.ShooterIntakeConstants;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Hood;
@@ -31,6 +40,7 @@ import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakePivot;
 import frc.robot.subsystems.Shooter;
+import frc.robot.subsystems.ShooterIntake;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -61,6 +71,9 @@ public class RobotContainer {
     /** Shooter subsystem - flywheel for launching game pieces */
     private final Shooter m_shooter = new Shooter();
 
+    /** ShooterIntake subsystem - controls intake roller for shooter */
+    private final ShooterIntake m_shooterIntake = new ShooterIntake();
+
     /** Index subsystem - belt feeder between intake and shooter */
     private final Index m_index = new Index();
 
@@ -81,10 +94,10 @@ public class RobotContainer {
     // ==================== DRIVE PARAMETERS ====================
 
     /** Maximum translational speed in meters per second */
-    private final double maxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+    private final double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;
 
     /** Maximum rotational speed in radians per second */
-    private final double maxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+    private final double maxAngularRate = DriveConstants.kMaxAngularSpeedRadiansPerSecond;
 
     // ==================== SLEW RATE LIMITERS ====================
     // These limit acceleration to prevent wheel slip and provide smoother control
@@ -140,26 +153,24 @@ public class RobotContainer {
         // These commands can be called by name in PathPlanner autonomous routines
 
         // Shooter commands
-        NamedCommands.registerCommand("runShooter", m_shooter.runShooter(1.0));
-        NamedCommands.registerCommand("runReverseShooter", m_shooter.runShooter(-1.0));
-        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(60));
-        NamedCommands.registerCommand("stopShooter", m_shooter.stopShooter());
+        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS).withTimeout(5));
+        NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter().withTimeout(0.1));
 
         // Index commands
-        NamedCommands.registerCommand("runIndex", m_index.runIndex(1));
-        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-1));
-        NamedCommands.registerCommand("stopIndex", m_index.stopIndex());
+        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.indexSpeed).withTimeout(5)); // test timout code/ 
+        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.indexSpeed).withTimeout(5));
+        NamedCommands.registerCommand("stopIndex", m_index.stopIndex().withTimeout(0.1));
 
         // Intake commands
-        NamedCommands.registerCommand("runIntake", m_intake.runIntake(1));
-        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-1));
-        NamedCommands.registerCommand("stopIntake", m_intake.stopIntake());
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.intakeSpeed).withTimeout(3));
+        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.intakeSpeed).withTimeout(3));
+        NamedCommands.registerCommand("stopIntake", m_intake.stopIntake().withTimeout(0.1));
 
         // Intake Pivot commands
-        NamedCommands.registerCommand("raiseArmAuto", m_intakePivot.raiseArmAuto());
-        NamedCommands.registerCommand("lowerArmAuto", m_intakePivot.lowerArmAuto());
-        NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll());
-        NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState());
+        NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
+        NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
+        NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll().withTimeout(0.1));
+        NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState().withTimeout(0.1));
 
         // Build autonomous chooser from PathPlanner paths
         autoChooser = AutoBuilder.buildAutoChooser();
@@ -236,8 +247,10 @@ public class RobotContainer {
         // Normal: auto-raise to limit switch | Override: manual raise
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.raiseArmManual(),
-                m_intakePivot.raiseArmAuto(),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
+
+                // m_intakePivot.raiseArmAuto(),
                 () -> Constants.overrideEnabled
             )
         );
@@ -246,8 +259,10 @@ public class RobotContainer {
         // Normal: auto-lower to limit switch | Override: manual lower
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.lowerArmManual(),
-                m_intakePivot.lowerArmAuto(),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
+
+                // m_intakePivot.lowerArmAuto(),
                 () -> Constants.overrideEnabled
             )
         );
@@ -282,8 +297,19 @@ public class RobotContainer {
         // Normal: 100 RPS | Override: -100 RPS (reverse)
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_shooter.runPIDShooter(-100),
-                m_shooter.runPIDShooter(100),
+                m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
+
+                new SequentialCommandGroup(
+                    new ParallelDeadlineGroup(
+                        new WaitCommand(2.0),
+                        m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS)
+                    ),
+                    new ParallelCommandGroup(
+                            m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
+                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed)
+                    )
+                ),
+                // override condition
                 () -> Constants.overrideEnabled
             )
         );
@@ -314,6 +340,7 @@ public class RobotContainer {
         // These run when no other command is using the subsystem
 
         m_shooter.setDefaultCommand(m_shooter.stopAll());
+        m_shooterIntake.setDefaultCommand(m_shooterIntake.stopAll());
         m_intake.setDefaultCommand(m_intake.stopAll());
         m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());

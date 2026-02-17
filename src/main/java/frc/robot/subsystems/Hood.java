@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.LimelightHelpers;
 
 /**
@@ -22,11 +23,11 @@ public class Hood extends SubsystemBase {
 
     // ==================== HARDWARE ====================
 
-    /** Hood angle adjustment motor (CAN ID 12) */
-    private final TalonFX hoodMotor = new TalonFX(12);
+    /** Hood angle adjustment motor */
+    private final TalonFX hoodMotor = new TalonFX(HoodConstants.hoodMotor);
 
-    /** Lower limit switch for hood zeroing (DIO port 5) */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
+    /** Lower limit switch for hood zeroing */
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.lowerLimitSwitch);
 
     // ==================== CONTROL ====================
 

@@ -9,10 +9,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ClimbConstants;
 
 public class Climb extends SubsystemBase {
 
-    private final TalonFX climbMotor = new TalonFX(30);
+    private final TalonFX climbMotor = new TalonFX(ClimbConstants.climbMotor);
 
     private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 

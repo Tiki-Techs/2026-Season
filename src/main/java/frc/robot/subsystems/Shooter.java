@@ -17,6 +17,7 @@ import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.InvertedValue;
+import frc.robot.Constants.ShooterConstants;
 
 /**
  * Shooter subsystem that controls the flywheel shooter mechanism.
@@ -27,22 +28,13 @@ public class Shooter extends SubsystemBase {
 
     // ==================== HARDWARE ====================
 
-    /** Primary shooter motor (CAN ID 21) */
-    private final TalonFX shooter21 = new TalonFX(21);
-
-    /** Secondary shooter motor (CAN ID 22) */
-    private final TalonFX shooter22 = new TalonFX(22);
+    /** Center shooter motor */
+    private final TalonFX centerShooter = new TalonFX(ShooterConstants.centerShooter);
 
     // ==================== CONTROL PARAMETERS ====================
 
     /** Target velocity for bang-bang control mode (rotations per second) */
     private double shooterTargetVelocity = 0;
-
-    /** Power applied when shooter is below setpoint in bang-bang control */
-    private final double BANG_BANG_ON_POWER = 1.0;
-
-    /** Power applied when shooter reaches/exceeds setpoint in bang-bang control */
-    private final double BANG_BANG_OFF_POWER = 0.00;
 
     /** Velocity voltage control request for closed-loop PID control */
     final VelocityVoltage shooterVoltageRequest = new VelocityVoltage(0.0).withSlot(0);
@@ -54,15 +46,14 @@ public class Shooter extends SubsystemBase {
     public Shooter() {
         // Configure PID gains for velocity control (Slot 0)
         var slot0Configs = new Slot0Configs();
-        slot0Configs.kS = 0.1;  // Static friction compensation (volts)
-        slot0Configs.kV = 0.12; // Velocity feedforward (volts per RPS)
-        slot0Configs.kP = 0.11; // Proportional gain (volts per RPS of error)
-        slot0Configs.kI = 0;    // Integral gain (disabled)
-        slot0Configs.kD = 0;    // Derivative gain (disabled)
+        slot0Configs.kS = ShooterConstants.kS;
+        slot0Configs.kV = ShooterConstants.kV;
+        slot0Configs.kP = ShooterConstants.kP;
+        slot0Configs.kI = ShooterConstants.kI;
+        slot0Configs.kD = ShooterConstants.kD;
 
         // Apply PID configuration to both shooter motors
-        shooter21.getConfigurator().apply(slot0Configs);
-        shooter22.getConfigurator().apply(slot0Configs);
+        centerShooter.getConfigurator().apply(slot0Configs);
     }
 
     // ==================== PID VELOCITY CONTROL ====================
@@ -77,8 +68,7 @@ public class Shooter extends SubsystemBase {
     public Command runPIDShooter(double targetRPS) {
         return new RunCommand(() -> {
             // Apply velocity control with 0.5V feedforward to overcome friction/gravity
-            shooter21.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooter22.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            centerShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this);
     }
 
@@ -94,8 +84,7 @@ public class Shooter extends SubsystemBase {
     public Command runShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
-            shooter21.set(-speed);
-            shooter22.set(speed);
+            centerShooter.set(speed);
         }, this);
     }
 
@@ -107,8 +96,7 @@ public class Shooter extends SubsystemBase {
      */
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
-            shooter21.set(-speed);
-            shooter22.set(-speed);
+            centerShooter.set(-speed);
         }, this);
     }
 
@@ -122,8 +110,7 @@ public class Shooter extends SubsystemBase {
     public Command runReverseShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
-            shooter21.set(speed);
-            shooter22.set(speed);
+            centerShooter.set(speed);
         }, this);
     }
 
@@ -137,8 +124,7 @@ public class Shooter extends SubsystemBase {
      */
     public Command stopShooter() {
         return new InstantCommand(() -> {
-            shooter21.set(0);
-            shooter22.set(0);
+            centerShooter.set(0);
         }, this);
     }
 
@@ -150,8 +136,7 @@ public class Shooter extends SubsystemBase {
      */
     public Command stopAll() {
         return new RunCommand(() -> {
-            shooter21.set(0);
-            shooter22.set(0);
+            centerShooter.set(0);
         }, this);
     }
 
@@ -166,25 +151,6 @@ public class Shooter extends SubsystemBase {
         this.shooterTargetVelocity = velocityRPS;
     }
 
-    /**
-     * Gets the current shooter flywheel velocity.
-     *
-     * @return Current velocity in rotations per second
-     */
-    public double getShooterVelocity() {
-        return shooter21.getVelocity().getValueAsDouble();
-    }
-
-    /**
-     * Checks if the shooter has reached the target velocity within tolerance.
-     * Useful for determining when the shooter is ready to fire.
-     *
-     * @param tolerance Acceptable error in rotations per second
-     * @return True if current velocity is within tolerance of target
-     */
-    public boolean isAtTargetVelocity(double tolerance) {
-        return Math.abs(getShooterVelocity() - shooterTargetVelocity) <= tolerance;
-    }
 
     @Override
     public void periodic() {
