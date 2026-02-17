@@ -1,4 +1,5 @@
 package frc.robot.subsystems;
+
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
@@ -17,144 +18,148 @@ import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.InvertedValue;
 
+/**
+ * Shooter subsystem that controls the flywheel shooter mechanism.
+ * Uses two TalonFX (Kraken) motors to launch game pieces.
+ * Supports both open-loop (manual) and closed-loop (PID) velocity control.
+ */
+public class Shooter extends SubsystemBase {
 
+    // ==================== HARDWARE ====================
 
-public class Shooter extends SubsystemBase{
+    /** Primary shooter motor (CAN ID 21) */
+    private final TalonFX shooter21 = new TalonFX(21);
 
-    private final TalonFX shooter23 = new TalonFX(23);
-    private final TalonFX shooter24 = new TalonFX(24);
-    private final TalonFX shooter25 = new TalonFX(25);
+    /** Secondary shooter motor (CAN ID 22) */
+    private final TalonFX shooter22 = new TalonFX(22);
 
-    // Bang-bang control parameters
-    private double shooterTargetVelocity = 0; // Target velocity in rotations per second
-    private final double BANG_BANG_ON_POWER = 1.0; // Full power when below setpoint
-    private final double BANG_BANG_OFF_POWER = 0.00; // Power when at/above setpoint
+    // ==================== CONTROL PARAMETERS ====================
 
+    /** Target velocity for bang-bang control mode (rotations per second) */
+    private double shooterTargetVelocity = 0;
+
+    /** Power applied when shooter is below setpoint in bang-bang control */
+    private final double BANG_BANG_ON_POWER = 1.0;
+
+    /** Power applied when shooter reaches/exceeds setpoint in bang-bang control */
+    private final double BANG_BANG_OFF_POWER = 0.00;
+
+    /** Velocity voltage control request for closed-loop PID control */
     final VelocityVoltage shooterVoltageRequest = new VelocityVoltage(0.0).withSlot(0);
 
-
-
+    /**
+     * Constructs the Shooter subsystem and configures motor PID gains.
+     * Sets up Slot 0 with feedforward and PID constants for velocity control.
+     */
     public Shooter() {
-    //     // Configure shooter motors to coast mode for better bang-bang control
-    //     shooterMotor.setNeutralMode(NeutralModeValue.Coast);
-    //     MotorFollower.setNeutralMode(NeutralModeValue.Coast);
-    //     MotorFollower2.setNeutralMode(NeutralModeValue.Coast);
-
-    //     // Intake can stay in brake mode for better control
-    //     intakeMotor.setNeutralMode(NeutralModeValue.Brake);
-
-    //     // Configure current limiting to protect motors
-    //     CurrentLimitsConfigs currentLimits = new CurrentLimitsConfigs()
-    //         .withSupplyCurrentLimit(40)           // Supply current limit (amps)
-    //         .withSupplyCurrentLimitEnable(true)   // Enable supply current limiting
-    //         .withStatorCurrentLimit(60)           // Stator current limit (amps)
-    //         .withStatorCurrentLimitEnable(true);  // Enable stator current limiting
-
-    //     // Current limitors for bang bang testing
-    //     shooterMotor.getConfigurator().apply(currentLimits);
-    //     MotorFollower.getConfigurator().apply(currentLimits);
-    //     MotorFollower2.getConfigurator().apply(currentLimits);
-    //     intakeMotor.getConfigurator().apply(currentLimits);
-
-        // in init function, set slot 0 gains
-        // PID Controller for shooter
+        // Configure PID gains for velocity control (Slot 0)
         var slot0Configs = new Slot0Configs();
-        slot0Configs.kS = 0.1; // Add 0.1 V output to overcome static friction
-        slot0Configs.kV = 0.12; // A velocity target of 1 rps results in 0.12 V output
-        slot0Configs.kP = 0.11; // An error of 1 rps results in 0.11 V output
-        slot0Configs.kI = 0; // no output for integrated error
-        slot0Configs.kD = 0; // no output for error derivative
+        slot0Configs.kS = 0.1;  // Static friction compensation (volts)
+        slot0Configs.kV = 0.12; // Velocity feedforward (volts per RPS)
+        slot0Configs.kP = 0.11; // Proportional gain (volts per RPS of error)
+        slot0Configs.kI = 0;    // Integral gain (disabled)
+        slot0Configs.kD = 0;    // Derivative gain (disabled)
 
-        shooter23.getConfigurator().apply(slot0Configs);
-        shooter24.getConfigurator().apply(slot0Configs);
-        shooter25.getConfigurator().apply(slot0Configs);
-        // Setting motor rotation orientation test this once we can get more time with the shooter. 
-        // var motorConfig = new TalonFXConfiguration();
-        // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // shooter23.getConfigurator().apply(motorConfig);
-        // motorConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        // shooter24.getConfigurator().apply(motorConfig);
-        // motorConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // shooter25.getConfigurator().apply(motorConfig);
+        // Apply PID configuration to both shooter motors
+        shooter21.getConfigurator().apply(slot0Configs);
+        shooter22.getConfigurator().apply(slot0Configs);
     }
 
-    public Command runPIDShooter(double targetRPS){
-        return new RunCommand(()->{
-            // motor id,  set controls, target RPS, with feedforward to overcome gravity and friction
-            shooter23.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooter24.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
-            shooter25.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-        }, this 
-        );}
-
-    public Command runShooter(CommandXboxController controllerValue){
-        return new RunCommand(()-> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooter23.set(-speed);
-            shooter24.set(speed);
-            shooter25.set(-speed);
-        }
-        ,this
-        );
-    };
-
-    public Command runShooter(double speed){
-        return new RunCommand(()-> {
-            shooter23.set(-speed);
-            shooter24.set(speed);
-            shooter25.set(-speed);
-        }
-        ,this
-        );
-    };
-
-    public Command runReverseShooter(CommandXboxController controllerValue){
-        return new RunCommand(()-> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooter23.set(speed);
-            shooter24.set(-speed);
-            shooter25.set(speed);
-        }
-        ,this
-        );
-    };
-
-    // public Command runReverseShooter(double speed){
-    //     return new RunCommand(()-> {
-    //         shooter23.set(speed);
-    //         shooter24.set(-speed);
-    //         shooter25.set(speed);
-    //     }
-    //     ,this
-    //     );
-    // };
- 
-    public Command stopShooter(){
-        return new InstantCommand(()->{
-            shooter23.set(0);
-            shooter24.set(0);
-            shooter25.set(0);
-        }
-        ,this
-        );
-    }
-
-    public Command stopAll(){
-        return new RunCommand(()->{
-                shooter23.set(0);
-                shooter24.set(0);
-                shooter25.set(0);
-
-            },
-            // ", this" makes sure that only the shooter subsystem object can only run command at a time
-            this
-        );
-    }
-
-    // Bang-bang control methods
+    // ==================== PID VELOCITY CONTROL ====================
 
     /**
-     * Sets the target velocity for bang-bang control
+     * Runs the shooter at a target velocity using closed-loop PID control.
+     * Uses velocity voltage control with feedforward for accurate speed control.
+     *
+     * @param targetRPS Target velocity in rotations per second
+     * @return Command that continuously runs the shooter at the target velocity
+     */
+    public Command runPIDShooter(double targetRPS) {
+        return new RunCommand(() -> {
+            // Apply velocity control with 0.5V feedforward to overcome friction/gravity
+            shooter21.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooter22.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+        }, this);
+    }
+
+    // ==================== OPEN-LOOP CONTROL ====================
+
+    /**
+     * Runs the shooter using controller trigger input for variable speed.
+     * Uses open-loop duty cycle control (no velocity feedback).
+     *
+     * @param controllerValue Xbox controller to read trigger axis from
+     * @return Command that sets shooter speed based on left trigger position
+     */
+    public Command runShooter(CommandXboxController controllerValue) {
+        return new RunCommand(() -> {
+            double speed = controllerValue.getLeftTriggerAxis();
+            shooter21.set(-speed);
+            shooter22.set(speed);
+        }, this);
+    }
+
+    /**
+     * Runs the shooter at a fixed speed using open-loop control.
+     *
+     * @param speed Motor output from -1.0 to 1.0
+     * @return Command that continuously runs the shooter at the specified speed
+     */
+    public Command runShooter(double speed) {
+        return new RunCommand(() -> {
+            shooter21.set(-speed);
+            shooter22.set(-speed);
+        }, this);
+    }
+
+    /**
+     * Runs the shooter in reverse using controller trigger input.
+     * Useful for unjamming or ejecting game pieces.
+     *
+     * @param controllerValue Xbox controller to read trigger axis from
+     * @return Command that sets reverse shooter speed based on left trigger
+     */
+    public Command runReverseShooter(CommandXboxController controllerValue) {
+        return new RunCommand(() -> {
+            double speed = controllerValue.getLeftTriggerAxis();
+            shooter21.set(speed);
+            shooter22.set(speed);
+        }, this);
+    }
+
+    // ==================== STOP COMMANDS ====================
+
+    /**
+     * Immediately stops the shooter motors (instant command).
+     * Executes once and completes.
+     *
+     * @return InstantCommand that sets both motors to zero
+     */
+    public Command stopShooter() {
+        return new InstantCommand(() -> {
+            shooter21.set(0);
+            shooter22.set(0);
+        }, this);
+    }
+
+    /**
+     * Continuously commands the shooter motors to stop.
+     * Use as a default command to ensure motors stay stopped when not in use.
+     *
+     * @return RunCommand that continuously sets both motors to zero
+     */
+    public Command stopAll() {
+        return new RunCommand(() -> {
+            shooter21.set(0);
+            shooter22.set(0);
+        }, this);
+    }
+
+    // ==================== UTILITY METHODS ====================
+
+    /**
+     * Sets the target velocity for bang-bang control mode.
+     *
      * @param velocityRPS Target velocity in rotations per second
      */
     public void setShooterTargetVelocity(double velocityRPS) {
@@ -162,55 +167,27 @@ public class Shooter extends SubsystemBase{
     }
 
     /**
-     * Gets the current shooter velocity
+     * Gets the current shooter flywheel velocity.
+     *
      * @return Current velocity in rotations per second
      */
     public double getShooterVelocity() {
-        return shooter23.getVelocity().getValueAsDouble();
+        return shooter21.getVelocity().getValueAsDouble();
     }
 
     /**
-     * Applies bang-bang control to the shooter motor
-     * Turns motor to full power if below setpoint, off if at/above setpoint
-     */
-    private void applyBangBangControl() {
-        double currentVelocity = getShooterVelocity();
-
-        if (currentVelocity < shooterTargetVelocity) {
-            shooter23.set(-BANG_BANG_ON_POWER);
-            shooter24.set(BANG_BANG_ON_POWER);
-            shooter25.set(-BANG_BANG_ON_POWER);
-        } else {
-            shooter23.set(BANG_BANG_OFF_POWER);
-            shooter24.set(BANG_BANG_OFF_POWER);
-            shooter25.set(BANG_BANG_OFF_POWER);
-        }
-    }
-
-    /**
-     * Command to run shooter with bang-bang control at a target velocity
-     * @param targetVelocityRPS Target velocity in rotations per second
-     * @return Command that maintains the target velocity using bang-bang control
-     */
-    public Command runShooterBangBang(double targetVelocityRPS) {
-        return new RunCommand(() -> {
-            setShooterTargetVelocity(targetVelocityRPS);
-            applyBangBangControl();
-        }, this);
-    }
-
-    /**
-     * Checks if the shooter is at the target velocity
-     * @param tolerance Acceptable tolerance in rotations per second
-     * @return True if within tolerance of target
+     * Checks if the shooter has reached the target velocity within tolerance.
+     * Useful for determining when the shooter is ready to fire.
+     *
+     * @param tolerance Acceptable error in rotations per second
+     * @return True if current velocity is within tolerance of target
      */
     public boolean isAtTargetVelocity(double tolerance) {
         return Math.abs(getShooterVelocity() - shooterTargetVelocity) <= tolerance;
     }
 
     @Override
-    public void periodic(){
-        
-
+    public void periodic() {
+        // Periodic updates (telemetry can be added here)
     }
 }

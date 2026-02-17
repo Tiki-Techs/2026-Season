@@ -13,76 +13,130 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.LimelightHelpers;
 
+/**
+ * Hood subsystem that controls the shooter hood angle for trajectory adjustment.
+ * Uses a TalonFX motor to adjust the launch angle based on distance to target.
+ * Supports automatic aiming using Limelight TY values with an interpolating lookup table.
+ */
 public class Hood extends SubsystemBase {
-    private final TalonFX hoodMotor = new TalonFX(30);
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
-    
 
-    // PID controller for position control - tune these values
+    // ==================== HARDWARE ====================
+
+    /** Hood angle adjustment motor (CAN ID 12) */
+    private final TalonFX hoodMotor = new TalonFX(12);
+
+    /** Lower limit switch for hood zeroing (DIO port 5) */
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(5);
+
+    // ==================== CONTROL ====================
+
+    /** PID controller for closed-loop position control */
     private final PIDController pidController = new PIDController(0.1, 0, 0);
 
-    // Lookup table: TY (degrees) -> Hood position (hoodMotor rotations)
-    // Add your tuned values here after testing
+    /**
+     * Lookup table mapping Limelight TY angles to hood motor positions.
+     * Interpolates between data points for smooth hood adjustment.
+     * Lower TY = farther target = higher hood angle needed.
+     */
     private final InterpolatingDoubleTreeMap tyToHoodPosition = new InterpolatingDoubleTreeMap();
 
-    // Hood limits (set these after testing)
-    private double minPosition = 0.0;  // TODO: Set after testing
-    private double maxPosition = 10.0; // TODO: Set after testing
+    // ==================== POSITION LIMITS ====================
 
+    /** Minimum hood position (encoder rotations) - fully down */
+    private double minPosition = 0.0;
+
+    /** Maximum hood position (encoder rotations) - fully up */
+    private double maxPosition = -1.1416015625;
+
+    /** Current target position for PID control */
     private double targetPosition = 0.0;
 
+    /**
+     * Constructs the Hood subsystem and initializes configuration.
+     * Zeros the motor encoder and populates the TY-to-position lookup table.
+     */
     public Hood() {
-        // Reset hoodMotor on startup
+        // Reset encoder position on startup
         hoodMotor.setPosition(0);
 
-        // Placeholder lookup table values - TUNE THESE WITH REAL DATA
-        // Format: tyToHoodPosition.put(tyAngle, hoodEncoderPosition);
+        // Populate lookup table with tuned values
+        // Format: tyToHoodPosition.put(tyAngle, hoodEncoderPosition)
         // Lower TY = farther away = higher hood angle
-        tyToHoodPosition.put(-20.0, 8.0);  // Far shot
+        tyToHoodPosition.put(12.00, 8.0);  // Far shot
         tyToHoodPosition.put(-10.0, 5.0);  // Mid shot
         tyToHoodPosition.put(0.0, 3.0);    // Close shot
         tyToHoodPosition.put(10.0, 1.0);   // Very close
 
-        // PID tolerance
+        // Set position tolerance for "at setpoint" checks
         pidController.setTolerance(0.25);
     }
 
+    // ==================== LOOKUP TABLE ====================
+
     /**
-     * Gets the hood position for a given TY angle from the lookup table
+     * Gets the ideal hood position for a given Limelight TY angle.
+     * Uses interpolation between defined data points.
+     *
+     * @param ty Limelight TY value in degrees
+     * @return Hood position in motor rotations, clamped to safe limits
      */
     public double getHoodPositionForTY(double ty) {
         double position = tyToHoodPosition.get(ty);
-        // Clamp to limits
         return Math.max(minPosition, Math.min(maxPosition, position));
     }
 
+    // ==================== AUTO-AIM ====================
+
     /**
-     * Command to automatically adjust hood based on limelight TY
+     * Automatically adjusts hood angle based on Limelight target tracking.
+     * Continuously reads TY, looks up the ideal position, and uses PID to reach it.
+     *
+     * @return Command that continuously auto-aims the hood while running
      */
     public Command autoAimHood() {
         return new RunCommand(() -> {
+            // Only update target if we have a valid target
             if (LimelightHelpers.getTV("limelight")) {
                 double ty = LimelightHelpers.getTY("limelight");
                 targetPosition = getHoodPositionForTY(ty);
             }
-            double output = pidController.calculate(hoodMotor.getPosition().getValueAsDouble(), targetPosition);
+            // PID control to reach target position
+            double output = pidController.calculate(
+                hoodMotor.getPosition().getValueAsDouble(),
+                targetPosition
+            );
             hoodMotor.set(output);
         }, this);
     }
 
+    // ==================== POSITION CONTROL ====================
+
     /**
-     * Command to move hood to a specific position
+     * Moves the hood to a specific encoder position using PID control.
+     * Position is clamped to safe limits.
+     *
+     * @param position Target position in motor rotations
+     * @return Command that moves hood to the specified position
      */
     public Command setPosition(double position) {
         return new RunCommand(() -> {
             targetPosition = Math.max(minPosition, Math.min(maxPosition, position));
-            double output = pidController.calculate(hoodMotor.getPosition().getValueAsDouble(), targetPosition);
+            double output = pidController.calculate(
+                hoodMotor.getPosition().getValueAsDouble(),
+                targetPosition
+            );
             hoodMotor.set(output);
         }, this);
     }
 
+    // ==================== MANUAL CONTROL ====================
+
     /**
-     * Manual control for testing and finding limits
+     * Manually runs the hood motor at a specified speed.
+     * Use for testing, tuning, or finding position limits.
+     *
+     * @param speed Motor output from -1.0 to 1.0
+     * @return Command that runs the hood at the specified speed
      */
     public Command runHood(double speed) {
         return new RunCommand(() -> {
@@ -90,38 +144,65 @@ public class Hood extends SubsystemBase {
         }, this);
     }
 
+    /**
+     * Continuously commands the hood motor to stop.
+     * Use as a default command to hold position when not adjusting.
+     *
+     * @return RunCommand that continuously sets the motor to zero
+     */
     public Command stopAll() {
         return new RunCommand(() -> {
             hoodMotor.set(0.0);
         }, this);
     }
 
+    // ==================== UTILITY METHODS ====================
+
+    /**
+     * Gets the current hood position.
+     *
+     * @return Current position in motor rotations
+     */
     public double getPosition() {
         return hoodMotor.getPosition().getValueAsDouble();
     }
 
+    /**
+     * Checks if the hood has reached the target position.
+     *
+     * @return True if within tolerance of target position
+     */
     public boolean atTarget() {
         return pidController.atSetpoint();
     }
 
-    
+    // ==================== HOMING ====================
+
+    /**
+     * Resets the hood position by moving down until the limit switch triggers.
+     * Zeros the encoder at the known home position.
+     *
+     * @return Command that homes the hood and resets the encoder
+     */
     public Command resetPosition() {
         return new RunCommand(() -> {
             hoodMotor.set(-0.1);
-        }, this).until(()->lowerLimitSwitch.get())
-        .andThen(()->{
-        hoodMotor.set(0.0);
-        hoodMotor.setPosition(0.0);
-        });
+        }, this)
+            .until(() -> lowerLimitSwitch.get())
+            .andThen(() -> {
+                hoodMotor.set(0.0);
+                hoodMotor.setPosition(0.0);
+            });
     }
 
     @Override
     public void periodic() {
+        // Publish telemetry to SmartDashboard
         SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Hood/Target", targetPosition);
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
 
-        // For tuning - read these and add to lookup table
+        // Display current TY for tuning the lookup table
         if (LimelightHelpers.getTV("limelight")) {
             SmartDashboard.putNumber("Hood/CurrentTY", LimelightHelpers.getTY("limelight"));
         }

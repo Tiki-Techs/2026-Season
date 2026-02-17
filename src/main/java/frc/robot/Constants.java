@@ -8,33 +8,46 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.generated.TunerConstants;
 import static edu.wpi.first.units.Units.*;
 
-
-
 /**
- * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
- * constants. This class should not be used for any other purpose. All constants should be declared
- * globally (i.e. public static). Do not put anything functional in this class.
+ * Constants class for robot-wide configuration values.
+ * All constants should be declared as public static (or public static final).
  *
- * <p>It is advised to statically import this class (or one of its inner classes) wherever the
- * constants are needed, to reduce verbosity.
+ * This class should only contain constant values - no functional code.
+ * Use static imports to access these values conveniently in other classes.
  */
 public final class Constants {
-  
-  public static boolean overrideEnabled = false; 
 
-  public static class OperatorConstants {
-    public static final int kDriverControllerPort = 0;
-    
-  }
-  
-  public static class DriveConstants {
-    public static final double kMaxSpeedMetersPerSecond =
-      TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+    // ==================== GLOBAL STATE ====================
 
-    public static final double kMaxAngularSpeedRadiansPerSecond = 
-      RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+    /**
+     * Override mode flag - when true, reverses direction of most mechanisms.
+     * Controlled by holding the Y button on the driver controller.
+     * Useful for unjamming or manual adjustment.
+     */
+    public static boolean overrideEnabled = false;
 
- 
-  }
+    // ==================== OPERATOR INTERFACE ====================
 
+    /**
+     * Constants for operator interface devices (controllers, buttons, etc.)
+     */
+    public static class OperatorConstants {
+        /** USB port for the primary driver Xbox controller */
+        public static final int kDriverControllerPort = 0;
+    }
+
+    // ==================== DRIVE ====================
+
+    /**
+     * Constants for drivetrain configuration.
+     */
+    public static class DriveConstants {
+        /** Maximum translational speed in meters per second */
+        public static final double kMaxSpeedMetersPerSecond =
+            TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+
+        /** Maximum rotational speed in radians per second (0.75 rotations/sec) */
+        public static final double kMaxAngularSpeedRadiansPerSecond =
+            RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+    }
 }

@@ -1,139 +1,193 @@
 package frc.robot.subsystems;
 
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-public class IntakePivot extends SubsystemBase{
+/**
+ * IntakePivot subsystem that controls the intake arm pivot mechanism.
+ * Raises and lowers the intake between deployed (ground pickup) and stowed positions.
+ * Uses a SparkMax controller with NEO brushless motor and limit switches for position limits.
+ */
+public class IntakePivot extends SubsystemBase {
 
+    // ==================== HARDWARE ====================
 
-    // private final SparkMax leaderIntake = new SparkMax(24, MotorType.kBrushless);
-    // private final SparkMax followerIntake = new SparkMax(25, MotorType.kBrushless);
+    /** Pivot arm motor - SparkMax with NEO brushless motor (CAN ID 24) */
+    private final SparkMax pivotArm = new SparkMax(24, MotorType.kBrushless);
 
-    private final SparkMax pivotArm = new SparkMax(28, MotorType.kBrushless); // CanSpark Max with Neo brushless motor
-
-    // when requesting a digital input, the boolean value will always be true if it is unplugged. 
+    /**
+     * Lower limit switch (DIO port 3).
+     * Returns TRUE when unplugged or not triggered, FALSE when triggered.
+     */
     private final DigitalInput lowerLimitSwitch = new DigitalInput(3);
+
+    /**
+     * Upper limit switch (DIO port 2).
+     * Returns TRUE when unplugged or not triggered, FALSE when triggered.
+     */
     private final DigitalInput upperLimitSwitch = new DigitalInput(2);
 
-    private final double pivotSpeed = 0.1;
+    // ==================== CONSTANTS ====================
+
+    /** Speed for raising/lowering the pivot arm (0.0 to 1.0) */
+    private final double pivotSpeed = 0.25;
+
+    /** Speed value used to stop the pivot motor */
     private final double stopSpeed = 0.0;
 
-    private boolean intakeDeployed = true; 
-    
-    public Command stopAll(){
-        return new RunCommand(()->{
-            pivotArm.set(stopSpeed);
-        },
-        this
-        );
+    // ==================== STATE ====================
+
+    /** Tracks whether the intake is currently deployed (lowered) or stowed (raised) */
+    private boolean intakeDeployed = true;
+
+    /**
+     * Constructs the IntakePivot subsystem and configures the motor.
+     * Sets the motor to brake mode so the arm holds position when stopped.
+     */
+    public IntakePivot() {
+        SparkMaxConfig config = new SparkMaxConfig();
+        config.idleMode(IdleMode.kBrake);
+        pivotArm.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
 
-    public Command stopArmPivot(){
-        return new RunCommand(()->{
-            pivotArm.set(stopSpeed);
-        },
-        this
-        );
-    }
+    // ==================== STOP COMMANDS ====================
 
-    // Press and hold verision
-    public Command lowerArmManual(){
+    /**
+     * Continuously commands the pivot motor to stop.
+     * Use as a default command to hold the arm in place when not moving.
+     *
+     * @return RunCommand that continuously sets the motor to zero
+     */
+    public Command stopAll() {
         return new RunCommand(() -> {
-            if (!lowerLimitSwitch.get()){
-                pivotArm.set(stopSpeed);  // CONFIRM ROTATION DIRECTION BEFORE RUNNING THIS CODE
+            pivotArm.set(stopSpeed);
+        }, this);
+    }
+
+    // ==================== MANUAL CONTROL ====================
+
+    /**
+     * Manually lowers the intake arm while button is held.
+     * Stops automatically when the lower limit switch is triggered.
+     * Use for testing or manual override situations.
+     *
+     * @return Command that lowers the arm until released or limit reached
+     */
+    public Command lowerArmManual() {
+        return new RunCommand(() -> {
+            if (!lowerLimitSwitch.get()) {
+                // Limit switch triggered - stop the motor
+                pivotArm.set(stopSpeed);
             } else {
+                // Move down (positive direction)
                 pivotArm.set(pivotSpeed);
             }
-        }
-        // ensures when this command runs, it has sole control of the intake subsystem
-        , this
-        );
+        }, this);
     }
-     // Press and hold verision
-    public Command raiseArmManual(){
+
+    /**
+     * Manually raises the intake arm while button is held.
+     * Stops automatically when the upper limit switch is triggered.
+     * Use for testing or manual override situations.
+     *
+     * @return Command that raises the arm until released or limit reached
+     */
+    public Command raiseArmManual() {
         return new RunCommand(() -> {
-            if (!upperLimitSwitch.get()){ 
-                pivotArm.set(stopSpeed); // CONFIRM ROTATION DIRECTION BEFORE RUNNING THIS CODE
+            if (!upperLimitSwitch.get()) {
+                // Limit switch triggered - stop the motor
+                pivotArm.set(stopSpeed);
             } else {
+                // Move up (negative direction)
                 pivotArm.set(-pivotSpeed);
             }
-        }
-        , this
-        );
+        }, this);
     }
-    
-// // test code for auto deploy
-//     private boolean intakeDeployed = true;
-    // public Command toggleIntake(){
-    //     return new InstantCommand(()->{
-    //         if(intakeDeployed){
-    //             raiseIntakeAuto()
-    //             .schedule();
-    //         } else {
-    //             lowerIntakeAuto()
-    //             .schedule();
-    //         }
-    //         intakeDeployed = !intakeDeployed;
-    //     }
-    //     // , this 
-    //     );
-    // }
 
-    public Command toggleArm(){
+    // ==================== AUTOMATIC CONTROL ====================
+
+    /**
+     * Toggles the arm between deployed and stowed positions.
+     * Checks current state and runs the appropriate auto command.
+     *
+     * @return ConditionalCommand that raises or lowers based on current state
+     */
+    public Command toggleArm() {
         return new ConditionalCommand(
-            raiseArmAuto(), // runs when intakeDeployed = true
-            lowerArmAuto(), // runs when intakeDeployed = false
-            () -> intakeDeployed // the condition used to determine what command to run
+            raiseArmAuto(),   // Run when intakeDeployed = true
+            lowerArmAuto(),   // Run when intakeDeployed = false
+            () -> intakeDeployed
         );
     }
-    
-    public Command lowerArmAuto(){
-        return new RunCommand(()->{
+
+    /**
+     * Automatically lowers the intake arm until the lower limit switch triggers.
+     * Updates the deployed state when complete.
+     * Will not run if already at the lower limit.
+     *
+     * @return Command that lowers to deployed position and updates state
+     */
+    public Command lowerArmAuto() {
+        return new RunCommand(() -> {
             pivotArm.set(pivotSpeed);
-        }
-        , this)
-        .until(()-> !lowerLimitSwitch.get()) // runs until limit switch is triggered
-        .unless(()-> !lowerLimitSwitch.get()) // prevents running if limit switch is already triggered
-        .finallyDo(interrupted -> { 
-            pivotArm.set(stopSpeed); 
-            if (!interrupted) {
-                intakeDeployed = true;
-            }
-        });
+        }, this)
+            .until(() -> !lowerLimitSwitch.get())    // Stop when limit triggered
+            .unless(() -> !lowerLimitSwitch.get())   // Don't run if already at limit
+            .finallyDo(interrupted -> {
+                pivotArm.set(stopSpeed);
+                if (!interrupted) {
+                    intakeDeployed = true;
+                }
+            });
     }
 
-    public Command raiseArmAuto(){
-        return new RunCommand(()->{
+    /**
+     * Automatically raises the intake arm until the upper limit switch triggers.
+     * Updates the deployed state when complete.
+     * Will not run if already at the upper limit.
+     *
+     * @return Command that raises to stowed position and updates state
+     */
+    public Command raiseArmAuto() {
+        return new RunCommand(() -> {
             pivotArm.set(-pivotSpeed);
-        }
-        , this)
-        .until(()-> !upperLimitSwitch.get())
-        .unless(()-> !upperLimitSwitch.get())
-        .finallyDo(interrupted -> {
-            pivotArm.set(stopSpeed);
-            if (!interrupted) {
-                intakeDeployed = false;
-            }
-        });
+        }, this)
+            .until(() -> !upperLimitSwitch.get())    // Stop when limit triggered
+            .unless(() -> !upperLimitSwitch.get())   // Don't run if already at limit
+            .finallyDo(interrupted -> {
+                pivotArm.set(stopSpeed);
+                if (!interrupted) {
+                    intakeDeployed = false;
+                }
+            });
     }
 
-    public Command changeDeployState(){
-        return new InstantCommand(()->{
+    // ==================== STATE MANAGEMENT ====================
+
+    /**
+     * Manually toggles the deployed state flag.
+     * Use to resync state if the arm was moved manually or by external factors.
+     *
+     * @return InstantCommand that inverts the deployed state
+     */
+    public Command changeDeployState() {
+        return new InstantCommand(() -> {
             intakeDeployed = !intakeDeployed;
         });
     }
 
-
-
-
     @Override
     public void periodic() {
+        // Periodic updates (telemetry can be added here)
     }
 }
