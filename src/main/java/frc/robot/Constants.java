@@ -101,7 +101,7 @@ public final class Constants {
         private ShooterIntakeConstants() {
         }
         public static final int shooterIntake = 21;
-        public static final double shooterIntakeSpeed = 1.0;
+        public static final double shooterIntakeSpeed = -1.0;
     }
 
     public static final class IntakePivotConstants {

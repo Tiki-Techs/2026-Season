@@ -172,6 +172,14 @@ public class RobotContainer {
         NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll().withTimeout(0.1));
         NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState().withTimeout(0.1));
 
+
+        NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
+                limelight
+                    .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                    .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
+                    .withRotationalRate(m_Vision.limelight_aim_proportional())).withTimeout(2));
+
+
         // Build autonomous chooser from PathPlanner paths
         autoChooser = AutoBuilder.buildAutoChooser();
         SmartDashboard.putData("Auto Chooser", autoChooser);
