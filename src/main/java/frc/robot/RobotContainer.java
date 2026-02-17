@@ -28,6 +28,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.IndexConstants;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.IntakePivotConstants;
 import frc.robot.Constants.OperatorConstants;
@@ -94,10 +95,10 @@ public class RobotContainer {
     // ==================== DRIVE PARAMETERS ====================
 
     /** Maximum translational speed in meters per second */
-    private final double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;
+    private final double maxSpeed = DriveConstants.MAX_SPEED_METERS_PER_SECOND;
 
     /** Maximum rotational speed in radians per second */
-    private final double maxAngularRate = DriveConstants.kMaxAngularSpeedRadiansPerSecond;
+    private final double maxAngularRate = DriveConstants.MAX_ANGULAR_SPEED_RADIANS_PER_SECOND;
 
     // ==================== SLEW RATE LIMITERS ====================
     // These limit acceleration to prevent wheel slip and provide smoother control
@@ -142,7 +143,7 @@ public class RobotContainer {
 
     /** Primary driver controller (Xbox) on port 0 */
     private final CommandXboxController m_driverController =
-        new CommandXboxController(OperatorConstants.kDriverControllerPort);
+        new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
 
     /**
      * Constructs the RobotContainer.
@@ -153,22 +154,22 @@ public class RobotContainer {
         // These commands can be called by name in PathPlanner autonomous routines
 
         // Shooter commands
-        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS).withTimeout(5));
+        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(5));
         NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter().withTimeout(0.1));
 
         // Index commands
-        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.indexSpeed).withTimeout(5)); // test timout code/ 
-        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.indexSpeed).withTimeout(5));
+        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(5)); // test timout code/ 
+        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(5));
         NamedCommands.registerCommand("stopIndex", m_index.stopIndex().withTimeout(0.1));
 
         // Intake commands
-        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.intakeSpeed).withTimeout(3));
-        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.intakeSpeed).withTimeout(3));
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(3));
+        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(3));
         NamedCommands.registerCommand("stopIntake", m_intake.stopIntake().withTimeout(0.1));
 
         // Intake Pivot commands
-        NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
-        NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
+        NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
+        NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
         NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll().withTimeout(0.1));
         NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState().withTimeout(0.1));
 
@@ -176,7 +177,7 @@ public class RobotContainer {
         NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
                 limelight
                     .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-                    .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
+                    .withVelocityY(0)
                     .withRotationalRate(m_Vision.limelight_aim_proportional())).withTimeout(2));
 
 
@@ -255,8 +256,8 @@ public class RobotContainer {
         // Normal: auto-raise to limit switch | Override: manual raise
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
-                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
 
                 // m_intakePivot.raiseArmAuto(),
                 () -> Constants.overrideEnabled
@@ -267,8 +268,8 @@ public class RobotContainer {
         // Normal: auto-lower to limit switch | Override: manual lower
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
-                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
 
                 // m_intakePivot.lowerArmAuto(),
                 () -> Constants.overrideEnabled
@@ -305,16 +306,16 @@ public class RobotContainer {
         // Normal: 100 RPS | Override: -100 RPS (reverse)
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
+                m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
 
                 new SequentialCommandGroup(
                     new ParallelDeadlineGroup(
                         new WaitCommand(2.0),
-                        m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS)
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
                     ),
                     new ParallelCommandGroup(
-                            m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
-                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed)
+                            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
                 ),
                 // override condition
@@ -359,12 +360,12 @@ public class RobotContainer {
 
         RobotModeTriggers.disabled()
             .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 150)
+                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 150)
             ));
 
         RobotModeTriggers.teleop().or(RobotModeTriggers.autonomous())
             .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 0)
+                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 0)
             ));
     }
 
