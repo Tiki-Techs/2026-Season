@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "DPath1"
+                  "pathName": "dcPath1"
                 }
               },
               {
@@ -24,22 +24,15 @@
           }
         },
         {
-          "type": "parallel",
+          "type": "named",
           "data": {
-            "commands": [
-              {
-                "type": "path",
-                "data": {
-                  "pathName": "DPath2"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runShooter"
-                }
-              }
-            ]
+            "name": "stopIntake"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "dcPath2"
           }
         },
         {
@@ -50,6 +43,18 @@
                 "type": "named",
                 "data": {
                   "name": "runPIDShooter"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runShooterIntake"
                 }
               }
             ]

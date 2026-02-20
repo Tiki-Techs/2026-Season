@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 1.5338952972493338,
-        "y": 3.1939929015084294
+        "x": 3.586113575865128,
+        "y": 4.030976042590949
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.046903283052351,
-        "y": 3.314711623779946
+        "x": 4.0141880339534435,
+        "y": 4.032370294693185
       },
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "dcEndpoint1"
     },
     {
       "anchor": {
-        "x": 3.312484472049689,
-        "y": 3.1939929015084294
+        "x": 1.123451641526175,
+        "y": 4.030976042590949
       },
       "prevControl": {
-        "x": 2.8457054125998225,
-        "y": 3.2261845607808333
+        "x": 0.8734525503240449,
+        "y": 4.030301952011693
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "DPath1.end"
+      "linkedName": "dcStartPoint1"
     }
   ],
   "rotationTargets": [],

@@ -153,17 +153,20 @@ public class RobotContainer {
         // These commands can be called by name in PathPlanner autonomous routines
 
         // Shooter commands
-        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS).withTimeout(5));
+        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS).withTimeout(0.1));
         NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter().withTimeout(0.1));
+        NamedCommands.registerCommand("runShooter", m_shooter.runShooter(ShooterConstants.shooterDefaultSpeed).withTimeout(0.1));
+
+        NamedCommands.registerCommand("runShooterIntake", m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed).withTimeout(0.1));
 
         // Index commands
-        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.indexSpeed).withTimeout(5)); // test timout code/ 
+        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.indexSpeed).withTimeout(0.1)); // test timout code/ 
         NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.indexSpeed).withTimeout(5));
         NamedCommands.registerCommand("stopIndex", m_index.stopIndex().withTimeout(0.1));
 
         // Intake commands
-        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.intakeSpeed).withTimeout(3));
-        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.intakeSpeed).withTimeout(3));
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.intakeSpeed).withTimeout(0.1));
+        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.intakeSpeed).withTimeout(5));
         NamedCommands.registerCommand("stopIntake", m_intake.stopIntake().withTimeout(0.1));
 
         // Intake Pivot commands
@@ -213,8 +216,8 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() ->
                 drive
-                    .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
-                    .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
+                    .withVelocityX(m_driverController.getLeftY() * maxSpeed)
+                    .withVelocityY(m_driverController.getLeftX() * maxSpeed)
                     .withRotationalRate(-m_driverController.getRightX() * maxAngularRate)
             )
         );
@@ -228,8 +231,8 @@ public class RobotContainer {
         m_driverController.a().whileTrue(
             drivetrain.applyRequest(() ->
                 limelight
-                    .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-                    .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
+                    .withVelocityX(-xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                    .withVelocityY(-yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
                     .withRotationalRate(m_Vision.limelight_aim_proportional())
             )
         );

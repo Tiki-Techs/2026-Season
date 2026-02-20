@@ -78,7 +78,7 @@ public final class Constants {
         }
         public static final int indexMotor = 20;
 
-        public static final double indexSpeed = 1.0;
+        public static final double indexSpeed = 1;
     }
 
     public static final class ShooterConstants {
@@ -94,6 +94,8 @@ public final class Constants {
         public static final double kD = 0;    // Derivative gain (disabled)
 
         public static final double shooterTargetRPS = 100.0; // Target shooter speed in rotations per second
+        public static final double shooterDefaultSpeed = 1.0; // 
+
         
     }
 
@@ -119,7 +121,7 @@ public final class Constants {
         }
         public static final int intakeMotor = 16;
 
-        public static final double intakeSpeed = 1.0;
+        public static final double intakeSpeed = -0.6;
     }
 }
 
