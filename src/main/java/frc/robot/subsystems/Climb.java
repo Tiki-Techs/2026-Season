@@ -13,7 +13,7 @@ import frc.robot.Constants.ClimbConstants;
 
 public class Climb extends SubsystemBase {
 
-    private final TalonFX climbMotor = new TalonFX(ClimbConstants.climbMotor);
+    private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR);
 
     private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 

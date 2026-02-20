@@ -7,6 +7,7 @@ import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
 
 /**
@@ -29,6 +30,23 @@ public class Vision extends SubsystemBase {
     /** NetworkTables publisher for AdvantageScope 3D visualization */
     private final StructPublisher<Pose2d> posePublisher;
 
+    // ==================== CACHED LIMELIGHT STATE ====================
+    // Updated once per loop in periodic() to avoid redundant NetworkTables reads.
+    // limelight_aim_proportional() and limelight_range_proportional() use these
+    // cached values instead of reading NT themselves.
+
+    /** Whether a valid target is currently visible */
+    private boolean cachedTV = false;
+
+    /** Horizontal offset to target in degrees (+ = right) */
+    private double cachedTX = 0.0;
+
+    /** Average distance from camera to visible AprilTags in meters (from MegaTag2) */
+    private double cachedTagDist = 0.0;
+
+    /** Last TV state - used to only write LED mode to NT on change */
+    private boolean lastTV = false;
+
     /**
      * Constructs the Vision subsystem.
      * Sets up field visualization and NetworkTables publishing for AdvantageScope.
@@ -48,74 +66,61 @@ public class Vision extends SubsystemBase {
 
     /**
      * Calculates angular velocity for aiming at a target using proportional control.
-     * Returns a rotation rate (rad/s) proportional to the horizontal offset (TX).
+     * Uses cached TX from periodic() - no extra NetworkTables reads.
      *
-     * How it works:
-     * - TX is the horizontal angle to target in degrees (+ = right, - = left)
-     * - We convert TX to radians and multiply by kP to get rotation rate
-     * - Higher kP = more aggressive turning, may cause oscillation
-     * - Lower kP = slower response, may never reach target
+     * A minimum output is applied outside the deadband to ensure the robot
+     * actually rotates even when the error is small (overcomes static friction).
      *
      * @return Angular velocity in radians/second to aim at target, or 0 if no target
      */
     public double limelight_aim_proportional() {
-        // Proportional gain - tune this value for your robot
-        // Higher = more aggressive, may oscillate; Lower = slower response
         double kP = 1.5;
+        double minOutput = 0.15; // rad/s - minimum to overcome static friction, tune if needed
 
-        // Only aim if we have a valid target
-        if (!LimelightHelpers.getTV("limelight")) {
+        if (!cachedTV) {
             return 0.0;
         }
 
-        double tx = LimelightHelpers.getTX("limelight");
-
         // Deadband to ignore small errors and prevent jitter
-        if (Math.abs(tx) < 5.0) {
+        if (Math.abs(cachedTX) < 5.0) {
             return 0.0;
         }
 
         // Convert TX from degrees to radians for proper units
-        double txRadians = Math.toRadians(tx);
+        double txRadians = Math.toRadians(cachedTX);
+        double output = txRadians * kP;
 
-        // Calculate target angular velocity (rad/s)
-        double targetingAngularVelocity = txRadians * kP;
+        // Clamp to minimum output so the robot always moves when a correction is needed
+        if (output > 0) output = Math.max(output, minOutput);
+        else            output = Math.min(output, -minOutput);
 
-        return targetingAngularVelocity;
+        return output;
     }
 
     /**
      * Calculates forward velocity for ranging to a target using proportional control.
-     * Returns a speed (m/s) proportional to the vertical offset (TY).
+     * Uses cachedTagDist (actual meters to tag from MegaTag2) instead of TY angle,
+     * which is more accurate and doesn't depend on camera mount geometry.
+     * Uses cached values from periodic() - no extra NetworkTables reads.
      *
-     * How it works:
-     * - TY is the vertical angle to target in degrees
-     * - Negative TY = target below center = too far away = drive forward
-     * - We use TY as an error signal with an offset to set desired stopping point
-     *
-     * Note: This works best when Limelight and target are at different heights.
-     * If at similar heights, use "ta" (area) for ranging instead.
-     *
-     * @return Forward velocity in m/s to approach target, or 0 if no target
+     * @return Forward velocity in m/s to approach target, or 0 if no target or at distance
      */
     public double limelight_range_proportional() {
-        // Proportional gain - tune for desired approach speed
-        double kP = 0.2;
+        double kP = 0.4; // tune for desired approach speed (output in m/s per meter of error)
 
-        // Only drive if we have a valid target
-        if (!LimelightHelpers.getTV("limelight")) {
+        if (!cachedTV || cachedTagDist == 0.0) {
             return 0.0;
         }
 
-        // TY offset determines where robot stops relative to target
-        // Robot stops when TY = -6 degrees (adjust this for desired stopping distance)
-        double ty = LimelightHelpers.getTY("limelight");
-        double error = ty + 6.0;
+        // Error in meters: positive = too far, negative = too close
+        double error = cachedTagDist - VisionConstants.TARGET_DISTANCE_METERS;
 
-        double targetingForwardSpeed = error * kP;
+        // Deadband - stop within 10 cm of target distance
+        if (Math.abs(error) < 0.1) {
+            return 0.0;
+        }
 
-        // Invert to match robot coordinate system
-        return targetingForwardSpeed * -1.0;
+        return error * kP;
     }
 
     @Override
@@ -127,88 +132,65 @@ public class Vision extends SubsystemBase {
         m_field.setRobotPose(currentPose);
         posePublisher.set(currentPose);
 
-        // Get Limelight data for debugging
-        boolean tv = LimelightHelpers.getTV("limelight");
-        double tx = LimelightHelpers.getTX("limelight");
-        double ty = LimelightHelpers.getTY("limelight");
+        // Read Limelight NT values ONCE per loop and cache for control methods
+        cachedTV = LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME);
+        cachedTX = LimelightHelpers.getTX(VisionConstants.LIMELIGHT_NAME);
+        double ty = LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME);
 
-        System.out.println("TV: " + tv + " TX: " + tx + " TY: " + ty);
+        SmartDashboard.putBoolean("Vision/TV", cachedTV);
+        SmartDashboard.putNumber("Vision/TX", cachedTX);
+        SmartDashboard.putNumber("Vision/TY", ty);
 
-        // Visual feedback: blink LEDs when target is visible
-        if (tv) {
-            LimelightHelpers.setLEDMode_ForceBlink("limelight");
-        } else {
-            LimelightHelpers.setLEDMode_ForceOff("limelight");
+        // Visual feedback: blink LEDs when target is visible (only write on change)
+        if (cachedTV != lastTV) {
+            if (cachedTV) {
+                LimelightHelpers.setLEDMode_ForceBlink(VisionConstants.LIMELIGHT_NAME);
+            } else {
+                LimelightHelpers.setLEDMode_ForceOff(VisionConstants.LIMELIGHT_NAME);
+            }
+            lastTV = cachedTV;
         }
 
-        // ==================== VISION POSE ESTIMATION ====================
+        // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
+        // Uses gyro orientation for improved multi-tag pose solving.
+        // More accurate and stable than MegaTag1.
 
-        // Toggle between MegaTag1 and MegaTag2 algorithms
-        boolean useMegaTag2 = true;
         boolean doRejectUpdate = false;
 
-        if (!useMegaTag2) {
-            // ========== MEGATAG 1 ==========
-            // Single-frame pose estimation, works without gyro data
-            // More prone to noise with single-tag views
+        // Send current robot orientation to Limelight for better solving
+        LimelightHelpers.SetRobotOrientation(
+            VisionConstants.LIMELIGHT_NAME,
+            drivetrain.getState().Pose.getRotation().getDegrees(),
+            0, 0, 0, 0, 0
+        );
 
-            LimelightHelpers.PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight");
+        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.LIMELIGHT_NAME);
 
-            // Quality checks for single-tag measurements
-            if (mt1.tagCount == 1 && mt1.rawFiducials.length == 1) {
-                // Reject if pose ambiguity is too high (>70% uncertain)
-                if (mt1.rawFiducials[0].ambiguity > 0.7) {
-                    doRejectUpdate = true;
-                }
-                // Reject if tag is too far away (>3 meters)
-                if (mt1.rawFiducials[0].distToCamera > 3) {
-                    doRejectUpdate = true;
-                }
-            }
-
-            // Reject if no tags visible
-            if (mt1.tagCount == 0) {
-                doRejectUpdate = true;
-            }
-
-            // Apply vision measurement if it passes quality checks
-            if (!doRejectUpdate) {
-                // Standard deviations: [x, y, theta]
-                // Lower values = more trust in vision
-                // theta = 9999999 means we don't trust vision rotation
-                drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(0.5, 0.5, 9999999));
-                drivetrain.addVisionMeasurement(mt1.pose, mt1.timestampSeconds);
-            }
+        // Cache tag distance for range control whenever tags are visible,
+        // even if we end up rejecting the pose estimate below
+        if (mt2 != null && mt2.tagCount > 0) {
+            cachedTagDist = mt2.avgTagDist;
+            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
         } else {
-            // ========== MEGATAG 2 ==========
-            // Uses gyro orientation for improved multi-tag pose solving
-            // More accurate and stable than MegaTag1
+            cachedTagDist = 0.0;
+        }
 
-            // Send current robot orientation to Limelight for better solving
-            LimelightHelpers.SetRobotOrientation(
-                "limelight",
-                drivetrain.getState().Pose.getRotation().getDegrees(),
-                0, 0, 0, 0, 0
-            );
+        // Reject during fast rotation (>720 deg/s) - camera image will be blurry
+        if (Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720) {
+            doRejectUpdate = true;
+        }
 
-            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
+        // Reject if no tags visible
+        if (mt2 == null || mt2.tagCount == 0) {
+            doRejectUpdate = true;
+        }
 
-            // Reject during fast rotation (>720 deg/s) - camera image will be blurry
-            if (Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720) {
-                doRejectUpdate = true;
-            }
-
-            // Reject if no tags visible
-            if (mt2 == null || mt2.tagCount == 0) {
-                doRejectUpdate = true;
-            }
-
-            // Apply vision measurement if it passes quality checks
-            if (!doRejectUpdate) {
-                // Slightly higher std devs than MegaTag1
-                drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(0.7, 0.7, 9999999));
-                drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-            }
+        // Apply vision measurement if it passes quality checks
+        if (!doRejectUpdate) {
+            // Scale trust based on tag distance and count: closer tags with more visibility = lower std devs = more trust
+            double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
+            drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
+            drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
         }
     }
 }

@@ -8,7 +8,7 @@ import frc.robot.Constants.ShooterIntakeConstants;
 
 public class ShooterIntake extends SubsystemBase{
     
-    private final TalonFX shooterIntake = new TalonFX(ShooterIntakeConstants.shooterIntake);
+    private final TalonFX shooterIntake = new TalonFX(ShooterIntakeConstants.SHOOTER_INTAKE);
 
     public Command runShooterIntake(double speed){
         return new RunCommand(()->{
