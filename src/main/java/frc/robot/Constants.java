@@ -121,7 +121,7 @@ public final class Constants {
         }
         public static final int INTAKE_MOTOR = 16;
 
-        public static final double INTAKE_SPEED = 0.5;
+        public static final double INTAKE_SPEED = -0.5;
     }
 
     public static final class VisionConstants {
