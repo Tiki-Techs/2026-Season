@@ -308,23 +308,14 @@ public class RobotContainer {
         // Right Bumper - PID controlled shooter
         // Normal: 100 RPS | Override: -100 RPS (reverse)
         m_driverController.rightBumper().whileTrue(
-            new ConditionalCommand(
+           new ConditionalCommand(
                 m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-
-                new SequentialCommandGroup(
-                    new ParallelDeadlineGroup(
-                        new WaitCommand(2.0),
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                    ),
-                    new ParallelCommandGroup(
-                            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-                    )
-                ),
+                PIDShooterAndShooterIntake(),
                 // override condition
                 () -> Constants.overrideEnabled
-            )
-        );
+                )
+            );
+         
 
         // Right Trigger - Manual shooter (speed = trigger position)
         // Normal: forward | Override: reverse
@@ -347,6 +338,8 @@ public class RobotContainer {
                 () -> Constants.overrideEnabled
             )
         );
+
+        
 
         // ========== DEFAULT COMMANDS ==========
         // These run when no other command is using the subsystem
@@ -380,4 +373,21 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
     }
+
+    // ========== CHAINED COMMANDS ==========
+        public Command PIDShooterAndShooterIntake(){
+              return new SequentialCommandGroup(
+                    new ParallelDeadlineGroup(
+                        new WaitCommand(2.0),
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                    ),
+                    new ParallelCommandGroup(
+                            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    )
+                );
+        };
+
+
+    
 }
