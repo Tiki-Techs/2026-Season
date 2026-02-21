@@ -7,17 +7,17 @@
 // import com.ctre.phoenix6.hardware.TalonFX;
 // import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.ClimbConstants;
+// import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+// import edu.wpi.first.wpilibj2.command.Command;
+// import edu.wpi.first.wpilibj2.command.RunCommand;
+// import edu.wpi.first.wpilibj2.command.SubsystemBase;
+// import frc.robot.Constants.ClimbConstants;
 
-public class Climb extends SubsystemBase {
+// public class Climb extends SubsystemBase {
 
-    private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR);
+//     private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR);
 
-    private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
+//     private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
 
 
