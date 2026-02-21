@@ -1,0 +1,64 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "DPath1"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIntake"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "DPath2"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "runPIDShooter"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Practice Autos",
+  "choreoAuto": false
+}

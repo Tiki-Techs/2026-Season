@@ -11,8 +11,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import java.util.function.DoubleSupplier;
 import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
+import frc.robot.Constants.HoodConstants;
 
 /**
  * Hood subsystem that controls the shooter hood angle for trajectory adjustment.
@@ -24,10 +28,10 @@ public class Hood extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Hood angle adjustment motor */
-    private final TalonFX hoodMotor = new TalonFX(HoodConstants.hoodMotor);
+    private final TalonFX hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR);
 
     /** Lower limit switch for hood zeroing */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.lowerLimitSwitch);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.LOWER_LIMIT_SWITCH);
 
     // ==================== CONTROL ====================
 
@@ -97,8 +101,8 @@ public class Hood extends SubsystemBase {
     public Command autoAimHood() {
         return new RunCommand(() -> {
             // Only update target if we have a valid target
-            if (LimelightHelpers.getTV("limelight")) {
-                double ty = LimelightHelpers.getTY("limelight");
+            if (LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME)) {
+                double ty = LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME);
                 targetPosition = getHoodPositionForTY(ty);
             }
             // PID control to reach target position
@@ -142,6 +146,18 @@ public class Hood extends SubsystemBase {
     public Command runHood(double speed) {
         return new RunCommand(() -> {
             hoodMotor.set(speed);
+        }, this);
+    }
+
+    /**
+     * Runs the hood motor using a speed supplier.
+     *
+     * @param speedSupplier Supplier for the motor speed
+     * @return Command that runs the hood at the supplied speed
+     */
+    public Command runHood(DoubleSupplier speedSupplier) {
+        return new RunCommand(() -> {
+            hoodMotor.set(speedSupplier.getAsDouble());
         }, this);
     }
 
@@ -204,8 +220,8 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
 
         // Display current TY for tuning the lookup table
-        if (LimelightHelpers.getTV("limelight")) {
-            SmartDashboard.putNumber("Hood/CurrentTY", LimelightHelpers.getTY("limelight"));
+        if (LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME)) {
+            SmartDashboard.putNumber("Hood/CurrentTY", LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME));
         }
     }
 }

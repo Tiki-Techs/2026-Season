@@ -12,6 +12,9 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+
+import java.util.function.DoubleSupplier;
+
 import com.ctre.phoenix6.configs.CANcoderConfigurator;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
@@ -29,7 +32,7 @@ public class Shooter extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Center shooter motor */
-    private final TalonFX centerShooter = new TalonFX(ShooterConstants.centerShooter);
+    private final TalonFX centerShooter = new TalonFX(ShooterConstants.CENTER_SHOOTER);
 
     // ==================== CONTROL PARAMETERS ====================
 
@@ -46,11 +49,11 @@ public class Shooter extends SubsystemBase {
     public Shooter() {
         // Configure PID gains for velocity control (Slot 0)
         var slot0Configs = new Slot0Configs();
-        slot0Configs.kS = ShooterConstants.kS;
-        slot0Configs.kV = ShooterConstants.kV;
-        slot0Configs.kP = ShooterConstants.kP;
-        slot0Configs.kI = ShooterConstants.kI;
-        slot0Configs.kD = ShooterConstants.kD;
+        slot0Configs.kS = ShooterConstants.KS;
+        slot0Configs.kV = ShooterConstants.KV;
+        slot0Configs.kP = ShooterConstants.KP;
+        slot0Configs.kI = ShooterConstants.KI;
+        slot0Configs.kD = ShooterConstants.KD;
 
         // Apply PID configuration to both shooter motors
         centerShooter.getConfigurator().apply(slot0Configs);
@@ -149,6 +152,18 @@ public class Shooter extends SubsystemBase {
      */
     public void setShooterTargetVelocity(double velocityRPS) {
         this.shooterTargetVelocity = velocityRPS;
+    }
+
+    /**
+     * Checks if the shooter has reached the target speed.
+     *
+     * @param targetRPS Target velocity in rotations per second
+     * @param tolerance Allowable error in RPS
+     * @return True if shooter is within tolerance of target speed
+     */
+    public boolean isAtTargetSpeed(double targetRPS, double tolerance) {
+        double currentVelocity = Math.abs(centerShooter.getVelocity().getValueAsDouble());
+        return Math.abs(currentVelocity - Math.abs(targetRPS)) <= tolerance;
     }
 
 

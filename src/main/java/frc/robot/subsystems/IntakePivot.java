@@ -3,9 +3,9 @@ package frc.robot.subsystems;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
@@ -24,24 +24,24 @@ public class IntakePivot extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Pivot arm motor - SparkMax with NEO brushless motor */
-    private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.pivotMotor, MotorType.kBrushless);
+    private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.PIVOT_MOTOR, MotorType.kBrushless);
 
     /**
      * Lower limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(IntakePivotConstants.lowerLimitSwitch);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(IntakePivotConstants.LOWER_LIMIT_SWITCH);
 
     /**
      * Upper limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput upperLimitSwitch = new DigitalInput(IntakePivotConstants.upperLimitSwitch);
+    private final DigitalInput upperLimitSwitch = new DigitalInput(IntakePivotConstants.UPPER_LIMIT_SWITCH);
 
     // ==================== CONSTANTS ====================
 
     /** Speed for raising/lowering the pivot arm (0.0 to 1.0) */
-    private final double pivotSpeed = IntakePivotConstants.pivotSpeed;
+    private final double pivotSpeed = IntakePivotConstants.PIVOT_SPEED;
 
     /** Speed value used to stop the pivot motor */
     private final double stopSpeed = 0.0;

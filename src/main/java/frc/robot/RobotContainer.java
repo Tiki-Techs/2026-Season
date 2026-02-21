@@ -28,6 +28,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.IndexConstants;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.IntakePivotConstants;
 import frc.robot.Constants.OperatorConstants;
@@ -36,6 +37,7 @@ import frc.robot.Constants.ShooterIntakeConstants;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Hood;
+// import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakePivot;
@@ -94,10 +96,10 @@ public class RobotContainer {
     // ==================== DRIVE PARAMETERS ====================
 
     /** Maximum translational speed in meters per second */
-    private final double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;
+    private final double maxSpeed = DriveConstants.MAX_SPEED_METERS_PER_SECOND;
 
     /** Maximum rotational speed in radians per second */
-    private final double maxAngularRate = DriveConstants.kMaxAngularSpeedRadiansPerSecond;
+    private final double maxAngularRate = DriveConstants.MAX_ANGULAR_SPEED_RADIANS_PER_SECOND;
 
     // ==================== SLEW RATE LIMITERS ====================
     // These limit acceleration to prevent wheel slip and provide smoother control
@@ -142,7 +144,7 @@ public class RobotContainer {
 
     /** Primary driver controller (Xbox) on port 0 */
     private final CommandXboxController m_driverController =
-        new CommandXboxController(OperatorConstants.kDriverControllerPort);
+        new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
 
     /**
      * Constructs the RobotContainer.
@@ -153,24 +155,37 @@ public class RobotContainer {
         // These commands can be called by name in PathPlanner autonomous routines
 
         // Shooter commands
-        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS).withTimeout(5));
+        NamedCommands.registerCommand("runPIDShooter", m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(5));
         NamedCommands.registerCommand("stopPIDShooter", m_shooter.stopShooter().withTimeout(0.1));
+        NamedCommands.registerCommand("runShooter", m_shooter.runShooter(ShooterConstants.SHOOTER_DEFAULT_SPEED).withTimeout(0.1));
+
+        NamedCommands.registerCommand("runShooterIntake", m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED).withTimeout(0.1));
 
         // Index commands
-        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.indexSpeed).withTimeout(5)); // test timout code/ 
-        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.indexSpeed).withTimeout(5));
+        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(5)); // test timout code/ 
+        NamedCommands.registerCommand("runReverseIndex", m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(5));
         NamedCommands.registerCommand("stopIndex", m_index.stopIndex().withTimeout(0.1));
 
         // Intake commands
-        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.intakeSpeed).withTimeout(3));
-        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.intakeSpeed).withTimeout(3));
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(3));
+        NamedCommands.registerCommand("runReverseIntake", m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(3));
         NamedCommands.registerCommand("stopIntake", m_intake.stopIntake().withTimeout(0.1));
 
         // Intake Pivot commands
-        NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
-        NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed).withTimeout(1));
+        NamedCommands.registerCommand("raiseArmManual", m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
+        NamedCommands.registerCommand("lowerArmManual", m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
         NamedCommands.registerCommand("stopIntakePivot", m_intakePivot.stopAll().withTimeout(0.1));
         NamedCommands.registerCommand("changeDeployState", m_intakePivot.changeDeployState().withTimeout(0.1));
+
+        NamedCommands.registerCommand("PIDShooterAndShooterIntake", PIDShooterAndShooterIntake());
+
+
+        NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
+                limelight
+                    .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                    .withVelocityY(0)
+                    .withRotationalRate(m_Vision.limelight_aim_proportional())).withTimeout(2));
+
 
         // Build autonomous chooser from PathPlanner paths
         autoChooser = AutoBuilder.buildAutoChooser();
@@ -205,8 +220,8 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() ->
                 drive
-                    .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
-                    .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
+                    .withVelocityX(m_driverController.getLeftY() * maxSpeed)
+                    .withVelocityY(m_driverController.getLeftX() * maxSpeed)
                     .withRotationalRate(-m_driverController.getRightX() * maxAngularRate)
             )
         );
@@ -220,8 +235,8 @@ public class RobotContainer {
         m_driverController.a().whileTrue(
             drivetrain.applyRequest(() ->
                 limelight
-                    .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-                    .withVelocityY(yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
+                    .withVelocityX(-xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                    .withVelocityY(-yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
                     .withRotationalRate(m_Vision.limelight_aim_proportional())
             )
         );
@@ -247,8 +262,8 @@ public class RobotContainer {
         // Normal: auto-raise to limit switch | Override: manual raise
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
-                m_intakePivot.raiseArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
 
                 // m_intakePivot.raiseArmAuto(),
                 () -> Constants.overrideEnabled
@@ -259,8 +274,8 @@ public class RobotContainer {
         // Normal: auto-lower to limit switch | Override: manual lower
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
-                m_intakePivot.lowerArmManual(IntakePivotConstants.pivotSpeed),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
 
                 // m_intakePivot.lowerArmAuto(),
                 () -> Constants.overrideEnabled
@@ -293,26 +308,31 @@ public class RobotContainer {
 
         // ========== SHOOTER ==========
 
-        // Right Bumper - PID controlled shooter
-        // Normal: 100 RPS | Override: -100 RPS (reverse)
+        // Right Bumper - PID controlled shooter with index and shooter intake
+        // Normal: run shooter, when at speed run index and shooterIntake
+        // Override: reverse all (shooter, index, shooterIntake)
         m_driverController.rightBumper().whileTrue(
-            new ConditionalCommand(
-                m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
-
+           new ConditionalCommand(
+                // Override: reverse all
+                new ParallelCommandGroup(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                ),
+                // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
-                    new ParallelDeadlineGroup(
-                        new WaitCommand(2.0),
-                        m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS)
-                    ),
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
-                            m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
-                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed)
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
                 ),
-                // override condition
                 () -> Constants.overrideEnabled
-            )
-        );
+                )
+            );
+         
 
         // Right Trigger - Manual shooter (speed = trigger position)
         // Normal: forward | Override: reverse
@@ -324,17 +344,19 @@ public class RobotContainer {
             )
         );
 
-        // ========== HOOD ==========
+        // ========== SHOOTER INTAKE ==========
 
-        // B Button - Adjust hood angle
-        // Normal: down (-0.03) | Override: up (+0.03)
+        // B Button - Run shooter intake
+        // Normal: forward | Override: reverse
         m_driverController.b().whileTrue(
             new ConditionalCommand(
-                m_hood.runHood(0.03),
-                m_hood.runHood(-0.03),
+                m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
+                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
+
+        
 
         // ========== DEFAULT COMMANDS ==========
         // These run when no other command is using the subsystem
@@ -344,19 +366,19 @@ public class RobotContainer {
         m_intake.setDefaultCommand(m_intake.stopAll());
         m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
-        m_hood.setDefaultCommand(m_hood.stopAll());
+        m_hood.setDefaultCommand(m_hood.runHood(() -> MathUtil.applyDeadband(m_driverController.getRightY(), 0.15)));
 
         // ========== LIMELIGHT POWER MANAGEMENT ==========
         // Reduce Limelight processing when disabled to save power
 
         RobotModeTriggers.disabled()
             .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 150)
+                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 150)
             ));
 
         RobotModeTriggers.teleop().or(RobotModeTriggers.autonomous())
             .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble("limelight", "throttle", 0)
+                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 0)
             ));
     }
 
@@ -368,4 +390,27 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
     }
+
+    // ========== CHAINED COMMANDS ==========
+
+        /**
+         * Runs shooter at target speed, then when at speed runs index and shooterIntake.
+         */
+        public Command PIDShooterAndShooterIntake(){
+              return new SequentialCommandGroup(
+                    // Spin up shooter until at target speed
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    // Once at speed, run shooter, index, and shooterIntake together
+                    new ParallelCommandGroup(
+                            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                            m_index.runIndex(IndexConstants.INDEX_SPEED),
+                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    )
+                );
+        }
+
+
+
+    
 }
