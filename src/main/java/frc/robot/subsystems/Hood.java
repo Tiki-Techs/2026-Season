@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
+import frc.robot.Constants.HoodConstants;
 
 /**
  * Hood subsystem that controls the shooter hood angle for trajectory adjustment.

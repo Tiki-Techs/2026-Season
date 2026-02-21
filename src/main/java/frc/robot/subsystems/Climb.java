@@ -1,9 +1,11 @@
-package frc.robot.subsystems;
+// package frc.robot.subsystems;
 
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.DutyCycleOut;
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.NeutralModeValue;
+// import java.util.function.DoubleSupplier;
+
+// import com.ctre.phoenix6.configs.TalonFXConfiguration;
+// import com.ctre.phoenix6.controls.DutyCycleOut;
+// import com.ctre.phoenix6.hardware.TalonFX;
+// import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -18,34 +20,86 @@ public class Climb extends SubsystemBase {
     private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
 
-    public Climb() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        climbMotor.getConfigurator().apply(config);
-        climbMotor.setPosition(0);
-    }
 
-    // public Command climbUp(DoubleSupplier speed) {
-    //     return new RunCommand(() ->
-    //         climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
-    // }
 
-    // public Command climbDown(DoubleSupplier speed) {
-    //     return new RunCommand(() ->
-    //         climbMotor.setControl(dutyCycleRequest.withOutput(speed)), this);
-    // }
+//     public Climb() {
+//         TalonFXConfiguration config = new TalonFXConfiguration();
+//         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+//         climbMotor.getConfigurator().apply(config);
+//         climbMotor.setPosition(0);
+        
+//     }
 
-    public Command stopAll() {
-        return new RunCommand(() ->
-            climbMotor.setControl(dutyCycleRequest.withOutput(0)), this);
-    }
+//     public Command climbUpManual(double speed) {
+//         return new RunCommand(() ->
+//             climbMotor.set(speed), this);
+//     }
 
-    public double getPosition() {
-        return climbMotor.getPosition().getValueAsDouble();
-    }
+//     public Command climbDownManual(double speed) {
+//         return new RunCommand(() ->
+//             climbMotor.set(-speed), this);
+//     }
 
-    @Override
-    public void periodic() {
-        SmartDashboard.putNumber("Climb/Position", getPosition());
-    }
-}
+//     // public Command climbUpAuto(){
+//     //     return new RunCommand(() -> {
+//     //         if (!upperLimitSwitch.get()){
+//     //             climbMotor.set(0.1);
+//     //         } else {
+//     //             climbMotor.set(0);
+//     //         }
+
+//     //     });
+//     // }
+
+//     // public Command climbDownAuto(){
+//     //     return new RunCommand(() -> {
+//     //         if (!lowerLimitSwitch.get()){
+//     //             climbMotor.set(-0.1);
+//     //         } else {
+//     //             climbMotor.set(0);
+//     //         }
+
+//     //     });
+//     // }
+
+//     public Command climbDownAuto(){
+//         return new RunCommand(() -> {
+//             climbMotor.set(-0.1);
+//             }, this).until(()->!lowerLimitSwitch.get())
+//             .finallyDo(()->climbMotor.set(0));
+//     }
+
+//     public Command climbUpAuto(){
+//         return new RunCommand(() -> {
+//             climbMotor.set(0.1);
+//             }, this).until(()->!upperLimitSwitch.get())
+//             .finallyDo(()->climbMotor.set(0));
+//     }
+
+//     public Command stopAll() {
+//         return new RunCommand(() ->
+//             climbMotor.set(0), this);
+//     }
+
+//     public double getPosition() {
+//         return climbMotor.getPosition().getValueAsDouble();
+//     }
+
+//     public Command resetPosition() {
+//         return new RunCommand(() -> {
+//             climbMotor.set(-0.1);
+//         }, this).until(()->lowerLimitSwitch.get())
+//         .andThen(()->{
+//         climbMotor.set(0);
+//         climbMotor.setPosition(0);
+//         });
+//     }
+
+
+//     @Override
+//     public void periodic() {
+//         SmartDashboard.putNumber("Climb/Position", getPosition());
+//         SmartDashboard.putBoolean("Climb Lower Limit", lowerLimitSwitch.get());
+//         SmartDashboard.putBoolean("Climb Upper Limit", upperLimitSwitch.get());
+//     }
+// }
