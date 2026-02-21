@@ -373,8 +373,8 @@ public class RobotContainer {
         // D-Pad Down: Lower intake arm
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_intakePivot.lowerArmManual(.05),
+                m_intakePivot.lowerArmManual(.05),
                 () -> Constants.overrideEnabled
             )
         );
@@ -383,8 +383,8 @@ public class RobotContainer {
         // Normal: intake | Override: eject
         m_driverController.leftBumper().whileTrue(
             new ConditionalCommand(
-                m_intake.runIntake(1),
-                m_intake.runIntake(-1),
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
