@@ -93,8 +93,8 @@ public final class Constants {
         public static final double KI = 0;    // Integral gain (disabled)
         public static final double KD = 0;    // Derivative gain (disabled)
 
-        public static final double SHOOTER_TARGET_RPS = 100.0; // Target shooter speed in rotations per second
-        public static final double SHOOTER_DEFAULT_SPEED = 100.0; // Target shooter speed in rotations per second
+        public static final double SHOOTER_TARGET_RPS = 95.0; // Target shooter speed in rotations per second
+        public static final double SHOOTER_DEFAULT_SPEED = 1.0; // Target shooter speed in rotations per second
 
 
     }

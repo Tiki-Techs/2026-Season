@@ -308,13 +308,27 @@ public class RobotContainer {
 
         // ========== SHOOTER ==========
 
-        // Right Bumper - PID controlled shooter
-        // Normal: 100 RPS | Override: -100 RPS (reverse)
+        // Right Bumper - PID controlled shooter with index and shooter intake
+        // Normal: run shooter, when at speed run index and shooterIntake
+        // Override: reverse all (shooter, index, shooterIntake)
         m_driverController.rightBumper().whileTrue(
            new ConditionalCommand(
-                m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                PIDShooterAndShooterIntake(),
-                // override condition
+                // Override: reverse all
+                new ParallelCommandGroup(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                ),
+                // Normal: spin up shooter, then run all when at speed
+                new SequentialCommandGroup(
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    )
+                ),
                 () -> Constants.overrideEnabled
                 )
             );
@@ -330,14 +344,14 @@ public class RobotContainer {
             )
         );
 
-        // ========== HOOD ==========
+        // ========== SHOOTER INTAKE ==========
 
-        // B Button - Adjust hood angle
-        // Normal: down (-0.03) | Override: up (+0.03)
+        // B Button - Run shooter intake
+        // Normal: forward | Override: reverse
         m_driverController.b().whileTrue(
             new ConditionalCommand(
-                m_hood.runHood(0.03),
-                m_hood.runHood(-0.03),
+                m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
+                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -352,7 +366,7 @@ public class RobotContainer {
         m_intake.setDefaultCommand(m_intake.stopAll());
         m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
-        m_hood.setDefaultCommand(m_hood.stopAll());
+        m_hood.setDefaultCommand(m_hood.runHood(() -> MathUtil.applyDeadband(m_driverController.getRightY(), 0.15)));
 
         // ========== LIMELIGHT POWER MANAGEMENT ==========
         // Reduce Limelight processing when disabled to save power
@@ -378,18 +392,24 @@ public class RobotContainer {
     }
 
     // ========== CHAINED COMMANDS ==========
+
+        /**
+         * Runs shooter at target speed, then when at speed runs index and shooterIntake.
+         */
         public Command PIDShooterAndShooterIntake(){
               return new SequentialCommandGroup(
-                    new ParallelDeadlineGroup(
-                        new WaitCommand(2.0),
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                    ),
+                    // Spin up shooter until at target speed
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    // Once at speed, run shooter, index, and shooterIntake together
                     new ParallelCommandGroup(
                             m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                            m_index.runIndex(IndexConstants.INDEX_SPEED),
                             m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
                 );
-        };
+        }
+
 
 
     

@@ -154,6 +154,18 @@ public class Shooter extends SubsystemBase {
         this.shooterTargetVelocity = velocityRPS;
     }
 
+    /**
+     * Checks if the shooter has reached the target speed.
+     *
+     * @param targetRPS Target velocity in rotations per second
+     * @param tolerance Allowable error in RPS
+     * @return True if shooter is within tolerance of target speed
+     */
+    public boolean isAtTargetSpeed(double targetRPS, double tolerance) {
+        double currentVelocity = Math.abs(centerShooter.getVelocity().getValueAsDouble());
+        return Math.abs(currentVelocity - Math.abs(targetRPS)) <= tolerance;
+    }
+
 
     @Override
     public void periodic() {

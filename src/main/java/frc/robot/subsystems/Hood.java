@@ -11,6 +11,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import java.util.function.DoubleSupplier;
 import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
@@ -144,6 +146,18 @@ public class Hood extends SubsystemBase {
     public Command runHood(double speed) {
         return new RunCommand(() -> {
             hoodMotor.set(speed);
+        }, this);
+    }
+
+    /**
+     * Runs the hood motor using a speed supplier.
+     *
+     * @param speedSupplier Supplier for the motor speed
+     * @return Command that runs the hood at the supplied speed
+     */
+    public Command runHood(DoubleSupplier speedSupplier) {
+        return new RunCommand(() -> {
+            hoodMotor.set(speedSupplier.getAsDouble());
         }, this);
     }
 
