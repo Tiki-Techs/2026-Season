@@ -146,6 +146,16 @@ public class Hood extends SubsystemBase {
     }
 
     /**
+     * Sets the hood motor speed directly (non-command method).
+     * Used for joystick control via default command.
+     *
+     * @param speed Motor output from -1.0 to 1.0
+     */
+    public void setSpeed(double speed) {
+        hoodMotor.set(speed);
+    }
+
+    /**
      * Continuously commands the hood motor to stop.
      * Use as a default command to hold position when not adjusting.
      *

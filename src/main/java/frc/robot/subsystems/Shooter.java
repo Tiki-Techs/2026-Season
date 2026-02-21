@@ -33,6 +33,10 @@ public class Shooter extends SubsystemBase {
 
     // ==================== CONTROL PARAMETERS ====================
 
+    // Get velocity in rotations per second
+    double velocityRPS = centerShooter.getVelocity().getValueAsDouble();
+
+
     /** Target velocity for bang-bang control mode (rotations per second) */
     private double shooterTargetVelocity = 0;
 
@@ -70,6 +74,13 @@ public class Shooter extends SubsystemBase {
             // Apply velocity control with 0.5V feedforward to overcome friction/gravity
             centerShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this);
+    }
+
+
+    //Registers whether shooter is at target velocity
+    public boolean isAtSpeed(double targetRPS, double toleranceRPS) {
+        double currentRPS = Math.abs(centerShooter.getVelocity().getValueAsDouble());
+        return Math.abs(currentRPS - targetRPS) <= toleranceRPS;
     }
 
     // ==================== OPEN-LOOP CONTROL ====================

@@ -293,23 +293,25 @@ public class RobotContainer {
 
         // ========== SHOOTER ==========
 
-        // Right Bumper - PID controlled shooter
-        // Normal: 100 RPS | Override: -100 RPS (reverse)
+        // Right Bumper - PID controlled shooter + feed (waits for speed)
+        // Normal: shooter spins up, then feeds | Override: all reverse
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
-
-                new SequentialCommandGroup(
-                    new ParallelDeadlineGroup(
-                        new WaitCommand(2.0),
-                        m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS)
-                    ),
-                    new ParallelCommandGroup(
-                            m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
-                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed)
-                    )
+                // Override mode - reverse all (no wait needed)
+                Commands.parallel(
+                    m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
+                    m_index.runIndex(-IndexConstants.indexSpeed),
+                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.shooterIntakeSpeed)
                 ),
-                // override condition
+                // Normal mode - spin up, wait for speed, then feed
+                Commands.parallel(
+                    m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
+                    Commands.waitUntil(() -> m_shooter.isAtSpeed(ShooterConstants.shooterTargetRPS, 5))
+                        .andThen(Commands.parallel(
+                            m_index.runIndex(IndexConstants.indexSpeed),
+                            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed)
+                        ))
+                ),
                 () -> Constants.overrideEnabled
             )
         );
@@ -318,23 +320,25 @@ public class RobotContainer {
         // Normal: forward | Override: reverse
         m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
-                m_shooter.runReverseShooter(m_driverController),
-                m_shooter.runShooter(m_driverController),
+                m_shooter.runPIDShooter(-ShooterConstants.shooterTargetRPS),
+                m_shooter.runPIDShooter(ShooterConstants.shooterTargetRPS),
                 () -> Constants.overrideEnabled
             )
         );
 
-        // ========== HOOD ==========
+        // ========== SHOOTER INTAKE ==========
 
-        // B Button - Adjust hood angle
-        // Normal: down (-0.03) | Override: up (+0.03)
+        // B Button - Run shooter intake
+        // Normal: forward | Override: reverse
         m_driverController.b().whileTrue(
             new ConditionalCommand(
-                m_hood.runHood(0.03),
-                m_hood.runHood(-0.03),
+                m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.shooterIntakeSpeed),
+                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.shooterIntakeSpeed),
                 () -> Constants.overrideEnabled
             )
         );
+
+
 
         // ========== DEFAULT COMMANDS ==========
         // These run when no other command is using the subsystem
@@ -344,7 +348,11 @@ public class RobotContainer {
         m_intake.setDefaultCommand(m_intake.stopAll());
         m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
-        m_hood.setDefaultCommand(m_hood.stopAll());
+        
+        // Hood uses right stick Y for manual control (with deadband)
+        m_hood.setDefaultCommand(
+            m_hood.runHood(MathUtil.applyDeadband(-m_driverController.getRightY(), 0.1) * 0.3)
+        );
 
         // ========== LIMELIGHT POWER MANAGEMENT ==========
         // Reduce Limelight processing when disabled to save power
