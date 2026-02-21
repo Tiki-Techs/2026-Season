@@ -383,8 +383,8 @@ public class RobotContainer {
         // Normal: intake | Override: eject
         m_driverController.leftBumper().whileTrue(
             new ConditionalCommand(
-                m_intake.runIntake(1),
-                m_intake.runIntake(-1),
+                m_intake.runIntake(-.05),
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );

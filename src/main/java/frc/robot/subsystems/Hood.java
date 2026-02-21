@@ -218,6 +218,8 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Hood/Target", targetPosition);
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
+        SmartDashboard.putBoolean("Hood Lower Limit Switch", !lowerLimitSwitch.get());
+
 
         // Display current TY for tuning the lookup table
         if (LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME)) {
