@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.312484472049689,
-        "y": 3.1939929015084294
+        "x": 1.2161532738095238,
+        "y": 5.979538690476191
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.0570097604259088,
-        "y": 3.0571783496007097
+        "x": 1.4660663855930418,
+        "y": 6.028087978811313
       },
       "isLocked": false,
-      "linkedName": "DPath1.end"
+      "linkedName": "CenterPathPart1"
     },
     {
       "anchor": {
-        "x": 2.5157409050576747,
-        "y": 3.942448979591836
+        "x": 0.8572619047619048,
+        "y": 5.979538690476191
       },
       "prevControl": {
-        "x": 2.6042679680567873,
-        "y": 3.4032386867790594
+        "x": 0.6080890859463294,
+        "y": 5.959218592949347
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "CenterPathPart1.5"
     }
   ],
   "rotationTargets": [],
@@ -42,13 +42,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -179.17762902000175
   },
   "reversed": false,
-  "folder": null,
+  "folder": "Practice Paths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -179.92292952570108
   },
   "useDefaultConstraints": true
 }
