@@ -98,6 +98,25 @@ public class Vision extends SubsystemBase {
     }
 
     /**
+     * Gets the cached distance to the nearest AprilTag in meters.
+     * Updated every loop from MegaTag2 data.
+     *
+     * @return Distance in meters, or 0 if no tag visible
+     */
+    public double getTagDistance() {
+        return cachedTagDist;
+    }
+
+    /**
+     * Returns whether a valid target is currently visible.
+     *
+     * @return True if target is visible
+     */
+    public boolean hasTarget() {
+        return cachedTV;
+    }
+
+    /**
      * Calculates forward velocity for ranging to a target using proportional control.
      * Uses cachedTagDist (actual meters to tag from MegaTag2) instead of TY angle,
      * which is more accurate and doesn't depend on camera mount geometry.

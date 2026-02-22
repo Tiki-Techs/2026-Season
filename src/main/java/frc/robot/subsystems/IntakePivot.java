@@ -6,7 +6,9 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.RelativeEncoder;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
@@ -25,6 +27,9 @@ public class IntakePivot extends SubsystemBase {
 
     /** Pivot arm motor - SparkMax with NEO brushless motor */
     private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.PIVOT_MOTOR, MotorType.kBrushless);
+
+    /** Encoder for position tracking */
+    private final RelativeEncoder encoder = pivotArm.getEncoder();
 
     /**
      * Lower limit switch.
@@ -50,6 +55,13 @@ public class IntakePivot extends SubsystemBase {
 
     /** Tracks whether the intake is currently deployed (lowered) or stowed (raised) */
     private boolean intakeDeployed = true;
+
+    /**
+     * Total travel distance for the pivot in motor rotations.
+     * Note: Motor has 25:1 gear ratio, so this is motor rotations not output shaft rotations.
+     * Calibrated by zeroing encoder at bottom limit and measuring encoder at top limit.
+     */
+    private final double totalTravelDistance = 2.5;
 
     /**
      * Constructs the IntakePivot subsystem and configures the motor.
@@ -79,38 +91,71 @@ public class IntakePivot extends SubsystemBase {
 
     /**
      * Manually lowers the intake arm while button is held.
+     * Slows down near the bottom to prevent slamming into the limit.
      * Stops automatically when the lower limit switch is triggered.
-     * Use for testing or manual override situations.
      *
+     * @param pivotSpeed Base speed for lowering (will be reduced near limit)
      * @return Command that lowers the arm until released or limit reached
      */
     public Command lowerArmManual(double pivotSpeed) {
+        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
+        final double slowZoneStart = 0.25; // Start slowing at 25% remaining (75% down)
+
         return new RunCommand(() -> {
             if (!lowerLimitSwitch.get()) {
                 // Limit switch triggered - stop the motor
                 pivotArm.set(stopSpeed);
             } else {
-                // Move down (positive direction)
-                pivotArm.set(pivotSpeed);
+                // Calculate speed based on position (progress toward bottom = 0)
+                double traveled = Math.abs(encoder.getPosition());
+                double progress = Math.min(traveled / totalTravelDistance, 1.0);
+                double remaining = 1.0 - progress; // How close to bottom (0 = at bottom)
+
+                double targetSpeed;
+                if (remaining > slowZoneStart) {
+                    // Fast zone - use requested speed
+                    targetSpeed = pivotSpeed;
+                } else {
+                    // Slow zone - gentle approach to limit switch
+                    targetSpeed = slowSpeed;
+                }
+
+                pivotArm.set(targetSpeed);
             }
         }, this);
     }
 
     /**
      * Manually raises the intake arm while button is held.
+     * Slows down near the top to prevent slamming into the limit.
      * Stops automatically when the upper limit switch is triggered.
-     * Use for testing or manual override situations.
      *
+     * @param pivotSpeed Base speed for raising (will be reduced near limit)
      * @return Command that raises the arm until released or limit reached
      */
     public Command raiseArmManual(double pivotSpeed) {
+        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
+        final double slowZoneStart = 0.75; // Start slowing at 75% of travel
+
         return new RunCommand(() -> {
             if (!upperLimitSwitch.get()) {
                 // Limit switch triggered - stop the motor
                 pivotArm.set(stopSpeed);
             } else {
-                // Move up (negative direction)
-                pivotArm.set(-pivotSpeed);
+                // Calculate speed based on position
+                double traveled = Math.abs(encoder.getPosition());
+                double progress = Math.min(traveled / totalTravelDistance, 1.0);
+
+                double targetSpeed;
+                if (progress < slowZoneStart) {
+                    // Fast zone - use requested speed
+                    targetSpeed = -pivotSpeed;
+                } else {
+                    // Slow zone - gentle approach to limit switch
+                    targetSpeed = -slowSpeed;
+                }
+
+                pivotArm.set(targetSpeed);
             }
         }, this);
     }
@@ -148,20 +193,46 @@ public class IntakePivot extends SubsystemBase {
                 pivotArm.set(stopSpeed);
                 if (!interrupted) {
                     intakeDeployed = true;
+                    encoder.setPosition(0);  // Zero encoder at deployed position
                 }
             });
     }
 
     /**
      * Automatically raises the intake arm until the upper limit switch triggers.
+     * Starts at 0.25 speed, slows down after traveling halfway.
      * Updates the deployed state when complete.
      * Will not run if already at the upper limit.
      *
      * @return Command that raises to stowed position and updates state
      */
     public Command raiseArmAuto() {
+        final double fastSpeed = 0.6;   // Speed for most of travel
+        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
+        final double slowZoneStart = 0.75; // Start slowing at 75% of travel
+
         return new RunCommand(() -> {
-            pivotArm.set(-pivotSpeed);
+            // Use absolute encoder position since we zero at bottom
+            double traveled = Math.abs(encoder.getPosition());
+            double progress = Math.min(traveled / totalTravelDistance, 1.0);
+
+            double targetSpeed;
+            if (progress < slowZoneStart) {
+                // Fast zone - full speed
+                targetSpeed = -fastSpeed;
+            } else {
+                // Slow zone - gentle approach to limit switch
+                targetSpeed = -slowSpeed;
+            }
+
+            pivotArm.set(targetSpeed);
+
+            // Debug output
+            SmartDashboard.putNumber("IntakePivot/RawEncoder", encoder.getPosition());
+            SmartDashboard.putNumber("IntakePivot/Traveled", traveled);
+            SmartDashboard.putNumber("IntakePivot/Progress", progress);
+            SmartDashboard.putNumber("IntakePivot/TargetSpeed", targetSpeed);
+            SmartDashboard.putBoolean("IntakePivot/InSlowZone", progress >= slowZoneStart);
         }, this)
             .until(() -> !upperLimitSwitch.get())    // Stop when limit triggered
             .unless(() -> !upperLimitSwitch.get())   // Don't run if already at limit
@@ -189,6 +260,11 @@ public class IntakePivot extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Periodic updates (telemetry can be added here)
+        double traveled = Math.abs(encoder.getPosition());
+        SmartDashboard.putNumber("IntakePivot/EncoderPosition", encoder.getPosition());
+        SmartDashboard.putNumber("IntakePivot/TravelDistance", traveled);
+        SmartDashboard.putNumber("IntakePivot/Halfway", totalTravelDistance / 2.0);
+        SmartDashboard.putBoolean("IntakePivot/PastHalfway", traveled > totalTravelDistance / 2.0);
+        SmartDashboard.putBoolean("IntakePivot/Deployed", intakeDeployed);
     }
 }
