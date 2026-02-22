@@ -98,20 +98,18 @@ public class Hood extends SubsystemBase {
     // ==================== AUTO-AIM ====================
 
     /**
-     * Automatically adjusts hood angle based on distance to target.
-     * Continuously reads distance from Vision, looks up the ideal position, and uses PID to reach it.
+     * Automatically adjusts hood angle based on distance to goal.
+     * Uses robot odometry position to calculate distance - works even if
+     * the Limelight can't see the goal directly.
      *
      * @return Command that continuously auto-aims the hood while running
      */
     public Command autoAimHood() {
         return new RunCommand(() -> {
-            // Only update target if we have a valid target
-            if (vision.hasTarget()) {
-                double distance = vision.getTagDistance();
-                if (distance > 0) {
-                    targetPosition = getHoodPositionForDistance(distance);
-                }
-            }
+            // Use odometry-based distance to goal (always available)
+            double distance = vision.getDistanceToGoal();
+            targetPosition = getHoodPositionForDistance(distance);
+
             // PID control to reach target position
             double output = pidController.calculate(
                 hoodMotor.getPosition().getValueAsDouble(),
@@ -181,13 +179,10 @@ public class Hood extends SubsystemBase {
                 // Manual control when override (Y button) is held
                 hoodMotor.set(manualSpeed.getAsDouble());
             } else {
-                // Auto-aim when not in override mode
-                if (vision.hasTarget()) {
-                    double distance = vision.getTagDistance();
-                    if (distance > 0) {
-                        targetPosition = getHoodPositionForDistance(distance);
-                    }
-                }
+                // Auto-aim using odometry-based distance to goal
+                double distance = vision.getDistanceToGoal();
+                targetPosition = getHoodPositionForDistance(distance);
+
                 double output = pidController.calculate(
                     hoodMotor.getPosition().getValueAsDouble(),
                     targetPosition
@@ -256,9 +251,7 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
         SmartDashboard.putBoolean("Hood Lower Limit Switch", !lowerLimitSwitch.get());
 
-        // Display current distance for tuning the lookup table
-        if (vision.hasTarget()) {
-            SmartDashboard.putNumber("Hood/CurrentDistance", vision.getTagDistance());
-        }
+        // Display current distance to goal for tuning the lookup table
+        SmartDashboard.putNumber("Hood/DistanceToGoal", vision.getDistanceToGoal());
     }
 }

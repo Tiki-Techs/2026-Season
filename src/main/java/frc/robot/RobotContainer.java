@@ -280,13 +280,13 @@ public class RobotContainer {
             })
         );
 
-        // A Button: Limelight auto-aim drive - automatically aims and approaches target
+        // A Button: Auto-aim to goal using odometry - rotates toward goal and allows strafing
         m_driverController.a().whileTrue(
             drivetrain.applyRequest(() ->
-                limelight
-                    .withVelocityX(-xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                drive
+                    .withVelocityX(-xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed))
                     .withVelocityY(-yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
-                    .withRotationalRate(m_Vision.limelight_aim_proportional())
+                    .withRotationalRate(m_Vision.getRotationToGoal())
             )
         );
 
@@ -406,7 +406,7 @@ public class RobotContainer {
         m_shooter.setDefaultCommand(m_shooter.stopAll());
         m_shooterIntake.setDefaultCommand(m_shooterIntake.stopAll());
         m_intake.setDefaultCommand(m_intake.stopAll());
-        m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
+        m_intakePivot.setDefaultCommand(m_intakePivot.holdPosition());
         m_index.setDefaultCommand(m_index.stopAll());
 
         // Hood: auto-aim by default, manual control when Y (override) is held

@@ -4,6 +4,8 @@ import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -114,6 +116,108 @@ public class Vision extends SubsystemBase {
      */
     public boolean hasTarget() {
         return cachedTV;
+    }
+
+    /**
+     * Gets the X coordinate of the goal based on current alliance.
+     * @return Goal X in meters (blue alliance origin)
+     */
+    private double getGoalX() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            return VisionConstants.RED_GOAL_X_METERS;
+        }
+        return VisionConstants.BLUE_GOAL_X_METERS;
+    }
+
+    /**
+     * Gets the Y coordinate of the goal based on current alliance.
+     * @return Goal Y in meters (blue alliance origin)
+     */
+    private double getGoalY() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            return VisionConstants.RED_GOAL_Y_METERS;
+        }
+        return VisionConstants.BLUE_GOAL_Y_METERS;
+    }
+
+    /**
+     * Calculates the distance from the robot's current position to the goal.
+     * Uses odometry pose (updated by vision) rather than direct tag detection.
+     * Automatically selects the correct goal based on alliance.
+     *
+     * @return Distance to goal in meters
+     */
+    public double getDistanceToGoal() {
+        Pose2d currentPose = drivetrain.getState().Pose;
+        double dx = getGoalX() - currentPose.getX();
+        double dy = getGoalY() - currentPose.getY();
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Checks if the robot is within shooting range (not in the neutral zone).
+     * Neutral zone is between X = 4.5 and X = 12.0 (middle of field).
+     * @return True if in alliance zone where shooting is possible
+     */
+    public boolean isInShootingRange() {
+        double robotX = drivetrain.getState().Pose.getX();
+        // In shooting range if NOT in neutral zone (X <= 4.5 or X >= 12.0)
+        return robotX <= 4.5 || robotX >= 12.0;
+    }
+
+    /**
+     * Calculates the angular velocity needed to rotate the robot.
+     * - In shooting range: faces the goal for accurate shots
+     * - Outside shooting range: faces toward alliance wall for driving back
+     *
+     * @return Angular velocity in radians/second
+     */
+    public double getRotationToGoal() {
+        double kP = 3.0;  // Proportional gain for rotation
+        double minOutput = 0.2;  // Minimum angular velocity to overcome friction
+
+        Pose2d currentPose = drivetrain.getState().Pose;
+
+        double targetAngle;
+        if (isInShootingRange()) {
+            // In shooting range - face the goal
+            double dx = getGoalX() - currentPose.getX();
+            double dy = getGoalY() - currentPose.getY();
+            targetAngle = Math.atan2(dy, dx);
+        } else {
+            // Outside shooting range - face toward alliance wall
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+                // Red alliance: face toward X = 16.5 (positive X direction)
+                targetAngle = 0;  // 0 radians = facing positive X
+            } else {
+                // Blue alliance: face toward X = 0 (negative X direction)
+                targetAngle = Math.PI;  // PI radians = facing negative X
+            }
+        }
+
+        // Current robot heading
+        double currentHeading = currentPose.getRotation().getRadians();
+
+        // Error: how much we need to rotate (wrapped to -pi to pi)
+        double error = targetAngle - currentHeading;
+        while (error > Math.PI) error -= 2 * Math.PI;
+        while (error < -Math.PI) error += 2 * Math.PI;
+
+        // Deadband - stop rotating when close enough
+        if (Math.abs(error) < Math.toRadians(2.0)) {
+            return 0.0;
+        }
+
+        double output = error * kP;
+
+        // Apply minimum output to overcome static friction
+        if (output > 0) output = Math.max(output, minOutput);
+        else output = Math.min(output, -minOutput);
+
+        return output;
     }
 
     /**
