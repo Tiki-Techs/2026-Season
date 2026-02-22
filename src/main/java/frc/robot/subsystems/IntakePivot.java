@@ -73,11 +73,38 @@ public class IntakePivot extends SubsystemBase {
         pivotArm.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
 
-    // ==================== STOP COMMANDS ====================
+    // ==================== HOLD/STOP COMMANDS ====================
+
+    /** Power to apply to hold the arm up against gravity (tune this value) */
+    private final double holdUpPower = -0.05;
+
+    /**
+     * Default command that holds the arm in position.
+     * When stowed (up), applies power to counteract gravity.
+     * When deployed (down), no power needed as gravity keeps it down.
+     *
+     * @return RunCommand that actively holds position
+     */
+    public Command holdPosition() {
+        return new RunCommand(() -> {
+            if (!intakeDeployed) {
+                // Arm is up - apply holding power against gravity
+                // Only apply if not already at upper limit
+                if (upperLimitSwitch.get()) {
+                    pivotArm.set(holdUpPower);
+                } else {
+                    pivotArm.set(stopSpeed);
+                }
+            } else {
+                // Arm is down - no power needed
+                pivotArm.set(stopSpeed);
+            }
+        }, this);
+    }
 
     /**
      * Continuously commands the pivot motor to stop.
-     * Use as a default command to hold the arm in place when not moving.
+     * Use when you explicitly want no motor output.
      *
      * @return RunCommand that continuously sets the motor to zero
      */
@@ -99,24 +126,24 @@ public class IntakePivot extends SubsystemBase {
      */
     public Command lowerArmManual(double pivotSpeed) {
         final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
-        final double slowZoneStart = 0.25; // Start slowing at 25% remaining (75% down)
+        final double slowZoneThreshold = 0.25; // Slow down when below 25% (near bottom)
 
         return new RunCommand(() -> {
             if (!lowerLimitSwitch.get()) {
                 // Limit switch triggered - stop the motor
                 pivotArm.set(stopSpeed);
             } else {
-                // Calculate speed based on position (progress toward bottom = 0)
+                // Calculate speed based on position
+                // progress = 1.0 at top, 0.0 at bottom
                 double traveled = Math.abs(encoder.getPosition());
                 double progress = Math.min(traveled / totalTravelDistance, 1.0);
-                double remaining = 1.0 - progress; // How close to bottom (0 = at bottom)
 
                 double targetSpeed;
-                if (remaining > slowZoneStart) {
-                    // Fast zone - use requested speed
+                if (progress > slowZoneThreshold) {
+                    // Above 25% - fast zone
                     targetSpeed = pivotSpeed;
                 } else {
-                    // Slow zone - gentle approach to limit switch
+                    // Below 25% - slow zone near bottom limit
                     targetSpeed = slowSpeed;
                 }
 

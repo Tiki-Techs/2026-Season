@@ -131,5 +131,13 @@ public final class Constants {
 
         /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;
+
+        /** Blue alliance goal position (blue alliance origin coordinates) */
+        public static final double BLUE_GOAL_X_METERS = 4.5;
+        public static final double BLUE_GOAL_Y_METERS = 4.0;
+
+        /** Red alliance goal position (blue alliance origin coordinates) */
+        public static final double RED_GOAL_X_METERS = 12.0;   // Roughly mirrored from blue goal
+        public static final double RED_GOAL_Y_METERS = 4.0;
     }
 }
