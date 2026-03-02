@@ -35,6 +35,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 // Robot Constants imports
 import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.IndexConstants;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.IntakePivotConstants;
@@ -70,7 +71,7 @@ public class RobotContainer {
     private final SwerveSubsystem drivetrain = TunerConstants.createDrivetrain();
 
     /** Vision processing - handles Limelight data and pose estimation */
-    private final Vision m_Vision = new Vision(drivetrain);
+    private final Vision m_vision = new Vision(drivetrain);
 
     /** Shooter subsystem - flywheel for launching game pieces */
     private final Shooter m_shooter = new Shooter();
@@ -88,7 +89,7 @@ public class RobotContainer {
     private final IntakePivot m_intakePivot = new IntakePivot();
 
     /** Hood subsystem - adjusts shooter launch angle */
-    private final Hood m_hood = new Hood(m_Vision);
+    private final Hood m_hood = new Hood(m_vision);
 
     // ==================== AUTONOMOUS ====================
 
@@ -213,9 +214,9 @@ public class RobotContainer {
         // ----- Vision Commands -----
         NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
             limelight
-                .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                .withVelocityX(xLimiter.calculate(-m_vision.limelight_range_proportional()))
                 .withVelocityY(0)
-                .withRotationalRate(m_Vision.limelight_aim_proportional())).withTimeout(0.01));
+                .withRotationalRate(m_vision.limelight_aim_proportional())).withTimeout(0.01));
     }
 
     // ==================== BUTTON BINDINGS ====================
@@ -227,7 +228,6 @@ public class RobotContainer {
      * CONTROL SCHEME:
      * - Left Stick: Translation (forward/back, left/right)
      * - Right Stick X: Rotation
-     * - Right Stick Y: Manual hood adjustment (only when Y held)
      * - Left Trigger: Manual shooter (speed = trigger position)
      * - Right Trigger: Robot-centric drive mode (hold)
      * - Left Bumper: Intake rollers
@@ -235,9 +235,11 @@ public class RobotContainer {
      * - A Button: Limelight auto-aim drive
      * - B Button: Shooter intake
      * - X Button: Index toggle
-     * - Y Button: Override mode (hold to reverse mechanisms + manual hood)
+     * - Y Button: Override mode (hold to reverse mechanisms)
      * - D-Pad Up: Raise intake arm
      * - D-Pad Down: Lower intake arm
+     * - D-Pad Left: Hood down (lower angle)
+     * - D-Pad Right: Hood up (higher angle)
      * - Start Button: Reset gyro heading
      */
     private void configureBindings() {
@@ -286,7 +288,7 @@ public class RobotContainer {
                 drive
                     .withVelocityX(-xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed))
                     .withVelocityY(-yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
-                    .withRotationalRate(m_Vision.getRotationToGoal())
+                    .withRotationalRate(m_vision.getRotationToGoal())
             )
         );
 
@@ -312,8 +314,8 @@ public class RobotContainer {
         // Normal: forward | Override: reverse
         m_driverController.leftTrigger().whileTrue(
             new ConditionalCommand(
-                m_shooter.runReverseShooter(m_driverController),
-                m_shooter.runShooter(m_driverController),
+                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                m_shooter.runShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                 () -> Constants.overrideEnabled
             )
         );
@@ -357,12 +359,21 @@ public class RobotContainer {
         // Normal: feed forward | Override: reverse
         m_driverController.x().toggleOnTrue(
             new ConditionalCommand(
-                m_index.runIndex(-1),
                 m_index.runIndex(1),
+                m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
             )
         );
 
+        // D-Pad Left: Hood down (lower angle)
+        m_driverController.povLeft().whileTrue(
+            m_hood.runHood(HoodConstants.HOOD_SPEED)
+        );
+
+        // D-Pad Right: Hood up (higher angle)
+        m_driverController.povRight().whileTrue(
+            m_hood.runHood(-HoodConstants.HOOD_SPEED)
+        );
     }
 
     /**
@@ -409,13 +420,8 @@ public class RobotContainer {
         m_intakePivot.setDefaultCommand(m_intakePivot.holdPosition());
         m_index.setDefaultCommand(m_index.stopAll());
 
-        // Hood: auto-aim by default, manual control when Y (override) is held
-        m_hood.setDefaultCommand(
-            m_hood.runHoodWithOverride(
-                () -> Constants.overrideEnabled,
-                () -> MathUtil.applyDeadband(m_driverController.getRightY(), 0.15)
-            )
-        );
+        // Hood: auto-aim by default, D-Pad Left/Right for manual control
+        m_hood.setDefaultCommand(m_hood.autoAimHood());
     }
 
     /**
@@ -423,17 +429,21 @@ public class RobotContainer {
      * Reduces processing when disabled to save power.
      */
     private void configureLimelightPowerManagement() {
-        // Throttle Limelight when robot is disabled
+        // Throttle all Limelights when robot is disabled
         RobotModeTriggers.disabled()
-            .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 150)
-            ));
+            .onTrue(Commands.runOnce(() -> {
+                for (String limelight : VisionConstants.ALL_LIMELIGHTS) {
+                    LimelightHelpers.setLimelightNTDouble(limelight, "throttle", 150);
+                }
+            }));
 
         // Full speed when robot is enabled (teleop or autonomous)
         RobotModeTriggers.teleop().or(RobotModeTriggers.autonomous())
-            .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 0)
-            ));
+            .onTrue(Commands.runOnce(() -> {
+                for (String limelight : VisionConstants.ALL_LIMELIGHTS) {
+                    LimelightHelpers.setLimelightNTDouble(limelight, "throttle", 0);
+                }
+            }));
     }
 
     // ==================== AUTONOMOUS ====================

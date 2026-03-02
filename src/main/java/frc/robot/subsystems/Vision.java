@@ -36,18 +36,19 @@ public class Vision extends SubsystemBase {
     // Updated once per loop in periodic() to avoid redundant NetworkTables reads.
     // limelight_aim_proportional() and limelight_range_proportional() use these
     // cached values instead of reading NT themselves.
+    // Values are aggregated from all three Limelights - using the best available data.
 
-    /** Whether a valid target is currently visible */
+    /** Whether a valid target is currently visible (from any Limelight) */
     private boolean cachedTV = false;
 
-    /** Horizontal offset to target in degrees (+ = right) */
+    /** Horizontal offset to target in degrees (+ = right) - from Limelight with best view */
     private double cachedTX = 0.0;
 
     /** Average distance from camera to visible AprilTags in meters (from MegaTag2) */
     private double cachedTagDist = 0.0;
 
-    /** Last TV state - used to only write LED mode to NT on change */
-    private boolean lastTV = false;
+    /** Last TV state per Limelight - used to only write LED mode to NT on change */
+    private boolean[] lastTV = new boolean[VisionConstants.ALL_LIMELIGHTS.length];
 
     /**
      * Constructs the Vision subsystem.
@@ -255,65 +256,71 @@ public class Vision extends SubsystemBase {
         m_field.setRobotPose(currentPose);
         posePublisher.set(currentPose);
 
-        // Read Limelight NT values ONCE per loop and cache for control methods
-        cachedTV = LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME);
-        cachedTX = LimelightHelpers.getTX(VisionConstants.LIMELIGHT_NAME);
-        double ty = LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME);
+        // ==================== PROCESS ALL LIMELIGHTS ====================
+        // Reset cached values before aggregating from all Limelights
+        cachedTV = false;
+        cachedTX = 0.0;
+        cachedTagDist = 0.0;
+        double bestTagDist = Double.MAX_VALUE; // Track which Limelight has closest tags for TX
 
+        // Reject all updates during fast rotation (>720 deg/s) - camera images will be blurry
+        boolean rejectAllUpdates = Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720;
+
+        for (int i = 0; i < VisionConstants.ALL_LIMELIGHTS.length; i++) {
+            String limelightName = VisionConstants.ALL_LIMELIGHTS[i];
+
+            // Read Limelight NT values
+            boolean tv = LimelightHelpers.getTV(limelightName);
+            double tx = LimelightHelpers.getTX(limelightName);
+
+            SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+            SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
+
+            // Visual feedback: blink LEDs when target is visible (only write on change)
+            if (tv != lastTV[i]) {
+                if (tv) {
+                    LimelightHelpers.setLEDMode_ForceBlink(limelightName);
+                } else {
+                    LimelightHelpers.setLEDMode_ForceOff(limelightName);
+                }
+                lastTV[i] = tv;
+            }
+
+            // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
+            // Send current robot orientation to this Limelight for better solving
+            LimelightHelpers.SetRobotOrientation(
+                limelightName,
+                drivetrain.getState().Pose.getRotation().getDegrees(),
+                0, 0, 0, 0, 0
+            );
+
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+
+            // Process pose estimate if valid
+            if (mt2 != null && mt2.tagCount > 0) {
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+
+                // Use this Limelight for aiming if it has the closest tags
+                if (tv && mt2.avgTagDist < bestTagDist) {
+                    cachedTV = true;
+                    cachedTX = tx;
+                    cachedTagDist = mt2.avgTagDist;
+                    bestTagDist = mt2.avgTagDist;
+                }
+
+                // Apply vision measurement if it passes quality checks
+                if (!rejectAllUpdates) {
+                    // Scale trust based on tag distance and count
+                    double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
+                    drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
+                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+                }
+            }
+        }
+
+        // Publish aggregated values
         SmartDashboard.putBoolean("Vision/TV", cachedTV);
         SmartDashboard.putNumber("Vision/TX", cachedTX);
-        SmartDashboard.putNumber("Vision/TY", ty);
-
-        // Visual feedback: blink LEDs when target is visible (only write on change)
-        if (cachedTV != lastTV) {
-            if (cachedTV) {
-                LimelightHelpers.setLEDMode_ForceBlink(VisionConstants.LIMELIGHT_NAME);
-            } else {
-                LimelightHelpers.setLEDMode_ForceOff(VisionConstants.LIMELIGHT_NAME);
-            }
-            lastTV = cachedTV;
-        }
-
-        // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
-        // Uses gyro orientation for improved multi-tag pose solving.
-        // More accurate and stable than MegaTag1.
-
-        boolean doRejectUpdate = false;
-
-        // Send current robot orientation to Limelight for better solving
-        LimelightHelpers.SetRobotOrientation(
-            VisionConstants.LIMELIGHT_NAME,
-            drivetrain.getState().Pose.getRotation().getDegrees(),
-            0, 0, 0, 0, 0
-        );
-
-        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.LIMELIGHT_NAME);
-
-        // Cache tag distance for range control whenever tags are visible,
-        // even if we end up rejecting the pose estimate below
-        if (mt2 != null && mt2.tagCount > 0) {
-            cachedTagDist = mt2.avgTagDist;
-            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
-        } else {
-            cachedTagDist = 0.0;
-        }
-
-        // Reject during fast rotation (>720 deg/s) - camera image will be blurry
-        if (Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720) {
-            doRejectUpdate = true;
-        }
-
-        // Reject if no tags visible
-        if (mt2 == null || mt2.tagCount == 0) {
-            doRejectUpdate = true;
-        }
-
-        // Apply vision measurement if it passes quality checks
-        if (!doRejectUpdate) {
-            // Scale trust based on tag distance and count: closer tags with more visibility = lower std devs = more trust
-            double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
-            drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
-            drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-        }
+        SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
     }
 }

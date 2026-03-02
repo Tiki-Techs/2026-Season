@@ -71,6 +71,7 @@ public final class Constants {
         }
         public static final int HOOD_MOTOR = 25;
         public static final int LOWER_LIMIT_SWITCH = 6;
+        public static final double HOOD_SPEED = 0.05;
     }
 
     public static final class IndexConstants {
@@ -84,7 +85,7 @@ public final class Constants {
     public static final class ShooterConstants {
         private ShooterConstants() {
         }
-        public static final int CENTER_SHOOTER = 22;
+        public static final int CENTER_SHOOTER = 24;
 
         // PID constants for velocity control
         public static final double KS = 0.1;  // Static friction compensation (volts)
@@ -113,7 +114,7 @@ public final class Constants {
         public static final int LOWER_LIMIT_SWITCH = 3;
         public static final int UPPER_LIMIT_SWITCH = 2;
 
-        public static final double PIVOT_SPEED = 0.25;
+        public static final double PIVOT_SPEED = 0.5;
     }
 
     public static final class IntakeConstants {
@@ -127,7 +128,12 @@ public final class Constants {
     public static final class VisionConstants {
         private VisionConstants() {
         }
-        public static final String LIMELIGHT_NAME = "limelight";
+        /** Limelight camera names - must match names configured in Limelight web interface */
+        public static final String LIMELIGHT_ONE = "limelight-front";
+        public static final String LIMELIGHT_TWO = "limelight-back";
+
+        /** Array of all Limelight names for iteration */
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO};
 
         /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;
