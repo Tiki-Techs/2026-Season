@@ -9,6 +9,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -32,9 +33,10 @@ public class Shooter extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Center shooter motor */
-    private final TalonFX centerShooter = new TalonFX(ShooterConstants.CENTER_SHOOTER);
-    private final TalonFX rightShooter = new TalonFX(ShooterConstants.RIGHT_SHOOTER);
-    private final TalonFX leftShooter = new TalonFX(ShooterConstants.LEFT_SHOOTER);
+    private final TalonFX shooterOne = new TalonFX(ShooterConstants.SHOOTER_ONE);
+    private final TalonFX shooterTwo = new TalonFX(ShooterConstants.SHOOTER_TWO);
+    private final TalonFX shooterThree = new TalonFX(ShooterConstants.SHOOTER_THREE);
+    private final TalonFX shooterFour = new TalonFX(ShooterConstants.SHOOTER_FOUR);
 
     // ==================== CONTROL PARAMETERS ====================
 
@@ -58,9 +60,10 @@ public class Shooter extends SubsystemBase {
         slot0Configs.kD = ShooterConstants.KD;
 
         // Apply PID configuration to both shooter motors
-        centerShooter.getConfigurator().apply(slot0Configs);
-        rightShooter.getConfigurator().apply(slot0Configs);
-        leftShooter.getConfigurator().apply(slot0Configs);
+        shooterOne.getConfigurator().apply(slot0Configs);
+        shooterTwo.getConfigurator().apply(slot0Configs);
+        shooterThree.getConfigurator().apply(slot0Configs);
+        shooterFour.getConfigurator().apply(slot0Configs);
     }
 
     // ==================== PID VELOCITY CONTROL ====================
@@ -75,23 +78,13 @@ public class Shooter extends SubsystemBase {
     public Command runPIDShooterCenter(double targetRPS) {
         return new RunCommand(() -> {
             // Apply velocity control with 0.5V feedforward to overcome friction/gravity
-            centerShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterFour.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this);
     }
 
-    public Command runPIDShooterRight(double targetRPS) {
-        return new RunCommand(() -> {
-            // Apply velocity control with 0.5V feedforward to overcome friction/gravity
-            rightShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-        }, this);
-    }
-
-    public Command runPIDShooterLeft(double targetRPS) {
-        return new RunCommand(() -> {
-            // Apply velocity control with 0.5V feedforward to overcome friction/gravity
-            leftShooter.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-        }, this);
-    }
 
     // ==================== OPEN-LOOP CONTROL ====================
 
@@ -105,9 +98,10 @@ public class Shooter extends SubsystemBase {
     public Command runShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
-            centerShooter.set(speed);
-            rightShooter.set(speed);
-            leftShooter.set(speed); 
+            shooterOne.set(speed);
+            shooterTwo.set(speed);
+            shooterThree.set(speed); 
+            shooterFour.set(speed);
         }, this);
     }
 
@@ -119,9 +113,10 @@ public class Shooter extends SubsystemBase {
      */
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
-            centerShooter.set(-speed);
-            rightShooter.set(-speed);
-            leftShooter.set(-speed);
+            shooterOne.set(-speed);
+            shooterTwo.set(-speed);
+            shooterThree.set(-speed);
+            shooterFour.set(-speed);
         }, this);
     }
 
@@ -135,9 +130,10 @@ public class Shooter extends SubsystemBase {
     public Command runReverseShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
-            centerShooter.set(-speed);
-            rightShooter.set(-speed);
-            leftShooter.set(-speed);
+            shooterOne.set(-speed);
+            shooterTwo.set(-speed);
+            shooterThree.set(-speed);
+            shooterFour.set(-speed);
         }, this);
     }
 
@@ -151,9 +147,10 @@ public class Shooter extends SubsystemBase {
      */
     public Command stopShooter() {
         return new InstantCommand(() -> {
-            centerShooter.set(0);
-            rightShooter.set(0);
-            leftShooter.set(0);
+            shooterOne.set(0);
+            shooterTwo.set(0);
+            shooterThree.set(0);
+            shooterFour.set(0);
         }, this);
     }
 
@@ -165,9 +162,10 @@ public class Shooter extends SubsystemBase {
      */
     public Command stopAll() {
         return new RunCommand(() -> {
-            centerShooter.set(0);
-            rightShooter.set(0);
-            leftShooter.set(0);
+            shooterOne.set(0);
+            shooterTwo.set(0);
+            shooterThree.set(0);
+            shooterFour.set(0);
         }, this);
     }
 
@@ -190,12 +188,14 @@ public class Shooter extends SubsystemBase {
      * @return True if shooter is within tolerance of target speed
      */
     public boolean isAtTargetSpeed(double targetRPS, double tolerance) {
-        double currentCenterVelocity = Math.abs(centerShooter.getVelocity().getValueAsDouble());
-        double currentRightVelocity = Math.abs(rightShooter.getVelocity().getValueAsDouble());
-        double currentLeftVelocity = Math.abs(leftShooter.getVelocity().getValueAsDouble());
-        return Math.abs(currentCenterVelocity - Math.abs(targetRPS)) <= tolerance &&
-               Math.abs(currentRightVelocity - Math.abs(targetRPS)) <= tolerance &&
-               Math.abs(currentLeftVelocity - Math.abs(targetRPS)) <= tolerance;
+        double currentOneVelocity = Math.abs(shooterOne.getVelocity().getValueAsDouble());
+        double currentTwoVelocity = Math.abs(shooterTwo.getVelocity().getValueAsDouble());
+        double currentThreeVelocity = Math.abs(shooterThree.getVelocity().getValueAsDouble());
+        double currentFourVelocity = Math.abs(shooterFour.getVelocity().getValueAsDouble());
+        return Math.abs(currentOneVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentTwoVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentFourVelocity - Math.abs(targetRPS)) <= tolerance;
     }
 
 
