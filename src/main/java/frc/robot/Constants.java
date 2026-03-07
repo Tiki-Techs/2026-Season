@@ -86,6 +86,8 @@ public final class Constants {
         private ShooterConstants() {
         }
         public static final int CENTER_SHOOTER = 24;
+        public static final int LEFT_SHOOTER = 30;
+        public static final int RIGHT_SHOOTER = 32;
 
         // PID constants for velocity control
         public static final double KS = 0.1;  // Static friction compensation (volts)

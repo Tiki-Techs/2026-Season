@@ -70,7 +70,6 @@ public class IntakePivot extends SubsystemBase {
     public IntakePivot() {
         SparkMaxConfig config = new SparkMaxConfig();
         config.idleMode(IdleMode.kBrake);
-        pivotArm.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     }
 
     // ==================== HOLD/STOP COMMANDS ====================

@@ -171,12 +171,15 @@ public class RobotContainer {
      */
     private void registerNamedCommands() {
         // ----- Shooter Commands -----
-        NamedCommands.registerCommand("runPIDShooter",
-            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(0.01));
+        NamedCommands.registerCommand("runPIDShooterCenter",
+            m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(0.01));
+        NamedCommands.registerCommand("runPIDShooterRight",
+            m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(0.01));
+        NamedCommands.registerCommand("runPIDShooterLeft",
+            m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(0.01));
         NamedCommands.registerCommand("stopPIDShooter",
             m_shooter.stopShooter().withTimeout(0.01));
-        NamedCommands.registerCommand("runShooter",
-            m_shooter.runShooter(ShooterConstants.SHOOTER_DEFAULT_SPEED).withTimeout(0.01));
+
 
         // ----- Shooter Intake Commands -----
         NamedCommands.registerCommand("runShooterIntake",
@@ -313,10 +316,22 @@ public class RobotContainer {
         // Left Trigger: Manual shooter - speed proportional to trigger position
         // Normal: forward | Override: reverse
         m_driverController.leftTrigger().whileTrue(
-            new ConditionalCommand(
-                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                m_shooter.runShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                () -> Constants.overrideEnabled
+            new ParallelCommandGroup(
+                new ConditionalCommand(
+                    m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterCenter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
+                ),
+                new ConditionalCommand(
+                    m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterLeft(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
+                ),
+                new ConditionalCommand(
+                    m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterRight(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
+                )
             )
         );
 
@@ -327,16 +342,24 @@ public class RobotContainer {
             new ConditionalCommand(
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterCenter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterLeft(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterRight(-ShooterConstants.SHOOTER_TARGET_RPS),
                     m_index.runIndex(-IndexConstants.INDEX_SPEED),
                     m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                 ),
                 // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                    new ParallelCommandGroup(
+                    m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS)
+                    )
                         .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(IndexConstants.INDEX_SPEED),
                         m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
@@ -358,10 +381,13 @@ public class RobotContainer {
         // X Button: Toggle index belt
         // Normal: feed forward | Override: reverse
         m_driverController.x().toggleOnTrue(
+            new ParallelCommandGroup(
             new ConditionalCommand(
                 m_index.runIndex(1),
                 m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
+            ),
+            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
             )
         );
 
@@ -467,10 +493,16 @@ public class RobotContainer {
      */
     public Command PIDShooter_ShooterIntake_Index() {
         return new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+            new ParallelCommandGroup(
+                    m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS)
+            )
                         .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterLeft(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterRight(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(IndexConstants.INDEX_SPEED),
                         m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
