@@ -178,6 +178,7 @@ public class RobotContainer {
             m_shooter.stopShooter().withTimeout(0.01));
 
 
+
         // ----- Shooter Intake Commands -----
         NamedCommands.registerCommand("runShooterIntake",
             m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED).withTimeout(0.01));
@@ -186,8 +187,10 @@ public class RobotContainer {
         NamedCommands.registerCommand("runIndex",
             m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(0.01));
 
+
         NamedCommands.registerCommand("runReverseIndex",
             m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(0.01));
+
 
         NamedCommands.registerCommand("stopIndex",
             m_index.stopIndex().withTimeout(0.01));
@@ -196,8 +199,10 @@ public class RobotContainer {
         NamedCommands.registerCommand("runIntake",
             m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(0.01));
 
+
         NamedCommands.registerCommand("runReverseIntake",
             m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(0.01));
+
 
         NamedCommands.registerCommand("stopIntake",
             m_intake.stopIntake().withTimeout(0.01));
@@ -206,11 +211,14 @@ public class RobotContainer {
         NamedCommands.registerCommand("raiseArmManual",
             m_intakePivot.raiseArmManual(.25).withTimeout(0.01));
 
+
         NamedCommands.registerCommand("lowerArmManual",
             m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(0.01));
 
+
         NamedCommands.registerCommand("stopIntakePivot",
             m_intakePivot.stopAll().withTimeout(0.01));
+            
             
         NamedCommands.registerCommand("changeDeployState",
             m_intakePivot.changeDeployState().withTimeout(0.01));
@@ -373,10 +381,13 @@ public class RobotContainer {
         // Normal: feed forward | Override: reverse
         m_driverController.x().toggleOnTrue(
             new ParallelCommandGroup(
+            new ParallelCommandGroup(
             new ConditionalCommand(
                 m_index.runIndex(1),
                 m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
+            ),
+            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
             ),
             m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
             )
@@ -484,10 +495,11 @@ public class RobotContainer {
      */
     public Command PIDShooter_ShooterIntake_Index() {
         return new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                    m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS)
+            
                         .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(IndexConstants.INDEX_SPEED),
                         m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )

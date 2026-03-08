@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -64,6 +65,10 @@ public class Shooter extends SubsystemBase {
         shooterTwo.getConfigurator().apply(slot0Configs);
         shooterThree.getConfigurator().apply(slot0Configs);
         shooterFour.getConfigurator().apply(slot0Configs);
+        shooterOne.getConfigurator().apply(slot0Configs);
+        shooterTwo.getConfigurator().apply(slot0Configs);
+        shooterThree.getConfigurator().apply(slot0Configs);
+        shooterFour.getConfigurator().apply(slot0Configs);
     }
 
     // ==================== PID VELOCITY CONTROL ====================
@@ -75,15 +80,20 @@ public class Shooter extends SubsystemBase {
      * @param targetRPS Target velocity in rotations per second
      * @return Command that continuously runs the shooter at the target velocity
      */
-    public Command runPIDShooter(double targetRPS) {
+    public Command runPIDShooterCenter(double targetRPS) {
         return new RunCommand(() -> {
             // Apply velocity control with 0.5V feedforward to overcome friction/gravity
             shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
             shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
             shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
             shooterFour.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterFour.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
         }, this);
     }
+
 
 
     // ==================== OPEN-LOOP CONTROL ====================
@@ -102,6 +112,10 @@ public class Shooter extends SubsystemBase {
             shooterTwo.set(speed);
             shooterThree.set(speed); 
             shooterFour.set(speed);
+            shooterOne.set(speed);
+            shooterTwo.set(speed);
+            shooterThree.set(speed); 
+            shooterFour.set(speed);
         }, this);
     }
 
@@ -113,6 +127,10 @@ public class Shooter extends SubsystemBase {
      */
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
+            shooterOne.set(-speed);
+            shooterTwo.set(-speed);
+            shooterThree.set(-speed);
+            shooterFour.set(-speed);
             shooterOne.set(-speed);
             shooterTwo.set(-speed);
             shooterThree.set(-speed);
@@ -134,6 +152,10 @@ public class Shooter extends SubsystemBase {
             shooterTwo.set(-speed);
             shooterThree.set(-speed);
             shooterFour.set(-speed);
+            shooterOne.set(-speed);
+            shooterTwo.set(-speed);
+            shooterThree.set(-speed);
+            shooterFour.set(-speed);
         }, this);
     }
 
@@ -151,6 +173,10 @@ public class Shooter extends SubsystemBase {
             shooterTwo.set(0);
             shooterThree.set(0);
             shooterFour.set(0);
+            shooterOne.set(0);
+            shooterTwo.set(0);
+            shooterThree.set(0);
+            shooterFour.set(0);
         }, this);
     }
 
@@ -162,6 +188,10 @@ public class Shooter extends SubsystemBase {
      */
     public Command stopAll() {
         return new RunCommand(() -> {
+            shooterOne.set(0);
+            shooterTwo.set(0);
+            shooterThree.set(0);
+            shooterFour.set(0);
             shooterOne.set(0);
             shooterTwo.set(0);
             shooterThree.set(0);
@@ -188,6 +218,14 @@ public class Shooter extends SubsystemBase {
      * @return True if shooter is within tolerance of target speed
      */
     public boolean isAtTargetSpeed(double targetRPS, double tolerance) {
+        double currentOneVelocity = Math.abs(shooterOne.getVelocity().getValueAsDouble());
+        double currentTwoVelocity = Math.abs(shooterTwo.getVelocity().getValueAsDouble());
+        double currentThreeVelocity = Math.abs(shooterThree.getVelocity().getValueAsDouble());
+        double currentFourVelocity = Math.abs(shooterFour.getVelocity().getValueAsDouble());
+        return Math.abs(currentOneVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentTwoVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance &&
+               Math.abs(currentFourVelocity - Math.abs(targetRPS)) <= tolerance;
         double currentOneVelocity = Math.abs(shooterOne.getVelocity().getValueAsDouble());
         double currentTwoVelocity = Math.abs(shooterTwo.getVelocity().getValueAsDouble());
         double currentThreeVelocity = Math.abs(shooterThree.getVelocity().getValueAsDouble());
