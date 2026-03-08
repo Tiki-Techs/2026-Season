@@ -28,7 +28,7 @@ import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-
+import edu.wpi.first.wpilibj.XboxController;
 // WPILib SmartDashboard imports
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -339,44 +339,44 @@ public class RobotContainer {
                 )
         );
 
-         // Left Trigger: Manual shooter - speed proportional to trigger position
+         // Right Trigger: Temp code to test the hood
         // Normal: forward | Override: reverse
-        m_driverController.rightTrigger().whileTrue(
-                new ConditionalCommand(
-                    m_hood.runHood(0.1),
-                    m_hood.autoAimHood(),
-                    () -> Constants.overrideEnabled
-                )
-        );
+        // m_driverController.rightTrigger().whileTrue(
+        //         new ConditionalCommand(
+        //             m_hood.runHood(0.1),
+        //             m_hood.autoAimHood(),
+        //             () -> Constants.overrideEnabled
+        //         )
+        // );
 
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
         // Override: reverses all (shooter, index, shooterIntake)
-        // m_driverController.rightBumper().whileTrue(
-        //     new ConditionalCommand(
-        //         // Override: reverse all mechanisms
-        //         new ParallelCommandGroup(
-        //             m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-        //             m_index.runIndex(-IndexConstants.INDEX_SPEED),
-        //             m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-        //         ),
-        //         // Normal: spin up shooter, then run all when at speed
-        //         new SequentialCommandGroup(
-        //             m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-        //                 .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
-        //             new ParallelCommandGroup(
-        //                 m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-        //                 m_index.runIndex(IndexConstants.INDEX_SPEED),
-        //                 m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-        //             )
-        //         ),
-        //         () -> Constants.overrideEnabled
-        //     )
-        // );
-         m_driverController.rightBumper().whileTrue(
+        m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbCommandReif(0.4),
-                m_climb.runClimbCommandReif(-0.4),
+                // Override: reverse all mechanisms
+                new ParallelCommandGroup(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                ),
+                // Normal: spin up shooter, then run all when at speed
+                new SequentialCommandGroup(
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    )
+                ),
+                () -> Constants.overrideEnabled
+            )
+        );
+         m_driverController.rightTrigger().whileTrue(
+            new ConditionalCommand(
+                m_climb.runClimbCommand(()->m_driverController.getRightTriggerAxis()*0.2),
+                m_climb.runClimbCommand(()->-m_driverController.getRightTriggerAxis()*0.2),
                 () -> Constants.overrideEnabled
             )
         );
@@ -405,16 +405,14 @@ public class RobotContainer {
         // Normal: feed forward | Override: reverse
         m_driverController.x().toggleOnTrue(
             new ParallelCommandGroup(
-            new ParallelCommandGroup(
             new ConditionalCommand(
                 m_index.runIndex(1),
                 m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
-            ),
-            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-            ),
+            ), 
             m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
             )
+     
         );
 
         // D-Pad Left: Hood down (lower angle)
@@ -467,7 +465,7 @@ public class RobotContainer {
 
         // Hood: auto-aim by default, D-Pad Left/Right for manual control
         // m_hood.setDefaultCommand(m_hood.autoAimHood());
-        m_hood.setDefaultCommand(m_hood.stopAll());
+        m_hood.setDefaultCommand(m_hood.stopAll()); // Im keeping this for testing purposes once the hood is fully installed
     }
 
     /**
