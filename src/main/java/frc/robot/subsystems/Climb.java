@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.ClimbConstants;
 
 public class Climb extends SubsystemBase {
@@ -38,6 +39,20 @@ public class Climb extends SubsystemBase {
 
     public Command runClimbCommand(DoubleSupplier speedSupplier) {
         return new RunCommand(() -> runClimb(speedSupplier.getAsDouble()), this);
+    }
+
+    public Command runClimbCommandReif(double speed) {
+        return new RunCommand(() ->
+            climbMotor.set(speed),
+            this
+        );
+    }
+
+    public Command stopAll() {
+        return new RunCommand(() ->
+            climbMotor.set(0),
+            this
+        );
     }
 
     @Override

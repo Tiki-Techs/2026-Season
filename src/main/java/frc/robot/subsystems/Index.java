@@ -20,7 +20,7 @@ public class Index extends SubsystemBase {
     // ==================== HARDWARE ====================
 
     /** Index motor that drives the belt system */
-    private final TalonFX intake25 = new TalonFX(IndexConstants.INDEX_MOTOR);
+    private final TalonFX leaderIntake = new TalonFX(IndexConstants.INDEX_MOTOR);
 
     // ==================== CONTROL COMMANDS ====================
 
@@ -33,7 +33,7 @@ public class Index extends SubsystemBase {
      */
     public Command runIndex(CommandXboxController controllerValue) {
         return new RunCommand(() ->
-            intake25.set(controllerValue.getRightTriggerAxis()),
+            leaderIntake.set(controllerValue.getRightTriggerAxis()),
             this
         );
     }
@@ -47,7 +47,7 @@ public class Index extends SubsystemBase {
      */
     public Command runReverseIndex(CommandXboxController controllerValue) {
         return new RunCommand(() ->
-            intake25.set(-controllerValue.getRightTriggerAxis()),
+            leaderIntake.set(-controllerValue.getRightTriggerAxis()),
             this
         );
     }
@@ -60,7 +60,7 @@ public class Index extends SubsystemBase {
      */
     public Command runIndex(double speed) {
         return new RunCommand(() ->
-            intake25.set(speed),
+            leaderIntake.set(speed),
             this
         );
     }
@@ -75,7 +75,7 @@ public class Index extends SubsystemBase {
      */
     public Command stopIndex() {
         return new InstantCommand(() ->
-            intake25.set(0),
+            leaderIntake.set(0),
             this
         );
     }
@@ -89,7 +89,7 @@ public class Index extends SubsystemBase {
      */
     public Command stopAll() {
         return new RunCommand(() -> {
-            intake25.set(0);
+            leaderIntake.set(0);
         }, this);
     }
 

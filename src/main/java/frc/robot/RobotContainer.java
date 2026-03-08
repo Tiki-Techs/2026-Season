@@ -54,6 +54,7 @@ import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.ShooterIntake;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
+import frc.robot.subsystems.Climb;
 
 /**
  * RobotContainer is the central hub for robot configuration.
@@ -90,6 +91,9 @@ public class RobotContainer {
 
     /** Hood subsystem - adjusts shooter launch angle */
     private final Hood m_hood = new Hood(m_vision);
+
+    /** Hood subsystem - adjusts shooter launch angle */
+    private final Climb m_climb = new Climb();
 
     // ==================== AUTONOMOUS ====================
 
@@ -335,6 +339,16 @@ public class RobotContainer {
                 )
         );
 
+         // Left Trigger: Manual shooter - speed proportional to trigger position
+        // Normal: forward | Override: reverse
+        m_driverController.rightTrigger().whileTrue(
+                new ConditionalCommand(
+                    m_hood.runHood(0.1),
+                    m_hood.autoAimHood(),
+                    () -> Constants.overrideEnabled
+                )
+        );
+
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
         // Override: reverses all (shooter, index, shooterIntake)
@@ -361,8 +375,18 @@ public class RobotContainer {
         // );
          m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                m_climb.runClimbCommandReif(0.4),
+                m_climb.runClimbCommandReif(-0.4),
+                () -> Constants.overrideEnabled
+            )
+        );
+
+        // Left Bumper: Run intake rollers
+        // Normal: intake | Override: eject
+        m_driverController.leftBumper().whileTrue(
+            new ConditionalCommand(
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -426,15 +450,7 @@ public class RobotContainer {
             )
         );
 
-        // Left Bumper: Run intake rollers
-        // Normal: intake | Override: eject
-        m_driverController.leftBumper().whileTrue(
-            new ConditionalCommand(
-                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
-                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
-                () -> Constants.overrideEnabled
-            )
-        );
+        
     }
 
     /**
@@ -447,9 +463,11 @@ public class RobotContainer {
         m_intake.setDefaultCommand(m_intake.stopAll());
         m_intakePivot.setDefaultCommand(m_intakePivot.holdPosition());
         m_index.setDefaultCommand(m_index.stopAll());
+        m_climb.setDefaultCommand(m_climb.stopAll());
 
         // Hood: auto-aim by default, D-Pad Left/Right for manual control
-        m_hood.setDefaultCommand(m_hood.autoAimHood());
+        // m_hood.setDefaultCommand(m_hood.autoAimHood());
+        m_hood.setDefaultCommand(m_hood.stopAll());
     }
 
     /**
@@ -495,11 +513,11 @@ public class RobotContainer {
      */
     public Command PIDShooter_ShooterIntake_Index() {
         return new SequentialCommandGroup(
-                    m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS)
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
             
                         .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooterCenter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(IndexConstants.INDEX_SPEED),
                         m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )

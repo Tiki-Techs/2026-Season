@@ -86,10 +86,10 @@ public final class Constants {
         private ShooterConstants() {
         }
 
-        public static final int FLOOR_ONE = 21;
-        public static final int FLOOR_TWO = 22;
-        public static final int FLOOR_THREE = 23;
-        public static final int FLOOR_FOUR = 24;
+        public static final int FLOOR_ONE = 21; // CW Positive
+        public static final int FLOOR_TWO = 22;  // CCW Positive
+        public static final int FLOOR_THREE = 23;  // CCW Positive
+        public static final int FLOOR_FOUR = 24;  // CCW Positive
 
         
 
