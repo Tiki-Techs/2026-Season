@@ -357,17 +357,17 @@ public class RobotContainer {
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                    m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    m_index.runIndex(IndexConstants.INDEX_SPEED),
+                    m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                 ),
                 // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
                     m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                        .until(() -> m_shooter.isAtTargetSpeed(45, 5.0)),
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                        m_index.runIndex(IndexConstants.INDEX_SPEED),
-                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                        m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                        m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
                     )
                 ),
                 () -> Constants.overrideEnabled
