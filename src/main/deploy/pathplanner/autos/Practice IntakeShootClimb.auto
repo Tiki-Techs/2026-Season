@@ -60,7 +60,7 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "PIDShooter_ShooterIntake_Index"
+                  "name": "PIDShooter_Feeder_Index"
                 }
               }
             ]

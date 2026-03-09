@@ -14,19 +14,19 @@ import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.IntakePivotConstants;
+import frc.robot.Constants.PivotConstants;
 
 /**
- * IntakePivot subsystem that controls the intake arm pivot mechanism.
+ * Pivot subsystem that controls the intake arm pivot mechanism.
  * Raises and lowers the intake between deployed (ground pickup) and stowed positions.
  * Uses a SparkMax controller with NEO brushless motor and limit switches for position limits.
  */
-public class IntakePivot extends SubsystemBase {
+public class Pivot extends SubsystemBase {
 
     // ==================== HARDWARE ====================
 
     /** Pivot arm motor - SparkMax with NEO brushless motor */
-    private final SparkMax pivotArm = new SparkMax(IntakePivotConstants.PIVOT_MOTOR, MotorType.kBrushless);
+    private final SparkMax pivotArm = new SparkMax(PivotConstants.PIVOT_MOTOR, MotorType.kBrushless);
 
     /** Encoder for position tracking */
     private final RelativeEncoder encoder = pivotArm.getEncoder();
@@ -35,18 +35,18 @@ public class IntakePivot extends SubsystemBase {
      * Lower limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(IntakePivotConstants.LOWER_LIMIT_SWITCH);
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(PivotConstants.LOWER_LIMIT_SWITCH);
 
     /**
      * Upper limit switch.
      * Returns TRUE when unplugged or not triggered, FALSE when triggered.
      */
-    private final DigitalInput upperLimitSwitch = new DigitalInput(IntakePivotConstants.UPPER_LIMIT_SWITCH);
+    private final DigitalInput upperLimitSwitch = new DigitalInput(PivotConstants.UPPER_LIMIT_SWITCH);
 
     // ==================== CONSTANTS ====================
 
     /** Speed for raising/lowering the pivot arm (0.0 to 1.0) */
-    private final double pivotSpeed = IntakePivotConstants.PIVOT_SPEED;
+    private final double pivotSpeed = PivotConstants.PIVOT_SPEED;
 
     /** Speed value used to stop the pivot motor */
     private final double stopSpeed = 0.0;
@@ -64,10 +64,10 @@ public class IntakePivot extends SubsystemBase {
     private final double totalTravelDistance = 2.5;
 
     /**
-     * Constructs the IntakePivot subsystem and configures the motor.
+     * Constructs the Pivot subsystem and configures the motor.
      * Sets the motor to brake mode so the arm holds position when stopped.
      */
-    public IntakePivot() {
+    public Pivot() {
         SparkMaxConfig config = new SparkMaxConfig();
         config.idleMode(IdleMode.kBrake);
     }
@@ -254,11 +254,11 @@ public class IntakePivot extends SubsystemBase {
             pivotArm.set(targetSpeed);
 
             // Debug output
-            SmartDashboard.putNumber("IntakePivot/RawEncoder", encoder.getPosition());
-            SmartDashboard.putNumber("IntakePivot/Traveled", traveled);
-            SmartDashboard.putNumber("IntakePivot/Progress", progress);
-            SmartDashboard.putNumber("IntakePivot/TargetSpeed", targetSpeed);
-            SmartDashboard.putBoolean("IntakePivot/InSlowZone", progress >= slowZoneStart);
+            SmartDashboard.putNumber("Pivot/RawEncoder", encoder.getPosition());
+            SmartDashboard.putNumber("Pivot/Traveled", traveled);
+            SmartDashboard.putNumber("Pivot/Progress", progress);
+            SmartDashboard.putNumber("Pivot/TargetSpeed", targetSpeed);
+            SmartDashboard.putBoolean("Pivot/InSlowZone", progress >= slowZoneStart);
         }, this)
             .until(() -> !upperLimitSwitch.get())    // Stop when limit triggered
             .unless(() -> !upperLimitSwitch.get())   // Don't run if already at limit
@@ -287,10 +287,10 @@ public class IntakePivot extends SubsystemBase {
     @Override
     public void periodic() {
         double traveled = Math.abs(encoder.getPosition());
-        SmartDashboard.putNumber("IntakePivot/EncoderPosition", encoder.getPosition());
-        SmartDashboard.putNumber("IntakePivot/TravelDistance", traveled);
-        SmartDashboard.putNumber("IntakePivot/Halfway", totalTravelDistance / 2.0);
-        SmartDashboard.putBoolean("IntakePivot/PastHalfway", traveled > totalTravelDistance / 2.0);
-        SmartDashboard.putBoolean("IntakePivot/Deployed", intakeDeployed);
+        SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
+        SmartDashboard.putNumber("Pivot/TravelDistance", traveled);
+        SmartDashboard.putNumber("Pivot/Halfway", totalTravelDistance / 2.0);
+        SmartDashboard.putBoolean("Pivot/PastHalfway", traveled > totalTravelDistance / 2.0);
+        SmartDashboard.putBoolean("Pivot/Deployed", intakeDeployed);
     }
 }

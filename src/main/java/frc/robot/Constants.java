@@ -36,6 +36,7 @@ public final class Constants {
     public static class OperatorConstants {
         /** USB port for the primary driver Xbox controller */
         public static final int DRIVER_CONTROLLER_PORT = 0;
+        public static final int OPERATOR_CONTROLLER_PORT = 1;
     }
 
     // ==================== DRIVE ====================
@@ -106,15 +107,15 @@ public final class Constants {
 
     }
 
-    public static final class ShooterIntakeConstants {
-        private ShooterIntakeConstants() {
+    public static final class FeederConstants {
+        private FeederConstants() {
         }
-        public static final int SHOOTER_INTAKE = 28;
-        public static final double SHOOTER_INTAKE_SPEED = -1.0;
+        public static final int FEEDER = 28;
+        public static final double FEEDER_SPEED = -1.0;
     }
 
-    public static final class IntakePivotConstants {
-        private IntakePivotConstants() {
+    public static final class PivotConstants {
+        private PivotConstants() {
         }
         public static final int PIVOT_MOTOR = 15;
         public static final int LOWER_LIMIT_SWITCH = 3;

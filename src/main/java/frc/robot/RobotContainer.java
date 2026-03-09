@@ -38,10 +38,10 @@ import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.IndexConstants;
 import frc.robot.Constants.IntakeConstants;
-import frc.robot.Constants.IntakePivotConstants;
+import frc.robot.Constants.PivotConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.ShooterIntakeConstants;
+import frc.robot.Constants.FeederConstants;
 import frc.robot.Constants.VisionConstants;
 
 // Robot Subsystem imports
@@ -49,9 +49,9 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.IntakePivot;
+import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.Shooter;
-import frc.robot.subsystems.ShooterIntake;
+import frc.robot.subsystems.Feeder;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
 import frc.robot.subsystems.Climb;
@@ -77,8 +77,8 @@ public class RobotContainer {
     /** Shooter subsystem - flywheel for launching game pieces */
     private final Shooter m_shooter = new Shooter();
 
-    /** ShooterIntake subsystem - controls intake roller for shooter */
-    private final ShooterIntake m_shooterIntake = new ShooterIntake();
+    /** Feeder subsystem - controls feeder roller for shooter */
+    private final Feeder m_feeder = new Feeder();
 
     /** Index subsystem - belt feeder between intake and shooter */
     private final Index m_index = new Index();
@@ -87,7 +87,7 @@ public class RobotContainer {
     private final Intake m_intake = new Intake();
 
     /** Intake pivot - raises/lowers the intake arm */
-    private final IntakePivot m_intakePivot = new IntakePivot();
+    private final Pivot m_pivot = new Pivot();
 
     /** Hood subsystem - adjusts shooter launch angle */
     private final Hood m_hood = new Hood(m_vision);
@@ -143,6 +143,12 @@ public class RobotContainer {
     /** Primary driver controller (Xbox) on port 0 */
     private final CommandXboxController m_driverController =
         new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+        
+
+    /** Secondary operator controller (Xbox) on port 1 */
+    private final CommandXboxController m_operatorController =
+        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
+        
 
     // ==================== CONSTRUCTOR ====================
 
@@ -183,9 +189,9 @@ public class RobotContainer {
 
 
 
-        // ----- Shooter Intake Commands -----
-        NamedCommands.registerCommand("runShooterIntake",
-            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED).withTimeout(0.01));
+        // ----- Feeder Commands -----
+        NamedCommands.registerCommand("runFeeder",
+            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED).withTimeout(0.01));
 
         // ----- Index Commands -----
         NamedCommands.registerCommand("runIndex",
@@ -213,22 +219,22 @@ public class RobotContainer {
 
         // ----- Intake Pivot Commands -----
         NamedCommands.registerCommand("raiseArmManual",
-            m_intakePivot.raiseArmManual(.25).withTimeout(0.01));
+            m_pivot.raiseArmManual(.25).withTimeout(0.01));
 
 
         NamedCommands.registerCommand("lowerArmManual",
-            m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(0.01));
+            m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED).withTimeout(0.01));
 
 
-        NamedCommands.registerCommand("stopIntakePivot",
-            m_intakePivot.stopAll().withTimeout(0.01));
+        NamedCommands.registerCommand("stopPivot",
+            m_pivot.stopAll().withTimeout(0.01));
             
             
         NamedCommands.registerCommand("changeDeployState",
-            m_intakePivot.changeDeployState().withTimeout(0.01));
+            m_pivot.changeDeployState().withTimeout(0.01));
 
         // ----- Chained Commands -----
-        NamedCommands.registerCommand("PIDShooter_ShooterIntake_Index", PIDShooter_ShooterIntake_Index());
+        NamedCommands.registerCommand("PIDShooter_Feeder_Index", PIDShooter_Feeder_Index());
 
         // ----- Vision Commands -----
         NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
@@ -339,26 +345,16 @@ public class RobotContainer {
                 )
         );
 
-         // Right Trigger: Temp code to test the hood
-        // Normal: forward | Override: reverse
-        // m_driverController.rightTrigger().whileTrue(
-        //         new ConditionalCommand(
-        //             m_hood.runHood(0.1),
-        //             m_hood.autoAimHood(),
-        //             () -> Constants.overrideEnabled
-        //         )
-        // );
-
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
-        // Override: reverses all (shooter, index, shooterIntake)
+        // Override: reverses all (shooter, index, feeder)
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                     m_index.runIndex(IndexConstants.INDEX_SPEED),
-                    m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                 ),
                 // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
@@ -367,16 +363,17 @@ public class RobotContainer {
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                        m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
                     )
                 ),
                 () -> Constants.overrideEnabled
             )
         );
-         m_driverController.rightTrigger().whileTrue(
+
+         m_operatorController.rightTrigger().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbCommand(()->m_driverController.getRightTriggerAxis()*0.2),
-                m_climb.runClimbCommand(()->-m_driverController.getRightTriggerAxis()*0.2),
+                m_climb.runClimbCommand(()->m_operatorController.getLeftY()*0.2),
+                m_climb.runClimbCommand(()->-m_operatorController.getLeftY()*0.2),
                 () -> Constants.overrideEnabled
             )
         );
@@ -395,8 +392,8 @@ public class RobotContainer {
         // Normal: forward | Override: reverse
         m_driverController.b().whileTrue(
             new ConditionalCommand(
-                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
-                m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
+                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -410,7 +407,7 @@ public class RobotContainer {
                 m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
             ), 
-            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
             )
      
         );
@@ -433,8 +430,8 @@ public class RobotContainer {
         // D-Pad Up: Raise intake arm
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
-                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -442,8 +439,8 @@ public class RobotContainer {
         // D-Pad Down: Lower intake arm
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED*0.25),
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED*0.25),
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
                 () -> Constants.overrideEnabled
             )
         );
@@ -457,9 +454,9 @@ public class RobotContainer {
      */
     private void configureDefaultCommands() {
         m_shooter.setDefaultCommand(m_shooter.stopAll());
-        m_shooterIntake.setDefaultCommand(m_shooterIntake.stopAll());
+        m_feeder.setDefaultCommand(m_feeder.stopAll());
         m_intake.setDefaultCommand(m_intake.stopAll());
-        m_intakePivot.setDefaultCommand(m_intakePivot.holdPosition());
+        m_pivot.setDefaultCommand(m_pivot.holdPosition());
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
 
@@ -505,11 +502,11 @@ public class RobotContainer {
 
     /**
      * Creates a command that runs the shooter at target speed,
-     * then feeds with index and shooterIntake when at speed.
+     * then feeds with index and feeder when at speed.
      *
      * @return The chained shooting command
      */
-    public Command PIDShooter_ShooterIntake_Index() {
+    public Command PIDShooter_Feeder_Index() {
         return new SequentialCommandGroup(
                     m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
             
@@ -517,7 +514,7 @@ public class RobotContainer {
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(IndexConstants.INDEX_SPEED),
-                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                     )
         );
     }
