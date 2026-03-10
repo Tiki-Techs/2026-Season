@@ -348,6 +348,8 @@ public class RobotContainer {
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
         // Override: reverses all (shooter, index, feeder)
+        // Uses asProxy() to defer index/feeder requirements until shooter is at speed,
+        // allowing X toggle to keep running during spin-up
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
                 // Override: reverse all mechanisms
@@ -364,16 +366,16 @@ public class RobotContainer {
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
                         m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                    )
+                    ).asProxy()
                 ),
                 () -> Constants.overrideEnabled
             )
         );
 
-         m_operatorController.rightTrigger().whileTrue(
+         m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbCommand(()->m_operatorController.getLeftY()*0.2),
-                m_climb.runClimbCommand(()->-m_operatorController.getLeftY()*0.2),
+                m_climb.runClimbCommand(()-> m_driverController.getLeftY()*0.2),
+                m_climb.runClimbCommand(()-> -m_driverController.getLeftY()*0.2),
                 () -> Constants.overrideEnabled
             )
         );
