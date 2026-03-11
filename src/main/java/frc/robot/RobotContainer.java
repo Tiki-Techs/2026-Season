@@ -345,6 +345,7 @@ public class RobotContainer {
                 )
         );
 
+        // what
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
         // Override: reverses all (shooter, index, feeder)
