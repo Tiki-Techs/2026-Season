@@ -138,10 +138,10 @@ public final class Constants {
         /** Limelight camera names - must match names configured in Limelight web interface */
         public static final String LIMELIGHT_ONE = "limelight-br";
         public static final String LIMELIGHT_TWO = "limelight-bl";
-        public static final String LIMELIGHT_THREE = "limelight-fl";
+        // public static final String LIMELIGHT_THREE = "limelight-fl";
 
         /** Array of all Limelight names for iteration */
-        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO, LIMELIGHT_THREE};
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO};
 
         /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;

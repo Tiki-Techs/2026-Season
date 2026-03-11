@@ -31,6 +31,8 @@ public class Index extends SubsystemBase {
      * @param controllerValue Xbox controller to read trigger axis from
      * @return Command that continuously runs the indexer based on trigger input
      */
+
+     // NEGATIVE runIndex RUNS THE INDEXER IN THE CORRECT DIRECTION
     public Command runIndex(CommandXboxController controllerValue) {
         return new RunCommand(() ->
             leaderIntake.set(controllerValue.getRightTriggerAxis()),

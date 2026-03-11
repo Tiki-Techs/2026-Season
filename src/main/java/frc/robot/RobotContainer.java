@@ -351,19 +351,22 @@ public class RobotContainer {
             new ConditionalCommand(
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                     m_index.runIndex(IndexConstants.INDEX_SPEED),
                     m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                 ),
-                // Normal: spin up shooter, then run all when at speed
+                // Normal: (index + reverse feeder) while spinning up, then run index and feeder when at speed
                 new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
-                        .until(() -> m_shooter.isAtTargetSpeed(45, 5.0)),
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(-1),
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+                    ).until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
                         m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                    ).asProxy()
+                    )
                 ),
                 () -> Constants.overrideEnabled
             )
@@ -401,14 +404,12 @@ public class RobotContainer {
         // X Button: Toggle index belt
         // Normal: feed forward | Override: reverse
         m_driverController.x().toggleOnTrue(
-            new ParallelCommandGroup(
             new ConditionalCommand(
                 m_index.runIndex(1),
                 m_index.runIndex(-1),
                 () -> Constants.overrideEnabled
-            ), 
-            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
             )
+            
      
         );
 

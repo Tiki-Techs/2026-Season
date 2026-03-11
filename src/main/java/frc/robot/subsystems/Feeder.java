@@ -10,6 +10,8 @@ public class Feeder extends SubsystemBase{
 
     private final TalonFX feeder = new TalonFX(FeederConstants.FEEDER);
 
+
+    // NEGATIVE runFeeder RUNS THE FEEDER IN THE CORRECT DIRECTION
     public Command runFeeder(double speed){
         return new RunCommand(()->{
             feeder.set(speed);
