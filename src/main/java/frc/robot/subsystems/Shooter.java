@@ -60,7 +60,7 @@ public class Shooter extends SubsystemBase {
         slot0Configs.kI = ShooterConstants.KI;
         slot0Configs.kD = ShooterConstants.KD;
 
-        // Apply PID configuration to both shooter motors
+        // Apply PID configuration to all shooter motors
         shooterOne.getConfigurator().apply(slot0Configs);
         shooterTwo.getConfigurator().apply(slot0Configs);
         shooterThree.getConfigurator().apply(slot0Configs);

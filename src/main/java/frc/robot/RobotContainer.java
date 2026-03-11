@@ -30,11 +30,12 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj.XboxController;
 // WPILib SmartDashboard imports
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 // Robot Constants imports
-import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.DriveConstants; 
 import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.IndexConstants;
 import frc.robot.Constants.IntakeConstants;
@@ -100,6 +101,9 @@ public class RobotContainer {
     /** Dropdown selector for autonomous routines on SmartDashboard */
     private final SendableChooser<Command> autoChooser;
 
+    /** Field widget for visualizing robot position */
+    private final Field2d m_field = new Field2d();
+
     // ==================== DRIVE PARAMETERS ====================
 
     /** Maximum translational speed in meters per second */
@@ -157,6 +161,14 @@ public class RobotContainer {
         // Build autonomous chooser from PathPlanner paths
         autoChooser = AutoBuilder.buildAutoChooser();
         SmartDashboard.putData("Auto Chooser", autoChooser);
+
+        // Add field widget to SmartDashboard
+        SmartDashboard.putData("Field", m_field);
+
+        // Register telemetry to update field widget with robot pose
+        drivetrain.registerTelemetry(state -> {
+            m_field.setRobotPose(state.Pose);
+        });
 
         // Configure controller button bindings
         configureBindings();
@@ -252,7 +264,7 @@ public class RobotContainer {
      * - Left Bumper: Intake rollers
      * - Right Bumper: PID Shooter (auto-feeds when at speed)
      * - A Button: Limelight auto-aim drive
-     * - B Button: Shooter intake
+     * - B Button: Feeder only (for indexing balls into shooter)
      * - X Button: Index toggle
      * - Y Button: Override mode (hold to reverse mechanisms)
      * - D-Pad Up: Raise intake arm
@@ -286,9 +298,9 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() ->
                 drive
-                    .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
-                    .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
-                    .withRotationalRate(-m_driverController.getRightX() * maxAngularRate)
+                    .withVelocityX(MathUtil.applyDeadband(-m_driverController.getLeftY() * maxSpeed, 0.15))
+                    .withVelocityY(MathUtil.applyDeadband(-m_driverController.getLeftX() * maxSpeed, 0.15))
+                    .withRotationalRate(MathUtil.applyDeadband(-m_driverController.getRightX() * maxAngularRate, 0.15))
             )
         );
 
@@ -345,10 +357,10 @@ public class RobotContainer {
                 ),
                 // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
                         .until(() -> m_shooter.isAtTargetSpeed(45, 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
                         m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
                     ).asProxy()
@@ -359,8 +371,8 @@ public class RobotContainer {
 
          m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbCommand(()-> m_driverController.getLeftY()*0.2),
-                m_climb.runClimbCommand(()-> -m_driverController.getLeftY()*0.2),
+                m_climb.runClimbCommand(()-> -m_driverController.getRightTriggerAxis()),
+                m_climb.runClimbCommand(()-> m_driverController.getRightTriggerAxis()),
                 () -> Constants.overrideEnabled
             )
         );
@@ -382,6 +394,7 @@ public class RobotContainer {
                 m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
                 () -> Constants.overrideEnabled
+
             )
         );
 
@@ -417,8 +430,8 @@ public class RobotContainer {
         // D-Pad Up: Raise intake arm
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
-                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.raiseArmManual(.75),
+                m_pivot.raiseArmManual(.75),
                 () -> Constants.overrideEnabled
             )
         );
@@ -426,8 +439,8 @@ public class RobotContainer {
         // D-Pad Down: Lower intake arm
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
-                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
+                m_pivot.lowerArmManual(.25),
+                m_pivot.lowerArmManual(.25),
                 () -> Constants.overrideEnabled
             )
         );

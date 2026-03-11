@@ -3,7 +3,6 @@ package frc.robot.subsystems;
 import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
@@ -23,29 +22,20 @@ public class Climb extends SubsystemBase {
     private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
 
     public Climb() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        climbMotor.getConfigurator().apply(config);
+
     } 
 
     public void runClimb(double speed) {
         // Stop if trying to go down and at lower limit, or trying to go up and at upper limit
         if ((speed > 0 && !lowerLimitSwitch.get()) || (speed < 0 && !upperLimitSwitch.get())) {
-            climbMotor.setControl(new DutyCycleOut(0));
+            climbMotor.set(0);
         } else {
-            climbMotor.setControl(new DutyCycleOut(speed));
+            climbMotor.set(speed);
         }
     }
 
     public Command runClimbCommand(DoubleSupplier speedSupplier) {
         return new RunCommand(() -> runClimb(speedSupplier.getAsDouble()), this);
-    }
-
-    public Command runClimbCommandReif(double speed) {
-        return new RunCommand(() ->
-            climbMotor.set(speed),
-            this
-        );
     }
 
     public Command stopAll() {

@@ -101,7 +101,7 @@ public final class Constants {
         public static final double KI = 0;    // Integral gain (disabled)
         public static final double KD = 0;    // Derivative gain (disabled)
 
-        public static final double SHOOTER_TARGET_RPS = 95.0; // Target shooter speed in rotations per second
+        public static final double SHOOTER_TARGET_RPS = 80.0; // Target shooter speed in rotations per second
         public static final double SHOOTER_DEFAULT_SPEED = 1.0; // Target shooter speed in rotations per second
 
 
@@ -121,7 +121,7 @@ public final class Constants {
         public static final int LOWER_LIMIT_SWITCH = 3;
         public static final int UPPER_LIMIT_SWITCH = 2;
 
-        public static final double PIVOT_SPEED = 0.5;
+        public static final double PIVOT_SPEED = 0.75;
     }
 
     public static final class IntakeConstants {
@@ -129,18 +129,19 @@ public final class Constants {
         }
         public static final int INTAKE_MOTOR = 16;
 
-        public static final double INTAKE_SPEED = -0.5;
+        public static final double INTAKE_SPEED = -0.75;
     }
 
     public static final class VisionConstants {
         private VisionConstants() {
         }
         /** Limelight camera names - must match names configured in Limelight web interface */
-        public static final String LIMELIGHT_ONE = "limelight-front";
-        public static final String LIMELIGHT_TWO = "limelight-back";
+        public static final String LIMELIGHT_ONE = "limelight-br";
+        public static final String LIMELIGHT_TWO = "limelight-bl";
+        public static final String LIMELIGHT_THREE = "limelight-fl";
 
         /** Array of all Limelight names for iteration */
-        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO};
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO, LIMELIGHT_THREE};
 
         /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;
