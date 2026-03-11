@@ -4,6 +4,8 @@ import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -34,18 +36,19 @@ public class Vision extends SubsystemBase {
     // Updated once per loop in periodic() to avoid redundant NetworkTables reads.
     // limelight_aim_proportional() and limelight_range_proportional() use these
     // cached values instead of reading NT themselves.
+    // Values are aggregated from all three Limelights - using the best available data.
 
-    /** Whether a valid target is currently visible */
+    /** Whether a valid target is currently visible (from any Limelight) */
     private boolean cachedTV = false;
 
-    /** Horizontal offset to target in degrees (+ = right) */
+    /** Horizontal offset to target in degrees (+ = right) - from Limelight with best view */
     private double cachedTX = 0.0;
 
     /** Average distance from camera to visible AprilTags in meters (from MegaTag2) */
     private double cachedTagDist = 0.0;
 
-    /** Last TV state - used to only write LED mode to NT on change */
-    private boolean lastTV = false;
+    /** Last TV state per Limelight - used to only write LED mode to NT on change */
+    private boolean[] lastTV = new boolean[VisionConstants.ALL_LIMELIGHTS.length];
 
     /**
      * Constructs the Vision subsystem.
@@ -98,6 +101,127 @@ public class Vision extends SubsystemBase {
     }
 
     /**
+     * Gets the cached distance to the nearest AprilTag in meters.
+     * Updated every loop from MegaTag2 data.
+     *
+     * @return Distance in meters, or 0 if no tag visible
+     */
+    public double getTagDistance() {
+        return cachedTagDist;
+    }
+
+    /**
+     * Returns whether a valid target is currently visible.
+     *
+     * @return True if target is visible
+     */
+    public boolean hasTarget() {
+        return cachedTV;
+    }
+
+    /**
+     * Gets the X coordinate of the goal based on current alliance.
+     * @return Goal X in meters (blue alliance origin)
+     */
+    private double getGoalX() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            return VisionConstants.RED_GOAL_X_METERS;
+        }
+        return VisionConstants.BLUE_GOAL_X_METERS;
+    }
+
+    /**
+     * Gets the Y coordinate of the goal based on current alliance.
+     * @return Goal Y in meters (blue alliance origin)
+     */
+    private double getGoalY() {
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            return VisionConstants.RED_GOAL_Y_METERS;
+        }
+        return VisionConstants.BLUE_GOAL_Y_METERS;
+    }
+
+    /**
+     * Calculates the distance from the robot's current position to the goal.
+     * Uses odometry pose (updated by vision) rather than direct tag detection.
+     * Automatically selects the correct goal based on alliance.
+     *
+     * @return Distance to goal in meters
+     */
+    public double getDistanceToGoal() {
+        Pose2d currentPose = drivetrain.getState().Pose;
+        double dx = getGoalX() - currentPose.getX();
+        double dy = getGoalY() - currentPose.getY();
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Checks if the robot is within shooting range (not in the neutral zone).
+     * Neutral zone is between X = 4.5 and X = 12.0 (middle of field).
+     * @return True if in alliance zone where shooting is possible
+     */
+    public boolean isInShootingRange() {
+        double robotX = drivetrain.getState().Pose.getX();
+        // In shooting range if NOT in neutral zone (X <= 4.5 or X >= 12.0)
+        return robotX <= 4.5 || robotX >= 12.0;
+    }
+
+    /**
+     * Calculates the angular velocity needed to rotate the robot.
+     * - In shooting range: faces the goal for accurate shots
+     * - Outside shooting range: faces toward alliance wall for driving back
+     *
+     * @return Angular velocity in radians/second
+     */
+    public double getRotationToGoal() {
+        double kP = 3.0;  // Proportional gain for rotation
+        double minOutput = 0.2;  // Minimum angular velocity to overcome friction
+
+        Pose2d currentPose = drivetrain.getState().Pose;
+
+        double targetAngle;
+        if (isInShootingRange()) {
+            // In shooting range - face the goal
+            double dx = getGoalX() - currentPose.getX();
+            double dy = getGoalY() - currentPose.getY();
+            targetAngle = Math.atan2(dy, dx);
+        } else {
+            // Outside shooting range - face toward alliance wall
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+                // Red alliance: face toward X = 16.5 (positive X direction)
+                targetAngle = 0;  // 0 radians = facing positive X
+            } else {
+                // Blue alliance: face toward X = 0 (negative X direction)
+                targetAngle = Math.PI;  // PI radians = facing negative X
+            }
+        }
+
+        // Current robot heading
+        double currentHeading = currentPose.getRotation().getRadians();
+
+        // Error: how much we need to rotate (wrapped to -pi to pi)
+        double error = targetAngle - currentHeading;
+        while (error > Math.PI) error -= 2 * Math.PI;
+        while (error < -Math.PI) error += 2 * Math.PI;
+
+        // Deadband - stop rotating when close enough
+        if (Math.abs(error) < Math.toRadians(2.0)) {
+            return 0.0;
+        }
+
+        double output = error * kP;
+
+        // Apply minimum output to overcome static friction
+        if (output > 0) output = Math.max(output, minOutput);
+        else output = Math.min(output, -minOutput);
+
+        return output;
+    }
+
+    /**
      * Calculates forward velocity for ranging to a target using proportional control.
      * Uses cachedTagDist (actual meters to tag from MegaTag2) instead of TY angle,
      * which is more accurate and doesn't depend on camera mount geometry.
@@ -132,65 +256,71 @@ public class Vision extends SubsystemBase {
         m_field.setRobotPose(currentPose);
         posePublisher.set(currentPose);
 
-        // Read Limelight NT values ONCE per loop and cache for control methods
-        cachedTV = LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME);
-        cachedTX = LimelightHelpers.getTX(VisionConstants.LIMELIGHT_NAME);
-        double ty = LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME);
+        // ==================== PROCESS ALL LIMELIGHTS ====================
+        // Reset cached values before aggregating from all Limelights
+        cachedTV = false;
+        cachedTX = 0.0;
+        cachedTagDist = 0.0;
+        double bestTagDist = Double.MAX_VALUE; // Track which Limelight has closest tags for TX
 
+        // Reject all updates during fast rotation (>720 deg/s) - camera images will be blurry
+        boolean rejectAllUpdates = Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720;
+
+        for (int i = 0; i < VisionConstants.ALL_LIMELIGHTS.length; i++) {
+            String limelightName = VisionConstants.ALL_LIMELIGHTS[i];
+
+            // Read Limelight NT values
+            boolean tv = LimelightHelpers.getTV(limelightName);
+            double tx = LimelightHelpers.getTX(limelightName);
+
+            SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+            SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
+
+            // Visual feedback: blink LEDs when target is visible (only write on change)
+            if (tv != lastTV[i]) {
+                if (tv) {
+                    LimelightHelpers.setLEDMode_ForceBlink(limelightName);
+                } else {
+                    LimelightHelpers.setLEDMode_ForceOff(limelightName);
+                }
+                lastTV[i] = tv;
+            }
+
+            // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
+            // Send current robot orientation to this Limelight for better solving
+            LimelightHelpers.SetRobotOrientation(
+                limelightName,
+                drivetrain.getState().Pose.getRotation().getDegrees(),
+                0, 0, 0, 0, 0
+            );
+
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+
+            // Process pose estimate if valid
+            if (mt2 != null && mt2.tagCount > 0) {
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+
+                // Use this Limelight for aiming if it has the closest tags
+                if (tv && mt2.avgTagDist < bestTagDist) {
+                    cachedTV = true;
+                    cachedTX = tx;
+                    cachedTagDist = mt2.avgTagDist;
+                    bestTagDist = mt2.avgTagDist;
+                }
+
+                // Apply vision measurement if it passes quality checks
+                if (!rejectAllUpdates) {
+                    // Scale trust based on tag distance and count
+                    double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
+                    drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
+                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+                }
+            }
+        }
+
+        // Publish aggregated values
         SmartDashboard.putBoolean("Vision/TV", cachedTV);
         SmartDashboard.putNumber("Vision/TX", cachedTX);
-        SmartDashboard.putNumber("Vision/TY", ty);
-
-        // Visual feedback: blink LEDs when target is visible (only write on change)
-        if (cachedTV != lastTV) {
-            if (cachedTV) {
-                LimelightHelpers.setLEDMode_ForceBlink(VisionConstants.LIMELIGHT_NAME);
-            } else {
-                LimelightHelpers.setLEDMode_ForceOff(VisionConstants.LIMELIGHT_NAME);
-            }
-            lastTV = cachedTV;
-        }
-
-        // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
-        // Uses gyro orientation for improved multi-tag pose solving.
-        // More accurate and stable than MegaTag1.
-
-        boolean doRejectUpdate = false;
-
-        // Send current robot orientation to Limelight for better solving
-        LimelightHelpers.SetRobotOrientation(
-            VisionConstants.LIMELIGHT_NAME,
-            drivetrain.getState().Pose.getRotation().getDegrees(),
-            0, 0, 0, 0, 0
-        );
-
-        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.LIMELIGHT_NAME);
-
-        // Cache tag distance for range control whenever tags are visible,
-        // even if we end up rejecting the pose estimate below
-        if (mt2 != null && mt2.tagCount > 0) {
-            cachedTagDist = mt2.avgTagDist;
-            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
-        } else {
-            cachedTagDist = 0.0;
-        }
-
-        // Reject during fast rotation (>720 deg/s) - camera image will be blurry
-        if (Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720) {
-            doRejectUpdate = true;
-        }
-
-        // Reject if no tags visible
-        if (mt2 == null || mt2.tagCount == 0) {
-            doRejectUpdate = true;
-        }
-
-        // Apply vision measurement if it passes quality checks
-        if (!doRejectUpdate) {
-            // Scale trust based on tag distance and count: closer tags with more visibility = lower std devs = more trust
-            double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
-            drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
-            drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-        }
+        SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
     }
 }

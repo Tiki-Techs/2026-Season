@@ -1,9 +1,6 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -12,16 +9,14 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
-import frc.robot.Constants.HoodConstants;
-import frc.robot.Constants.VisionConstants;
-import frc.robot.LimelightHelpers;
 import frc.robot.Constants.HoodConstants;
 
 /**
  * Hood subsystem that controls the shooter hood angle for trajectory adjustment.
  * Uses a TalonFX motor to adjust the launch angle based on distance to target.
- * Supports automatic aiming using Limelight TY values with an interpolating lookup table.
+ * Supports automatic aiming using distance (meters) with an interpolating lookup table.
  */
 public class Hood extends SubsystemBase {
 
@@ -33,17 +28,22 @@ public class Hood extends SubsystemBase {
     /** Lower limit switch for hood zeroing */
     private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.LOWER_LIMIT_SWITCH);
 
+    // ==================== DEPENDENCIES ====================
+
+    /** Vision subsystem for distance-based aiming */
+    private final Vision vision;
+
     // ==================== CONTROL ====================
 
     /** PID controller for closed-loop position control */
     private final PIDController pidController = new PIDController(0.1, 0, 0);
 
     /**
-     * Lookup table mapping Limelight TY angles to hood motor positions.
+     * Lookup table mapping distance (meters) to hood motor positions.
      * Interpolates between data points for smooth hood adjustment.
-     * Lower TY = farther target = higher hood angle needed.
+     * Farther distance = higher hood angle (more negative encoder position).
      */
-    private final InterpolatingDoubleTreeMap tyToHoodPosition = new InterpolatingDoubleTreeMap();
+    private final InterpolatingDoubleTreeMap distanceToHoodPosition = new InterpolatingDoubleTreeMap();
 
     // ==================== POSITION LIMITS ====================
 
@@ -58,19 +58,24 @@ public class Hood extends SubsystemBase {
 
     /**
      * Constructs the Hood subsystem and initializes configuration.
-     * Zeros the motor encoder and populates the TY-to-position lookup table.
+     * Zeros the motor encoder and populates the distance-to-position lookup table.
+     *
+     * @param vision Vision subsystem for distance measurements
      */
-    public Hood() {
+    public Hood(Vision vision) {
+        this.vision = vision;
+
         // Reset encoder position on startup
         hoodMotor.setPosition(0);
 
         // Populate lookup table with tuned values
-        // Format: tyToHoodPosition.put(tyAngle, hoodEncoderPosition)
-        // Lower TY = farther away = higher hood angle
-        tyToHoodPosition.put(12.00, 8.0);  // Far shot
-        tyToHoodPosition.put(-10.0, 5.0);  // Mid shot
-        tyToHoodPosition.put(0.0, 3.0);    // Close shot
-        tyToHoodPosition.put(10.0, 1.0);   // Very close
+        // Format: distanceToHoodPosition.put(distanceMeters, hoodEncoderPosition)
+        // Farther distance = higher hood angle (more negative encoder value)
+        // TODO: Calibrate these values by testing at known distances
+        distanceToHoodPosition.put(1.0, -0.1);   // Close shot (~1m)
+        distanceToHoodPosition.put(2.0, -0.4);   // Mid-close shot (~2m)
+        distanceToHoodPosition.put(3.0, -0.7);   // Mid-far shot (~3m)
+        distanceToHoodPosition.put(4.0, -1.0);   // Far shot (~4m)
 
         // Set position tolerance for "at setpoint" checks
         pidController.setTolerance(0.25);
@@ -79,32 +84,32 @@ public class Hood extends SubsystemBase {
     // ==================== LOOKUP TABLE ====================
 
     /**
-     * Gets the ideal hood position for a given Limelight TY angle.
+     * Gets the ideal hood position for a given distance in meters.
      * Uses interpolation between defined data points.
      *
-     * @param ty Limelight TY value in degrees
+     * @param distanceMeters Distance to target in meters
      * @return Hood position in motor rotations, clamped to safe limits
      */
-    public double getHoodPositionForTY(double ty) {
-        double position = tyToHoodPosition.get(ty);
-        return Math.max(minPosition, Math.min(maxPosition, position));
+    public double getHoodPositionForDistance(double distanceMeters) {
+        double position = distanceToHoodPosition.get(distanceMeters);
+        return Math.max(maxPosition, Math.min(minPosition, position));
     }
 
     // ==================== AUTO-AIM ====================
 
     /**
-     * Automatically adjusts hood angle based on Limelight target tracking.
-     * Continuously reads TY, looks up the ideal position, and uses PID to reach it.
+     * Automatically adjusts hood angle based on distance to goal.
+     * Uses robot odometry position to calculate distance - works even if
+     * the Limelight can't see the goal directly.
      *
      * @return Command that continuously auto-aims the hood while running
      */
     public Command autoAimHood() {
         return new RunCommand(() -> {
-            // Only update target if we have a valid target
-            if (LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME)) {
-                double ty = LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME);
-                targetPosition = getHoodPositionForTY(ty);
-            }
+            // Use odometry-based distance to goal (always available)
+            double distance = vision.getDistanceToGoal();
+            targetPosition = getHoodPositionForDistance(distance);
+
             // PID control to reach target position
             double output = pidController.calculate(
                 hoodMotor.getPosition().getValueAsDouble(),
@@ -158,6 +163,32 @@ public class Hood extends SubsystemBase {
     public Command runHood(DoubleSupplier speedSupplier) {
         return new RunCommand(() -> {
             hoodMotor.set(speedSupplier.getAsDouble());
+        }, this);
+    }
+
+    /**
+     * Runs hood with auto-aim by default, switches to manual when override is enabled.
+     *
+     * @param overrideEnabled Supplier that returns true when manual control is desired
+     * @param manualSpeed Supplier for manual control speed (right stick Y)
+     * @return Command that switches between auto-aim and manual control
+     */
+    public Command runHoodWithOverride(BooleanSupplier overrideEnabled, DoubleSupplier manualSpeed) {
+        return new RunCommand(() -> {
+            if (overrideEnabled.getAsBoolean()) {
+                // Manual control when override (Y button) is held
+                hoodMotor.set(manualSpeed.getAsDouble());
+            } else {
+                // Auto-aim using odometry-based distance to goal
+                double distance = vision.getDistanceToGoal();
+                targetPosition = getHoodPositionForDistance(distance);
+
+                double output = pidController.calculate(
+                    hoodMotor.getPosition().getValueAsDouble(),
+                    targetPosition
+                );
+                hoodMotor.set(output);
+            }
         }, this);
     }
 
@@ -218,10 +249,9 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Hood/Target", targetPosition);
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
+        SmartDashboard.putBoolean("Hood Lower Limit Switch", !lowerLimitSwitch.get());
 
-        // Display current TY for tuning the lookup table
-        if (LimelightHelpers.getTV(VisionConstants.LIMELIGHT_NAME)) {
-            SmartDashboard.putNumber("Hood/CurrentTY", LimelightHelpers.getTY(VisionConstants.LIMELIGHT_NAME));
-        }
+        // Display current distance to goal for tuning the lookup table
+        SmartDashboard.putNumber("Hood/DistanceToGoal", vision.getDistanceToGoal());
     }
 }

@@ -4,7 +4,8 @@
 
 package frc.robot;
 
-// CTRE Phoenix imports
+// CTRE Phoenix 6 imports
+import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
@@ -15,6 +16,7 @@ import com.pathplanner.lib.auto.NamedCommands;
 // WPILib Math imports
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 
 // WPILib Command imports
@@ -26,19 +28,20 @@ import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-
+import edu.wpi.first.wpilibj.XboxController;
 // WPILib SmartDashboard imports
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 // Robot Constants imports
 import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.IndexConstants;
 import frc.robot.Constants.IntakeConstants;
-import frc.robot.Constants.IntakePivotConstants;
+import frc.robot.Constants.PivotConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.ShooterConstants;
-import frc.robot.Constants.ShooterIntakeConstants;
+import frc.robot.Constants.FeederConstants;
 import frc.robot.Constants.VisionConstants;
 
 // Robot Subsystem imports
@@ -46,11 +49,12 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Index;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.IntakePivot;
+import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.Shooter;
-import frc.robot.subsystems.ShooterIntake;
+import frc.robot.subsystems.Feeder;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.subsystems.Vision;
+import frc.robot.subsystems.Climb;
 
 /**
  * RobotContainer is the central hub for robot configuration.
@@ -68,13 +72,13 @@ public class RobotContainer {
     private final SwerveSubsystem drivetrain = TunerConstants.createDrivetrain();
 
     /** Vision processing - handles Limelight data and pose estimation */
-    private final Vision m_Vision = new Vision(drivetrain);
+    private final Vision m_vision = new Vision(drivetrain);
 
     /** Shooter subsystem - flywheel for launching game pieces */
     private final Shooter m_shooter = new Shooter();
 
-    /** ShooterIntake subsystem - controls intake roller for shooter */
-    private final ShooterIntake m_shooterIntake = new ShooterIntake();
+    /** Feeder subsystem - controls feeder roller for shooter */
+    private final Feeder m_feeder = new Feeder();
 
     /** Index subsystem - belt feeder between intake and shooter */
     private final Index m_index = new Index();
@@ -83,10 +87,13 @@ public class RobotContainer {
     private final Intake m_intake = new Intake();
 
     /** Intake pivot - raises/lowers the intake arm */
-    private final IntakePivot m_intakePivot = new IntakePivot();
+    private final Pivot m_pivot = new Pivot();
 
     /** Hood subsystem - adjusts shooter launch angle */
-    private final Hood m_hood = new Hood();
+    private final Hood m_hood = new Hood(m_vision);
+
+    /** Hood subsystem - adjusts shooter launch angle */
+    private final Climb m_climb = new Climb();
 
     // ==================== AUTONOMOUS ====================
 
@@ -136,6 +143,12 @@ public class RobotContainer {
     /** Primary driver controller (Xbox) on port 0 */
     private final CommandXboxController m_driverController =
         new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+        
+
+    /** Secondary operator controller (Xbox) on port 1 */
+    private final CommandXboxController m_operatorController =
+        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
+        
 
     // ==================== CONSTRUCTOR ====================
 
@@ -144,7 +157,7 @@ public class RobotContainer {
      * Registers PathPlanner commands, builds auto chooser, and configures bindings.
      */
     public RobotContainer() {
-        // Register all named commands for PathPlanner autonomous routines
+        // Register PathPlanner named commands for autonomous routines
         registerNamedCommands();
 
         // Build autonomous chooser from PathPlanner paths
@@ -153,6 +166,11 @@ public class RobotContainer {
 
         // Configure controller button bindings
         configureBindings();
+
+        // Set simulation starting pose
+        if (Utils.isSimulation()) {
+            drivetrain.resetPose(new Pose2d(3.5, 4.0, new Rotation2d(0)));
+        }
     }
 
     // ==================== PATHPLANNER NAMED COMMANDS ====================
@@ -164,54 +182,66 @@ public class RobotContainer {
     private void registerNamedCommands() {
         // ----- Shooter Commands -----
         NamedCommands.registerCommand("runPIDShooter",
-            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(5));
+            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS).withTimeout(0.01));
+        
         NamedCommands.registerCommand("stopPIDShooter",
-            m_shooter.stopShooter().withTimeout(0.1));
-        NamedCommands.registerCommand("runShooter",
-            m_shooter.runShooter(ShooterConstants.SHOOTER_DEFAULT_SPEED).withTimeout(0.1));
+            m_shooter.stopShooter().withTimeout(0.01));
 
-        // ----- Shooter Intake Commands -----
-        NamedCommands.registerCommand("runShooterIntake",
-            m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED).withTimeout(0.1));
+
+
+        // ----- Feeder Commands -----
+        NamedCommands.registerCommand("runFeeder",
+            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED).withTimeout(0.01));
 
         // ----- Index Commands -----
         NamedCommands.registerCommand("runIndex",
-            m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(5));
+            m_index.runIndex(IndexConstants.INDEX_SPEED).withTimeout(0.01));
+
+
         NamedCommands.registerCommand("runReverseIndex",
-            m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(5));
+            m_index.runIndex(-IndexConstants.INDEX_SPEED).withTimeout(0.01));
+
+
         NamedCommands.registerCommand("stopIndex",
-            m_index.stopIndex().withTimeout(0.1));
+            m_index.stopIndex().withTimeout(0.01));
 
         // ----- Intake Commands -----
         NamedCommands.registerCommand("runIntake",
-            m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(3));
+            m_intake.runIntake(IntakeConstants.INTAKE_SPEED).withTimeout(0.01));
+
+
         NamedCommands.registerCommand("runReverseIntake",
-            m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(3));
+            m_intake.runIntake(-IntakeConstants.INTAKE_SPEED).withTimeout(0.01));
+
+
         NamedCommands.registerCommand("stopIntake",
-            m_intake.stopIntake().withTimeout(0.1));
+            m_intake.stopIntake().withTimeout(0.01));
 
         // ----- Intake Pivot Commands -----
         NamedCommands.registerCommand("raiseArmManual",
-            m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
+            m_pivot.raiseArmManual(.25).withTimeout(0.01));
+
+
         NamedCommands.registerCommand("lowerArmManual",
-            m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED).withTimeout(1));
-        NamedCommands.registerCommand("stopIntakePivot",
-            m_intakePivot.stopAll().withTimeout(0.1));
+            m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED).withTimeout(0.01));
+
+
+        NamedCommands.registerCommand("stopPivot",
+            m_pivot.stopAll().withTimeout(0.01));
+            
+            
         NamedCommands.registerCommand("changeDeployState",
-            m_intakePivot.changeDeployState().withTimeout(0.1));
+            m_pivot.changeDeployState().withTimeout(0.01));
 
         // ----- Chained Commands -----
-        NamedCommands.registerCommand("PIDShooterAndShooterIntake",
-            PIDShooterAndShooterIntake());
+        NamedCommands.registerCommand("PIDShooter_Feeder_Index", PIDShooter_Feeder_Index());
 
         // ----- Vision Commands -----
-        NamedCommands.registerCommand("autoAlign",
-            drivetrain.applyRequest(() ->
-                limelight
-                    .withVelocityX(xLimiter.calculate(-m_Vision.limelight_range_proportional()))
-                    .withVelocityY(0)
-                    .withRotationalRate(m_Vision.limelight_aim_proportional())
-            ).withTimeout(2));
+        NamedCommands.registerCommand("autoAlign", drivetrain.applyRequest(() ->
+            limelight
+                .withVelocityX(xLimiter.calculate(-m_vision.limelight_range_proportional()))
+                .withVelocityY(0)
+                .withRotationalRate(m_vision.limelight_aim_proportional())).withTimeout(0.01));
     }
 
     // ==================== BUTTON BINDINGS ====================
@@ -223,7 +253,6 @@ public class RobotContainer {
      * CONTROL SCHEME:
      * - Left Stick: Translation (forward/back, left/right)
      * - Right Stick X: Rotation
-     * - Right Stick Y: Hood adjustment
      * - Left Trigger: Manual shooter (speed = trigger position)
      * - Right Trigger: Robot-centric drive mode (hold)
      * - Left Bumper: Intake rollers
@@ -234,6 +263,8 @@ public class RobotContainer {
      * - Y Button: Override mode (hold to reverse mechanisms)
      * - D-Pad Up: Raise intake arm
      * - D-Pad Down: Lower intake arm
+     * - D-Pad Left: Hood down (lower angle)
+     * - D-Pad Right: Hood up (higher angle)
      * - Start Button: Reset gyro heading
      */
     private void configureBindings() {
@@ -255,7 +286,6 @@ public class RobotContainer {
 
     /**
      * Configures drivetrain-related button bindings.
-     * Includes default drive command, vision alignment, and gyro reset.
      */
     private void configureDrivetrainBindings() {
         // Default Command: Field-centric drive, switches to robot-centric when right trigger held
@@ -270,20 +300,20 @@ public class RobotContainer {
                 } else {
                     // Field-centric drive (default)
                     return drive
-                        .withVelocityX(m_driverController.getLeftY() * maxSpeed)
-                        .withVelocityY(m_driverController.getLeftX() * maxSpeed)
+                        .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
+                        .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
                         .withRotationalRate(-m_driverController.getRightX() * maxAngularRate);
                 }
             })
         );
 
-        // A Button: Limelight auto-aim drive - automatically aims and approaches target
+        // A Button: Auto-aim to goal using odometry - rotates toward goal and allows strafing
         m_driverController.a().whileTrue(
             drivetrain.applyRequest(() ->
-                limelight
-                    .withVelocityX(-xLimiter.calculate(-m_Vision.limelight_range_proportional()))
+                drive
+                    .withVelocityX(-xLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed))
                     .withVelocityY(-yLimiter.calculate(MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed))
-                    .withRotationalRate(m_Vision.limelight_aim_proportional())
+                    .withRotationalRate(m_vision.getRotationToGoal())
             )
         );
 
@@ -298,7 +328,6 @@ public class RobotContainer {
 
     /**
      * Configures shooter-related button bindings.
-     * Includes manual shooter, PID shooter, shooter intake, index, and override mode.
      */
     private void configureShooterBindings() {
         // Y Button: Override mode - hold to reverse direction of mechanisms
@@ -309,78 +338,44 @@ public class RobotContainer {
         // Left Trigger: Manual shooter - speed proportional to trigger position
         // Normal: forward | Override: reverse
         m_driverController.leftTrigger().whileTrue(
-            new ConditionalCommand(
-                m_shooter.runReverseShooter(m_driverController),
-                m_shooter.runShooter(m_driverController),
-                () -> Constants.overrideEnabled
-            )
+                new ConditionalCommand(
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
+                )
         );
 
         // Right Bumper: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
-        // Override: reverses all (shooter, index, shooterIntake)
+        // Override: reverses all (shooter, index, feeder)
+        // Uses asProxy() to defer index/feeder requirements until shooter is at speed,
+        // allowing X toggle to keep running during spin-up
         m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                    m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                    m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
+                    m_index.runIndex(IndexConstants.INDEX_SPEED),
+                    m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                 ),
                 // Normal: spin up shooter, then run all when at speed
                 new SequentialCommandGroup(
                     m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                        .until(() -> m_shooter.isAtTargetSpeed(45, 5.0)),
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                        m_index.runIndex(IndexConstants.INDEX_SPEED),
-                        m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-                    )
+                        m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                    ).asProxy()
                 ),
                 () -> Constants.overrideEnabled
             )
         );
 
-        // B Button: Shooter intake only
-        // Normal: forward | Override: reverse
-        m_driverController.b().whileTrue(
+         m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
-                m_shooterIntake.runShooterIntake(-ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
-                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // X Button: Toggle index belt
-        // Normal: feed forward | Override: reverse
-        m_driverController.x().toggleOnTrue(
-            new ConditionalCommand(
-                m_index.runIndex(-1),
-                m_index.runIndex(1),
-                () -> Constants.overrideEnabled
-            )
-        );
-    }
-
-    /**
-     * Configures intake-related button bindings.
-     * Includes intake pivot (raise/lower) and intake rollers.
-     */
-    private void configureIntakeBindings() {
-        // D-Pad Up: Raise intake arm
-        m_driverController.povUp().whileTrue(
-            new ConditionalCommand(
-                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
-                m_intakePivot.raiseArmManual(IntakePivotConstants.PIVOT_SPEED),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // D-Pad Down: Lower intake arm
-        m_driverController.povDown().whileTrue(
-            new ConditionalCommand(
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
-                m_intakePivot.lowerArmManual(IntakePivotConstants.PIVOT_SPEED),
+                m_climb.runClimbCommand(()-> m_driverController.getLeftY()*0.2),
+                m_climb.runClimbCommand(()-> -m_driverController.getLeftY()*0.2),
                 () -> Constants.overrideEnabled
             )
         );
@@ -389,11 +384,70 @@ public class RobotContainer {
         // Normal: intake | Override: eject
         m_driverController.leftBumper().whileTrue(
             new ConditionalCommand(
-                m_intake.runIntake(1),
-                m_intake.runIntake(-1),
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
+
+        // B Button: Shooter intake only
+        // Normal: forward | Override: reverse
+        m_driverController.b().whileTrue(
+            new ConditionalCommand(
+                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
+                () -> Constants.overrideEnabled
+            )
+        );
+
+        // X Button: Toggle index belt
+        // Normal: feed forward | Override: reverse
+        m_driverController.x().toggleOnTrue(
+            new ParallelCommandGroup(
+            new ConditionalCommand(
+                m_index.runIndex(1),
+                m_index.runIndex(-1),
+                () -> Constants.overrideEnabled
+            ), 
+            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+            )
+     
+        );
+
+        // D-Pad Left: Hood down (lower angle)
+        m_driverController.povLeft().whileTrue(
+            m_hood.runHood(HoodConstants.HOOD_SPEED)
+        );
+
+        // D-Pad Right: Hood up (higher angle)
+        m_driverController.povRight().whileTrue(
+            m_hood.runHood(-HoodConstants.HOOD_SPEED)
+        );
+    }
+
+    /**
+     * Configures intake-related button bindings.
+     */
+    private void configureIntakeBindings() {
+        // D-Pad Up: Raise intake arm
+        m_driverController.povUp().whileTrue(
+            new ConditionalCommand(
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                () -> Constants.overrideEnabled
+            )
+        );
+
+        // D-Pad Down: Lower intake arm
+        m_driverController.povDown().whileTrue(
+            new ConditionalCommand(
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED*0.25),
+                () -> Constants.overrideEnabled
+            )
+        );
+
+        
     }
 
     /**
@@ -401,17 +455,16 @@ public class RobotContainer {
      * These run when no other command is using the subsystem.
      */
     private void configureDefaultCommands() {
-        // Stop all mechanisms when not in use
         m_shooter.setDefaultCommand(m_shooter.stopAll());
-        m_shooterIntake.setDefaultCommand(m_shooterIntake.stopAll());
+        m_feeder.setDefaultCommand(m_feeder.stopAll());
         m_intake.setDefaultCommand(m_intake.stopAll());
-        m_intakePivot.setDefaultCommand(m_intakePivot.stopAll());
+        m_pivot.setDefaultCommand(m_pivot.holdPosition());
         m_index.setDefaultCommand(m_index.stopAll());
+        m_climb.setDefaultCommand(m_climb.stopAll());
 
-        // Hood: controlled by right stick Y axis
-        m_hood.setDefaultCommand(
-            m_hood.runHood(() -> MathUtil.applyDeadband(m_driverController.getRightY(), 0.15))
-        );
+        // Hood: auto-aim by default, D-Pad Left/Right for manual control
+        // m_hood.setDefaultCommand(m_hood.autoAimHood());
+        m_hood.setDefaultCommand(m_hood.stopAll()); // Im keeping this for testing purposes once the hood is fully installed
     }
 
     /**
@@ -419,17 +472,21 @@ public class RobotContainer {
      * Reduces processing when disabled to save power.
      */
     private void configureLimelightPowerManagement() {
-        // Throttle Limelight when robot is disabled
+        // Throttle all Limelights when robot is disabled
         RobotModeTriggers.disabled()
-            .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 150)
-            ));
+            .onTrue(Commands.runOnce(() -> {
+                for (String limelight : VisionConstants.ALL_LIMELIGHTS) {
+                    LimelightHelpers.setLimelightNTDouble(limelight, "throttle", 150);
+                }
+            }));
 
         // Full speed when robot is enabled (teleop or autonomous)
         RobotModeTriggers.teleop().or(RobotModeTriggers.autonomous())
-            .onTrue(Commands.runOnce(() ->
-                LimelightHelpers.setLimelightNTDouble(VisionConstants.LIMELIGHT_NAME, "throttle", 0)
-            ));
+            .onTrue(Commands.runOnce(() -> {
+                for (String limelight : VisionConstants.ALL_LIMELIGHTS) {
+                    LimelightHelpers.setLimelightNTDouble(limelight, "throttle", 0);
+                }
+            }));
     }
 
     // ==================== AUTONOMOUS ====================
@@ -447,21 +504,20 @@ public class RobotContainer {
 
     /**
      * Creates a command that runs the shooter at target speed,
-     * then feeds with index and shooterIntake when at speed.
+     * then feeds with index and feeder when at speed.
      *
      * @return The chained shooting command
      */
-    public Command PIDShooterAndShooterIntake() {
+    public Command PIDShooter_Feeder_Index() {
         return new SequentialCommandGroup(
-            // Spin up shooter until at target speed
-            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
-            // Once at speed, run shooter, index, and shooterIntake together
-            new ParallelCommandGroup(
-                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                m_index.runIndex(IndexConstants.INDEX_SPEED),
-                m_shooterIntake.runShooterIntake(ShooterIntakeConstants.SHOOTER_INTAKE_SPEED)
-            )
+                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
+            
+                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+                    )
         );
     }
 }

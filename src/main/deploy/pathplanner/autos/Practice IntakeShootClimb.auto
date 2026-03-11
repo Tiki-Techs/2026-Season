@@ -5,13 +5,19 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
+          "type": "path",
+          "data": {
+            "pathName": "Center Intake Path Part 1"
+          }
+        },
+        {
+          "type": "deadline",
           "data": {
             "commands": [
               {
-                "type": "path",
+                "type": "named",
                 "data": {
-                  "pathName": "DPath1"
+                  "name": "lowerArmManual"
                 }
               },
               {
@@ -19,37 +25,42 @@
                 "data": {
                   "name": "runIntake"
                 }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "Center Intake Path Part 1.5"
+                }
               }
             ]
           }
         },
         {
-          "type": "parallel",
+          "type": "named",
+          "data": {
+            "name": "stopIntake"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "raiseArmManual"
+          }
+        },
+        {
+          "type": "deadline",
           "data": {
             "commands": [
               {
                 "type": "path",
                 "data": {
-                  "pathName": "DPath2"
+                  "pathName": "Center Intake Path Part 2"
                 }
               },
               {
                 "type": "named",
                 "data": {
-                  "name": "runShooter"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "parallel",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "runPIDShooter"
+                  "name": "PIDShooter_Feeder_Index"
                 }
               }
             ]

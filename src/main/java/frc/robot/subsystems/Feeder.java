@@ -4,29 +4,29 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.ShooterIntakeConstants;
+import frc.robot.Constants.FeederConstants;
 
-public class ShooterIntake extends SubsystemBase{
-    
-    private final TalonFX shooterIntake = new TalonFX(ShooterIntakeConstants.SHOOTER_INTAKE);
+public class Feeder extends SubsystemBase{
 
-    public Command runShooterIntake(double speed){
+    private final TalonFX feeder = new TalonFX(FeederConstants.FEEDER);
+
+    public Command runFeeder(double speed){
         return new RunCommand(()->{
-            shooterIntake.set(speed);
+            feeder.set(speed);
                 }, this);
-    } 
+    }
 
-    public Command stopShooterIntake(){
+    public Command stopFeeder(){
         return new RunCommand(()->{
-            shooterIntake.set(0);
+            feeder.set(0);
                 }, this);
-    } 
+    }
 
     public Command stopAll(){
         return new RunCommand(()->{
-            shooterIntake.set(0);
+            feeder.set(0);
                 }, this);
-    } 
+    }
 
 
 }

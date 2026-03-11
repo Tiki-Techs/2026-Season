@@ -36,6 +36,7 @@ public final class Constants {
     public static class OperatorConstants {
         /** USB port for the primary driver Xbox controller */
         public static final int DRIVER_CONTROLLER_PORT = 0;
+        public static final int OPERATOR_CONTROLLER_PORT = 1;
     }
 
     // ==================== DRIVE ====================
@@ -71,6 +72,7 @@ public final class Constants {
         }
         public static final int HOOD_MOTOR = 25;
         public static final int LOWER_LIMIT_SWITCH = 6;
+        public static final double HOOD_SPEED = 0.05;
     }
 
     public static final class IndexConstants {
@@ -84,7 +86,13 @@ public final class Constants {
     public static final class ShooterConstants {
         private ShooterConstants() {
         }
-        public static final int CENTER_SHOOTER = 22;
+
+        public static final int FLOOR_ONE = 21; // CW Positive
+        public static final int FLOOR_TWO = 22;  // CCW Positive
+        public static final int FLOOR_THREE = 23;  // CCW Positive
+        public static final int FLOOR_FOUR = 24;  // CCW Positive
+
+        
 
         // PID constants for velocity control
         public static final double KS = 0.1;  // Static friction compensation (volts)
@@ -99,21 +107,21 @@ public final class Constants {
 
     }
 
-    public static final class ShooterIntakeConstants {
-        private ShooterIntakeConstants() {
+    public static final class FeederConstants {
+        private FeederConstants() {
         }
-        public static final int SHOOTER_INTAKE = 21;
-        public static final double SHOOTER_INTAKE_SPEED = -1.0;
+        public static final int FEEDER = 28;
+        public static final double FEEDER_SPEED = -1.0;
     }
 
-    public static final class IntakePivotConstants {
-        private IntakePivotConstants() {
+    public static final class PivotConstants {
+        private PivotConstants() {
         }
         public static final int PIVOT_MOTOR = 15;
         public static final int LOWER_LIMIT_SWITCH = 3;
         public static final int UPPER_LIMIT_SWITCH = 2;
 
-        public static final double PIVOT_SPEED = 0.25;
+        public static final double PIVOT_SPEED = 0.5;
     }
 
     public static final class IntakeConstants {
@@ -121,15 +129,28 @@ public final class Constants {
         }
         public static final int INTAKE_MOTOR = 16;
 
-        public static final double INTAKE_SPEED = 1.0;
+        public static final double INTAKE_SPEED = -0.5;
     }
 
     public static final class VisionConstants {
         private VisionConstants() {
         }
-        public static final String LIMELIGHT_NAME = "limelight";
+        /** Limelight camera names - must match names configured in Limelight web interface */
+        public static final String LIMELIGHT_ONE = "limelight-front";
+        public static final String LIMELIGHT_TWO = "limelight-back";
+
+        /** Array of all Limelight names for iteration */
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO};
 
         /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;
+
+        /** Blue alliance goal position (blue alliance origin coordinates) */
+        public static final double BLUE_GOAL_X_METERS = 4.5;
+        public static final double BLUE_GOAL_Y_METERS = 4.0;
+
+        /** Red alliance goal position (blue alliance origin coordinates) */
+        public static final double RED_GOAL_X_METERS = 12.0;   // Roughly mirrored from blue goal
+        public static final double RED_GOAL_Y_METERS = 4.0;
     }
 }
