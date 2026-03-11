@@ -126,12 +126,6 @@ public class RobotContainer {
             .withRotationalDeadband(maxAngularRate * 0.1)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-    /** Robot-centric drive - forward is robot forward, 10% deadband */
-    private final SwerveRequest.RobotCentric rDrive = new SwerveRequest.RobotCentric()
-            .withDeadband(maxSpeed * 0.1)
-            .withRotationalDeadband(maxAngularRate * 0.1)
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
     /** Limelight-assisted drive - no deadband for precise vision control */
     private final SwerveRequest.FieldCentric limelight = new SwerveRequest.FieldCentric()
             .withDeadband(0)
@@ -253,8 +247,8 @@ public class RobotContainer {
      * CONTROL SCHEME:
      * - Left Stick: Translation (forward/back, left/right)
      * - Right Stick X: Rotation
-     * - Left Trigger: Manual shooter (speed = trigger position)
-     * - Right Trigger: Robot-centric drive mode (hold)
+     * - Left Trigger: Manual shooter
+     * - Right Trigger: Climb (left stick Y controls speed)
      * - Left Bumper: Intake rollers
      * - Right Bumper: PID Shooter (auto-feeds when at speed)
      * - A Button: Limelight auto-aim drive
@@ -288,23 +282,14 @@ public class RobotContainer {
      * Configures drivetrain-related button bindings.
      */
     private void configureDrivetrainBindings() {
-        // Default Command: Field-centric drive, switches to robot-centric when right trigger held
+        // Default Command: Field-centric drive
         drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() -> {
-                if (m_driverController.getRightTriggerAxis() > 0.1) {
-                    // Robot-centric drive while right trigger held
-                    return rDrive
-                        .withVelocityX(m_driverController.getLeftY() * maxSpeed)
-                        .withVelocityY(m_driverController.getLeftX() * maxSpeed)
-                        .withRotationalRate(-m_driverController.getRightX() * maxAngularRate);
-                } else {
-                    // Field-centric drive (default)
-                    return drive
-                        .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
-                        .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
-                        .withRotationalRate(-m_driverController.getRightX() * maxAngularRate);
-                }
-            })
+            drivetrain.applyRequest(() ->
+                drive
+                    .withVelocityX(-m_driverController.getLeftY() * maxSpeed)
+                    .withVelocityY(-m_driverController.getLeftX() * maxSpeed)
+                    .withRotationalRate(-m_driverController.getRightX() * maxAngularRate)
+            )
         );
 
         // A Button: Auto-aim to goal using odometry - rotates toward goal and allows strafing
