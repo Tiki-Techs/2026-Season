@@ -2,11 +2,13 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
@@ -31,6 +33,20 @@ public class Vision extends SubsystemBase {
 
     /** NetworkTables publisher for AdvantageScope 3D visualization */
     private final StructPublisher<Pose2d> posePublisher;
+
+    // ==================== TARGET ANGLE VISUALIZATION ====================
+
+    /** Field object for the dx line (horizontal leg of triangle) */
+    private final FieldObject2d dxLineObj;
+
+    /** Field object for the dy line (vertical leg of triangle) */
+    private final FieldObject2d dyLineObj;
+
+    /** Field object for the hypotenuse (direct line to goal) */
+    private final FieldObject2d hypLineObj;
+
+    /** Field object for the goal marker */
+    private final FieldObject2d goalMarker;
 
     // ==================== CACHED LIMELIGHT STATE ====================
     // Updated once per loop in periodic() to avoid redundant NetworkTables reads.
@@ -59,6 +75,12 @@ public class Vision extends SubsystemBase {
     public Vision(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
         SmartDashboard.putData("Field", m_field);
+
+        // Setup field objects for target angle triangle visualization
+        dxLineObj = m_field.getObject("dx");
+        dyLineObj = m_field.getObject("dy");
+        hypLineObj = m_field.getObject("hypotenuse");
+        goalMarker = m_field.getObject("goal");
 
         // Setup pose publisher for AdvantageScope 3D field visualization
         posePublisher = NetworkTableInstance.getDefault()
@@ -322,5 +344,51 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putBoolean("Vision/TV", cachedTV);
         SmartDashboard.putNumber("Vision/TX", cachedTX);
         SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
+
+        // ==================== UPDATE TARGET ANGLE TRIANGLE ====================
+        double goalX = getGoalX();
+        double goalY = getGoalY();
+        double robotX = currentPose.getX();
+        double robotY = currentPose.getY();
+        double dx = goalX - robotX;
+        double dy = goalY - robotY;
+        double distance = Math.sqrt(dx * dx + dy * dy);
+        double targetAngleDeg = Math.toDegrees(Math.atan2(dy, dx));
+
+        // Draw triangle on field using pose arrays (lines drawn as series of points)
+        int numPoints = 10;
+
+        // dx line: horizontal from robot to (goalX, robotY)
+        Pose2d[] dxPoses = new Pose2d[numPoints];
+        for (int i = 0; i < numPoints; i++) {
+            double t = (double) i / (numPoints - 1);
+            dxPoses[i] = new Pose2d(robotX + dx * t, robotY, Rotation2d.fromDegrees(0));
+        }
+        dxLineObj.setPoses(dxPoses);
+
+        // dy line: vertical from (goalX, robotY) to goal
+        Pose2d[] dyPoses = new Pose2d[numPoints];
+        for (int i = 0; i < numPoints; i++) {
+            double t = (double) i / (numPoints - 1);
+            dyPoses[i] = new Pose2d(goalX, robotY + dy * t, Rotation2d.fromDegrees(90));
+        }
+        dyLineObj.setPoses(dyPoses);
+
+        // Hypotenuse: direct line from robot to goal
+        Pose2d[] hypPoses = new Pose2d[numPoints];
+        for (int i = 0; i < numPoints; i++) {
+            double t = (double) i / (numPoints - 1);
+            hypPoses[i] = new Pose2d(robotX + dx * t, robotY + dy * t, Rotation2d.fromDegrees(targetAngleDeg));
+        }
+        hypLineObj.setPoses(hypPoses);
+
+        // Goal marker
+        goalMarker.setPose(new Pose2d(goalX, goalY, Rotation2d.fromDegrees(0)));
+
+        // Publish the numeric values too for reference
+        SmartDashboard.putNumber("Vision/TargetAngle/dx", dx);
+        SmartDashboard.putNumber("Vision/TargetAngle/dy", dy);
+        SmartDashboard.putNumber("Vision/TargetAngle/distance", distance);
+        SmartDashboard.putNumber("Vision/TargetAngle/angle", targetAngleDeg);
     }
 }
