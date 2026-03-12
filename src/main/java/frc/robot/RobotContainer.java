@@ -431,8 +431,8 @@ public class RobotContainer {
         // D-Pad Up: Raise intake arm
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
-                m_pivot.raiseArmManual(.75),
-                m_pivot.raiseArmManual(.75),
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -440,13 +440,11 @@ public class RobotContainer {
         // D-Pad Down: Lower intake arm
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_pivot.lowerArmManual(.25),
-                m_pivot.lowerArmManual(.25),
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
-
-        
     }
 
     /**
