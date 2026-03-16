@@ -93,7 +93,7 @@ public class RobotContainer {
     /** Hood subsystem - adjusts shooter launch angle */
     private final Hood m_hood = new Hood(m_vision);
 
-    /** Hood subsystem - adjusts shooter launch angle */
+    /** Climb subsystem - handles climbing mechanism */
     private final Climb m_climb = new Climb();
 
     // ==================== AUTONOMOUS ====================
@@ -155,6 +155,9 @@ public class RobotContainer {
      * Registers PathPlanner commands, builds auto chooser, and configures bindings.
      */
     public RobotContainer() {
+        // Wire up safety interlocks
+        m_climb.setPivot(m_pivot);
+
         // Register PathPlanner named commands for autonomous routines
         registerNamedCommands();
 
@@ -256,15 +259,14 @@ public class RobotContainer {
      * Configures all controller button bindings.
      * Maps controller inputs to robot commands.
      *
-     * CONTROL SCHEME:
+     * CONTROL SCHEME (DRIVER):
      * - Left Stick: Translation (forward/back, left/right)
      * - Right Stick X: Rotation
-     * - Left Trigger: Manual shooter
-     * - Right Trigger: Climb (left stick Y controls speed)
-     * - Left Bumper: Intake rollers
-     * - Right Bumper: PID Shooter (auto-feeds when at speed)
+     * - Left Trigger: Intake rollers
+     * - Right Trigger: PID Shooter with auto-feed (index + feeder when at speed)
+     * - Right Bumper: Shooter only (no feeding)
      * - A Button: Limelight auto-aim drive
-     * - B Button: Feeder only (for indexing balls into shooter)
+     * - B Button: Feeder only
      * - X Button: Index toggle
      * - Y Button: Override mode (hold to reverse mechanisms)
      * - D-Pad Up: Raise intake arm
@@ -272,6 +274,9 @@ public class RobotContainer {
      * - D-Pad Left: Hood down (lower angle)
      * - D-Pad Right: Hood up (higher angle)
      * - Start Button: Reset gyro heading
+     *
+     * CONTROL SCHEME (OPERATOR):
+     * - A Button: Climb (left stick Y controls speed)
      */
     private void configureBindings() {
         // ========== DRIVETRAIN ==========
@@ -332,22 +337,10 @@ public class RobotContainer {
             .onTrue(new InstantCommand(() -> Constants.overrideEnabled = true))
             .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
 
-        // Left Trigger: Manual shooter - speed proportional to trigger position
-        // Normal: forward | Override: reverse
-        m_driverController.leftTrigger().whileTrue(
-                new ConditionalCommand(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                    () -> Constants.overrideEnabled
-                )
-        );
-
-        // Right Bumper: PID shooter with automatic index and shooter intake
+        // Right Trigger: PID shooter with automatic index and shooter intake
         // Normal: spins up shooter, then feeds when at speed
         // Override: reverses all (shooter, index, feeder)
-        // Uses asProxy() to defer index/feeder requirements until shooter is at speed,
-        // allowing X toggle to keep running during spin-up
-        m_driverController.rightBumper().whileTrue(
+        m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
                 // Override: reverse all mechanisms
                 new ParallelCommandGroup(
@@ -372,20 +365,43 @@ public class RobotContainer {
             )
         );
 
-         m_driverController.rightTrigger().whileTrue(
+        // Right Bumper: Shooter only (no feeding)
+        // Normal: forward | Override: reverse
+        m_driverController.rightBumper().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbCommand(()-> -m_driverController.getRightTriggerAxis()),
-                m_climb.runClimbCommand(()-> m_driverController.getRightTriggerAxis()),
+                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                 () -> Constants.overrideEnabled
             )
         );
 
-        // Left Bumper: Run intake rollers
+        // Left Trigger: Run intake rollers
         // Normal: intake | Override: eject
-        m_driverController.leftBumper().whileTrue(
+        m_driverController.leftTrigger().whileTrue(
             new ConditionalCommand(
                 m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
                 m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
+                () -> Constants.overrideEnabled
+            )
+        );
+
+        // Operator A Button: Climb control (uses operator left stick Y for speed)
+        // SAFETY: When climb goes down (negative speed), pivot automatically lowers first
+        m_operatorController.a().whileTrue(
+            new ConditionalCommand(
+                m_climb.runClimbCommand(() -> -m_operatorController.getLeftY()),
+                // Normal mode: coordinate climb with pivot
+                Commands.either(
+                    // If pivot is up and trying to go down: lower pivot first, then climb can go down
+                    new SequentialCommandGroup(
+                        m_pivot.lowerArmAuto(),
+                        m_climb.runClimbCommand(() -> m_operatorController.getLeftY())
+                    ),
+                    // Otherwise just run climb normally
+                    m_climb.runClimbCommand(() -> m_operatorController.getLeftY()),
+                    // Condition: pivot is up AND stick is pushed down (climb wants to go down)
+                    () -> !m_pivot.isPivotDown() && m_operatorController.getLeftY() < -0.1
+                ),
                 () -> Constants.overrideEnabled
             )
         );
@@ -415,12 +431,12 @@ public class RobotContainer {
 
         // D-Pad Left: Hood down (lower angle)
         m_driverController.povLeft().whileTrue(
-            m_hood.runHood(HoodConstants.HOOD_SPEED)
+            m_hood.runHood(.05)
         );
 
         // D-Pad Right: Hood up (higher angle)
         m_driverController.povRight().whileTrue(
-            m_hood.runHood(-HoodConstants.HOOD_SPEED)
+            m_hood.runHood(-.05)
         );
     }
 
@@ -429,21 +445,17 @@ public class RobotContainer {
      */
     private void configureIntakeBindings() {
         // D-Pad Up: Raise intake arm
+        // SAFETY: Climb must go up simultaneously when pivot goes up
         m_driverController.povUp().whileTrue(
-            new ConditionalCommand(
+            new ParallelCommandGroup(
                 m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
-                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
-                () -> Constants.overrideEnabled
+                m_climb.runClimbUp()  // Climb goes up fast to clear pivot
             )
         );
 
         // D-Pad Down: Lower intake arm
         m_driverController.povDown().whileTrue(
-            new ConditionalCommand(
-                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
-                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
-                () -> Constants.overrideEnabled
-            )
+            m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED)
         );
     }
 
@@ -459,9 +471,46 @@ public class RobotContainer {
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
 
-        // Hood: auto-aim by default, D-Pad Left/Right for manual control
-        // m_hood.setDefaultCommand(m_hood.autoAimHood());
-        m_hood.setDefaultCommand(m_hood.stopAll()); // Im keeping this for testing purposes once the hood is fully installed
+        // Hood: manual control only via D-Pad left/right
+        m_hood.setDefaultCommand(m_hood.stopAll());
+
+        // Startup safety sequence for teleop:
+        // 1. Climb goes up (ensures clearance)
+        // 2. Pivot calibrates (goes down to find limit)
+        // 3. Pivot goes up (with climb up for safety)
+        RobotModeTriggers.teleop().onTrue(
+            new SequentialCommandGroup(
+                // First ensure climb is up
+                m_climb.calibrateClimb(),
+                // Then calibrate pivot (finds lower limit)
+                m_pivot.calibratePivot(),
+                // Then raise pivot up (with climb up for safety)
+                new ParallelCommandGroup(
+                    m_pivot.raiseArmAuto(),
+                    m_climb.runClimbUp()
+                ).until(() -> !m_pivot.isPivotDown())
+            ).unless(() -> m_pivot.isCalibrated() && m_climb.isCalibrated())
+        );
+
+        // Calibrate hood on first teleop start
+        RobotModeTriggers.teleop().onTrue(
+            m_hood.calibrateHood().unless(m_hood::isCalibrated)
+        );
+
+        // Calibrate pivot, climb, and hood on first autonomous start
+        RobotModeTriggers.autonomous().onTrue(
+            new SequentialCommandGroup(
+                m_climb.calibrateClimb(),
+                m_pivot.calibratePivot(),
+                new ParallelCommandGroup(
+                    m_pivot.raiseArmAuto(),
+                    m_climb.runClimbUp()
+                ).until(() -> !m_pivot.isPivotDown())
+            ).unless(() -> m_pivot.isCalibrated() && m_climb.isCalibrated())
+        );
+        RobotModeTriggers.autonomous().onTrue(
+            m_hood.calibrateHood().unless(m_hood::isCalibrated)
+        );
     }
 
     /**

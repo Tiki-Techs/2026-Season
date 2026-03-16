@@ -1,18 +1,18 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.spark.SparkBase.ResetMode;
-import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.RelativeEncoder;
-import edu.wpi.first.wpilibj.DigitalInput;
+
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.PivotConstants;
 
@@ -31,22 +31,10 @@ public class Pivot extends SubsystemBase {
     /** Encoder for position tracking */
     private final RelativeEncoder encoder = pivotArm.getEncoder();
 
-    /**
-     * Lower limit switch.
-     * Returns TRUE when unplugged or not triggered, FALSE when triggered.
-     */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(PivotConstants.LOWER_LIMIT_SWITCH);
-
-    /**
-     * Upper limit switch.
-     * Returns TRUE when unplugged or not triggered, FALSE when triggered.
-     */
-    private final DigitalInput upperLimitSwitch = new DigitalInput(PivotConstants.UPPER_LIMIT_SWITCH);
+    /** Stall current threshold for detecting hard stops (lowering) */
+    private final double stallCurrentThreshold = PivotConstants.HOMING_STALL_LOWER_AMPS;
 
     // ==================== CONSTANTS ====================
-
-    /** Speed for raising/lowering the pivot arm (0.0 to 1.0) */
-    private final double pivotSpeed = PivotConstants.PIVOT_SPEED;
 
     /** Speed value used to stop the pivot motor */
     private final double stopSpeed = 0.0;
@@ -61,7 +49,15 @@ public class Pivot extends SubsystemBase {
      * Note: Motor has 25:1 gear ratio, so this is motor rotations not output shaft rotations.
      * Calibrated by zeroing encoder at bottom limit and measuring encoder at top limit.
      */
-    private final double totalTravelDistance = 2.5;
+    private double totalTravelDistance = 7.5;
+
+
+    private boolean isCalibrated = false;
+
+    private double lowerEncoderPos = 0.0;
+    private double upperEncoderPos = 0.0;
+
+
 
     /**
      * Constructs the Pivot subsystem and configures the motor.
@@ -88,8 +84,9 @@ public class Pivot extends SubsystemBase {
         return new RunCommand(() -> {
             if (!intakeDeployed) {
                 // Arm is up - apply holding power against gravity
-                // Only apply if not already at upper limit
-                if (upperLimitSwitch.get()) {
+                // Use encoder to check if near upper limit
+                boolean atUpperLimit = isCalibrated && Math.abs(encoder.getPosition() - upperEncoderPos) < 0.1;
+                if (!atUpperLimit) {
                     pivotArm.set(holdUpPower);
                 } else {
                     pivotArm.set(stopSpeed);
@@ -100,6 +97,69 @@ public class Pivot extends SubsystemBase {
             }
         }, this);
     }
+
+
+public Command calibratePivot() {
+        // Debouncer for stall detection - 0.15s sustained current
+        final Debouncer phase1Stall = new Debouncer(0.15, Debouncer.DebounceType.kRising);
+        // Counter to skip stall detection for first 0.5s (25 loops at 50Hz)
+        final int[] loopCount = {0};
+
+        return new SequentialCommandGroup(
+
+            // Reset calibration state
+            new InstantCommand(() -> {
+                isCalibrated = false;
+                loopCount[0] = 0;
+                SmartDashboard.putString("Pivot/CalibrationPhase", "Starting calibration...");
+            }),
+
+            // ---- Find the lower hard stop ----
+            new RunCommand(() -> {
+                loopCount[0]++;
+                pivotArm.set(PivotConstants.HOMING_SPEED);
+            }, this)
+            .until(() -> {
+                // Skip first 25 loops (0.5s) to let motor get moving
+                if (loopCount[0] < 25) return false;
+                return phase1Stall.calculate(
+                    pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_LOWER_AMPS
+                );
+            }),
+
+            // ---- Zero encoder and set calibration state ----
+            new InstantCommand(() -> {
+                pivotArm.set(stopSpeed);
+                // Zero encoder at bottom
+                encoder.setPosition(0.0);
+                lowerEncoderPos = 0.0;
+                // Use fixed travel distance - upper limit is negative (going up)
+                upperEncoderPos = -totalTravelDistance;
+                intakeDeployed = true;
+                isCalibrated = true;
+
+                SmartDashboard.putNumber("Pivot/EncoderValue", encoder.getPosition());
+                SmartDashboard.putNumber("Pivot/LowerLimit", lowerEncoderPos);
+                SmartDashboard.putNumber("Pivot/UpperLimit", upperEncoderPos);
+                SmartDashboard.putNumber("Pivot/TotalTravel", totalTravelDistance);
+                SmartDashboard.putBoolean("Pivot/IsCalibrated", true);
+                SmartDashboard.putString("Pivot/CalibrationPhase", "Calibration complete!");
+            }, this)
+        );
+    }
+
+    public boolean isCalibrated() {
+        return isCalibrated;
+    }
+
+    /**
+     * Returns true if the pivot is in the down/deployed position.
+     * Used for climb safety interlock.
+     */
+    public boolean isPivotDown() {
+        return intakeDeployed;
+    }
+
 
     /**
      * Continuously commands the pivot motor to stop.
@@ -118,34 +178,30 @@ public class Pivot extends SubsystemBase {
     /**
      * Manually lowers the intake arm while button is held.
      * Slows down near the bottom to prevent slamming into the limit.
-     * Stops automatically when the lower limit switch is triggered.
+     * Stops automatically when stall is detected or encoder limit reached.
      *
      * @param pivotSpeed Base speed for lowering (will be reduced near limit)
      * @return Command that lowers the arm until released or limit reached
      */
     public Command lowerArmManual(double pivotSpeed) {
-        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
-        final double slowZoneThreshold = 0.25; // Slow down when below 25% (near bottom)
+        final double slowSpeed = 0.05;
+        final Debouncer stallDebouncer = new Debouncer(0.1, Debouncer.DebounceType.kRising);
 
         return new RunCommand(() -> {
-            if (!lowerLimitSwitch.get()) {
-                // Limit switch triggered - stop the motor
+            boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > stallCurrentThreshold);
+            double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
+            boolean atLimit = isCalibrated && distanceToLower < 0.05;
+
+            if (stalled || atLimit) {
                 pivotArm.set(stopSpeed);
-            } else {
-                // Calculate speed based on position
-                // progress = 1.0 at top, 0.0 at bottom
-                double traveled = Math.abs(encoder.getPosition());
-                double progress = Math.min(traveled / totalTravelDistance, 1.0);
-
-                double targetSpeed;
-                if (progress > slowZoneThreshold) {
-                    // Above 25% - fast zone
-                    targetSpeed = pivotSpeed;
-                } else {
-                    // Below 25% - slow zone near bottom limit
-                    targetSpeed = slowSpeed;
+                if (stalled) {
+                    intakeDeployed = true;
                 }
+            } else {
+                // Slow zone: within 40% of total travel from bottom
+                boolean inSlowZone = isCalibrated && distanceToLower < (totalTravelDistance * 0.4);
 
+                double targetSpeed = inSlowZone ? slowSpeed : .075;
                 pivotArm.set(targetSpeed);
             }
         }, this);
@@ -154,33 +210,31 @@ public class Pivot extends SubsystemBase {
     /**
      * Manually raises the intake arm while button is held.
      * Slows down near the top to prevent slamming into the limit.
-     * Stops automatically when the upper limit switch is triggered.
+     * Stops automatically when stall is detected or encoder limit reached.
      *
      * @param pivotSpeed Base speed for raising (will be reduced near limit)
      * @return Command that raises the arm until released or limit reached
      */
     public Command raiseArmManual(double pivotSpeed) {
-        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
-        final double slowZoneStart = 0.75; // Start slowing at 75% of travel
+        final double slowSpeed = 0.2;
+        final Debouncer stallDebouncer = new Debouncer(0.1, Debouncer.DebounceType.kRising);
 
         return new RunCommand(() -> {
-            if (!upperLimitSwitch.get()) {
-                // Limit switch triggered - stop the motor
+            // Use higher threshold for raising (fighting gravity draws more current)
+            boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_RAISE_AMPS);
+            double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
+            boolean atLimit = isCalibrated && distanceToUpper < 0.05;
+
+            if (atLimit) {
                 pivotArm.set(stopSpeed);
-            } else {
-                // Calculate speed based on position
-                double traveled = Math.abs(encoder.getPosition());
-                double progress = Math.min(traveled / totalTravelDistance, 1.0);
-
-                double targetSpeed;
-                if (progress < slowZoneStart) {
-                    // Fast zone - use requested speed
-                    targetSpeed = -pivotSpeed;
-                } else {
-                    // Slow zone - gentle approach to limit switch
-                    targetSpeed = -slowSpeed;
+                if (stalled) {
+                    intakeDeployed = false;
                 }
+            } else {
+                // Slow zone: within 40% of total travel from top
+                boolean inSlowZone = isCalibrated && distanceToUpper < (totalTravelDistance * 0.4);
 
+                double targetSpeed = inSlowZone ? -slowSpeed : -1.0;
                 pivotArm.set(targetSpeed);
             }
         }, this);
@@ -203,65 +257,69 @@ public class Pivot extends SubsystemBase {
     }
 
     /**
-     * Automatically lowers the intake arm until the lower limit switch triggers.
+     * Automatically lowers the intake arm until stall detected or encoder limit reached.
      * Updates the deployed state when complete.
-     * Will not run if already at the lower limit.
      *
      * @return Command that lowers to deployed position and updates state
      */
     public Command lowerArmAuto() {
+        final double fastSpeed = 0.6;
+        final double slowSpeed = 0.15;
+        final Debouncer stallDebouncer = new Debouncer(0.15, Debouncer.DebounceType.kRising);
+
         return new RunCommand(() -> {
-            pivotArm.set(pivotSpeed);
+            // Slow zone: within 40% of total travel from bottom
+            double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
+            boolean inSlowZone = isCalibrated && distanceToLower < (totalTravelDistance * 0.4);
+
+            double targetSpeed = inSlowZone ? slowSpeed : fastSpeed;
+            pivotArm.set(targetSpeed);
+
         }, this)
-            .until(() -> !lowerLimitSwitch.get())    // Stop when limit triggered
-            .unless(() -> !lowerLimitSwitch.get())   // Don't run if already at limit
+            .until(() -> {
+                boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > stallCurrentThreshold);
+                double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
+                boolean atLimit = isCalibrated && distanceToLower < 0.05;
+                return stalled || atLimit;
+            })
+            .unless(() -> isCalibrated && Math.abs(encoder.getPosition() - lowerEncoderPos) < 0.05)
             .finallyDo(interrupted -> {
                 pivotArm.set(stopSpeed);
                 if (!interrupted) {
                     intakeDeployed = true;
-                    encoder.setPosition(0);  // Zero encoder at deployed position
                 }
             });
     }
 
     /**
-     * Automatically raises the intake arm until the upper limit switch triggers.
-     * Starts at 0.25 speed, slows down after traveling halfway.
+     * Automatically raises the intake arm until stall detected or encoder limit reached.
+     * Slows down near the top for a gentle approach.
      * Updates the deployed state when complete.
-     * Will not run if already at the upper limit.
      *
      * @return Command that raises to stowed position and updates state
      */
     public Command raiseArmAuto() {
-        final double fastSpeed = 0.6;   // Speed for most of travel
-        final double slowSpeed = 0.15;  // Speed near the limit (soft landing)
-        final double slowZoneStart = 0.75; // Start slowing at 75% of travel
+        final double fastSpeed = 0.6;
+        final double slowSpeed = 0.15;
+        final Debouncer stallDebouncer = new Debouncer(0.15, Debouncer.DebounceType.kRising);
 
         return new RunCommand(() -> {
-            // Use absolute encoder position since we zero at bottom
-            double traveled = Math.abs(encoder.getPosition());
-            double progress = Math.min(traveled / totalTravelDistance, 1.0);
+            // Slow zone: within 40% of total travel from top
+            double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
+            boolean inSlowZone = isCalibrated && distanceToUpper < (totalTravelDistance * 0.4);
 
-            double targetSpeed;
-            if (progress < slowZoneStart) {
-                // Fast zone - full speed
-                targetSpeed = -fastSpeed;
-            } else {
-                // Slow zone - gentle approach to limit switch
-                targetSpeed = -slowSpeed;
-            }
-
+            double targetSpeed = inSlowZone ? -slowSpeed : -fastSpeed;
             pivotArm.set(targetSpeed);
 
-            // Debug output
-            SmartDashboard.putNumber("Pivot/RawEncoder", encoder.getPosition());
-            SmartDashboard.putNumber("Pivot/Traveled", traveled);
-            SmartDashboard.putNumber("Pivot/Progress", progress);
-            SmartDashboard.putNumber("Pivot/TargetSpeed", targetSpeed);
-            SmartDashboard.putBoolean("Pivot/InSlowZone", progress >= slowZoneStart);
         }, this)
-            .until(() -> !upperLimitSwitch.get())    // Stop when limit triggered
-            .unless(() -> !upperLimitSwitch.get())   // Don't run if already at limit
+            .until(() -> {
+                // Use higher threshold for raising (fighting gravity draws more current)
+                boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_RAISE_AMPS);
+                double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
+                boolean atLimit = isCalibrated && distanceToUpper < 0.05;
+                return stalled || atLimit;
+            })
+            .unless(() -> isCalibrated && Math.abs(encoder.getPosition() - upperEncoderPos) < 0.05)
             .finallyDo(interrupted -> {
                 pivotArm.set(stopSpeed);
                 if (!interrupted) {
@@ -288,9 +346,13 @@ public class Pivot extends SubsystemBase {
     public void periodic() {
         double traveled = Math.abs(encoder.getPosition());
         SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
-        SmartDashboard.putNumber("Pivot/TravelDistance", traveled);
         SmartDashboard.putNumber("Pivot/Halfway", totalTravelDistance / 2.0);
         SmartDashboard.putBoolean("Pivot/PastHalfway", traveled > totalTravelDistance / 2.0);
         SmartDashboard.putBoolean("Pivot/Deployed", intakeDeployed);
+    
+        SmartDashboard.putBoolean("Pivot/IsCalibrated", isCalibrated);
+        SmartDashboard.putNumber("Pivot/HomingCurrent", pivotArm.getOutputCurrent());
+        SmartDashboard.putNumber("Pivot/LowerLimit", lowerEncoderPos);
+        SmartDashboard.putNumber("Pivot/UpperLimit", upperEncoderPos);
     }
 }

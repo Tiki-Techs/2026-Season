@@ -204,6 +204,9 @@ public class Shooter extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Periodic updates (telemetry can be added here)
+        SmartDashboard.putNumber("Shooter/Motor1 Velocity", shooterOne.getVelocity().getValueAsDouble());
+        SmartDashboard.putNumber("Shooter/Motor2 Velocity", shooterTwo.getVelocity().getValueAsDouble());
+        SmartDashboard.putNumber("Shooter/Motor3 Velocity", shooterThree.getVelocity().getValueAsDouble());
+        SmartDashboard.putNumber("Shooter/Motor4 Velocity", shooterFour.getVelocity().getValueAsDouble());
     }
 }
