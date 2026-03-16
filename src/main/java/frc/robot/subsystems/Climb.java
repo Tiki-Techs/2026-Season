@@ -9,6 +9,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -18,20 +19,41 @@ public class Climb extends SubsystemBase {
 
     private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR);
 
-    private final DigitalInput upperLimitSwitch = new DigitalInput(ClimbConstants.UPPER_LIMIT_SWITCH);
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
+    // private final DigitalInput upperLimitSwitch = new DigitalInput(ClimbConstants.UPPER_LIMIT_SWITCH);
+    // private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
+
+    private boolean isCalibrated = false;
+
+    /** Reference to pivot for safety interlock - climb cannot go down while pivot is up */
+    private Pivot pivot = null;
 
     public Climb() {
 
+    }
+
+    /**
+     * Sets the pivot reference for safety interlock.
+     * MUST be called after construction for safety to work.
+     */
+    public void setPivot(Pivot pivot) {
+        this.pivot = pivot;
     } 
 
     public void runClimb(double speed) {
-        // Stop if trying to go down and at lower limit, or trying to go up and at upper limit
-        if ((speed > 0 && !lowerLimitSwitch.get()) || (speed < 0 && !upperLimitSwitch.get())) {
+        // SAFETY: Prevent climb from going DOWN (negative speed) while pivot is UP
+        // This prevents the climb mechanism from colliding with the pivot arm
+        if (speed < 0 && pivot != null && !pivot.isPivotDown()) {
             climbMotor.set(0);
-        } else {
-            climbMotor.set(speed);
+            return;
         }
+
+        // SAFETY: Stop if stalling (hit a hard stop)
+        if (climbMotor.getStatorCurrent().getValueAsDouble() > ClimbConstants.HOMING_STALL_AMPS) {
+            climbMotor.set(0);
+            return;
+        }
+
+        climbMotor.set(speed);
     }
 
     public Command runClimbCommand(DoubleSupplier speedSupplier) {
@@ -45,10 +67,47 @@ public class Climb extends SubsystemBase {
         );
     }
 
+    public Command calibrateClimb() {
+        return new RunCommand(() -> {
+            climbMotor.set(0.15);
+        }, this)
+            .until(() -> (climbMotor.getStatorCurrent().getValueAsDouble() > ClimbConstants.HOMING_STALL_AMPS))
+            .andThen(new InstantCommand(() -> {
+                climbMotor.set(0.0);
+                climbMotor.setPosition(0.0);
+                isCalibrated = true;
+            }));
+    }
+
+    public boolean isCalibrated() {
+        return isCalibrated;
+    }
+
+    /**
+     * Runs the climb motor up (positive direction) at a fast speed.
+     * Used for safety interlock when pivot is raising.
+     * Stops if stall is detected.
+     */
+    public Command runClimbUp() {
+        return new RunCommand(() -> {
+            // Stop if stalling (hit upper limit)
+            if (climbMotor.getStatorCurrent().getValueAsDouble() > ClimbConstants.HOMING_STALL_AMPS) {
+                climbMotor.set(0);
+            } else {
+                climbMotor.set(0.5);
+            }
+        }, this);
+    }
+
     @Override
     public void periodic() {
-        SmartDashboard.putBoolean("Climb/UpperLimit", !upperLimitSwitch.get());
-        SmartDashboard.putBoolean("Climb/LowerLimit", !lowerLimitSwitch.get());
+        double current = climbMotor.getStatorCurrent().getValueAsDouble();
+        SmartDashboard.putNumber("Climb/StallCurrent", current);
+        SmartDashboard.putBoolean("Climb/IsCalibrated", isCalibrated);
+        // Safety status - shows if climb down is allowed (pivot must be down)
+        SmartDashboard.putBoolean("Climb/DownAllowed", pivot == null || pivot.isPivotDown());
+        // Shows if climb is currently stalling (at a hard stop)
+        SmartDashboard.putBoolean("Climb/IsStalling", current > ClimbConstants.HOMING_STALL_AMPS);
     }
     
 }

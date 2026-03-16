@@ -63,8 +63,9 @@ public final class Constants {
         private ClimbConstants() {
         }
         public static final int CLIMB_MOTOR = 31;
-        public static final int LOWER_LIMIT_SWITCH = 4;
-        public static final int UPPER_LIMIT_SWITCH = 5;
+        // public static final int LOWER_LIMIT_SWITCH = 4;
+        // public static final int UPPER_LIMIT_SWITCH = 5;
+        public static final double HOMING_STALL_AMPS = 15.0;
     }
 
     public static final class HoodConstants {
@@ -73,6 +74,7 @@ public final class Constants {
         public static final int HOOD_MOTOR = 25;
         public static final int LOWER_LIMIT_SWITCH = 6;
         public static final double HOOD_SPEED = 0.05;
+        public static final double HOMING_STALL_AMPS = 15.0;
     }
 
     public static final class IndexConstants {
@@ -101,7 +103,7 @@ public final class Constants {
         public static final double KI = 0;    // Integral gain (disabled)
         public static final double KD = 0;    // Derivative gain (disabled)
 
-        public static final double SHOOTER_TARGET_RPS = 80.0; // Target shooter speed in rotations per second
+        public static final double SHOOTER_TARGET_RPS = 85.0; // Target shooter speed in rotations per second
         public static final double SHOOTER_DEFAULT_SPEED = 1.0; // Target shooter speed in rotations per second
 
 
@@ -118,10 +120,12 @@ public final class Constants {
         private PivotConstants() {
         }
         public static final int PIVOT_MOTOR = 15;
-        public static final int LOWER_LIMIT_SWITCH = 3;
-        public static final int UPPER_LIMIT_SWITCH = 2;
 
-        public static final double PIVOT_SPEED = 0.75;
+        public static final double HOMING_SPEED = 0.075;
+        public static final double HOMING_STALL_LOWER_AMPS = 35.0;
+        public static final double HOMING_STALL_RAISE_AMPS = 65.0;
+
+        public static final double PIVOT_SPEED = 0.25;
     }
 
     public static final class IntakeConstants {

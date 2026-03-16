@@ -6,6 +6,7 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -25,8 +26,6 @@ public class Hood extends SubsystemBase {
     /** Hood angle adjustment motor */
     private final TalonFX hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR);
 
-    /** Lower limit switch for hood zeroing */
-    private final DigitalInput lowerLimitSwitch = new DigitalInput(HoodConstants.LOWER_LIMIT_SWITCH);
 
     // ==================== DEPENDENCIES ====================
 
@@ -48,13 +47,16 @@ public class Hood extends SubsystemBase {
     // ==================== POSITION LIMITS ====================
 
     /** Minimum hood position (encoder rotations) - fully down */
-    private double minPosition = 0.0;
+    private double minPosition = 0.3;
 
     /** Maximum hood position (encoder rotations) - fully up */
-    private double maxPosition = -1.1416015625;
+    private double maxPosition = -3.0;
 
     /** Current target position for PID control */
     private double targetPosition = 0.0;
+
+    private boolean isCalibrated = false;
+
 
     /**
      * Constructs the Hood subsystem and initializes configuration.
@@ -232,16 +234,21 @@ public class Hood extends SubsystemBase {
      *
      * @return Command that homes the hood and resets the encoder
      */
-    public Command resetPosition() {
+    public Command calibrateHood() {
         return new RunCommand(() -> {
-            hoodMotor.set(-0.1);
+            hoodMotor.set(0.15);
         }, this)
-            .until(() -> lowerLimitSwitch.get())
-            .andThen(() -> {
+            .until(() -> (hoodMotor.getStatorCurrent().getValueAsDouble() > HoodConstants.HOMING_STALL_AMPS))
+            .andThen(new InstantCommand(() -> {
                 hoodMotor.set(0.0);
                 hoodMotor.setPosition(0.0);
-            });
+                isCalibrated = true;
+            }));
     }
+
+    public boolean isCalibrated() {
+        return isCalibrated;
+    }   
 
     @Override
     public void periodic() {
@@ -249,9 +256,9 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
         SmartDashboard.putNumber("Hood/Target", targetPosition);
         SmartDashboard.putBoolean("Hood/AtTarget", atTarget());
-        SmartDashboard.putBoolean("Hood Lower Limit Switch", !lowerLimitSwitch.get());
-
+        SmartDashboard.putNumber("Hood/StallCurrent", hoodMotor.getStatorCurrent().getValueAsDouble());
         // Display current distance to goal for tuning the lookup table
         SmartDashboard.putNumber("Hood/DistanceToGoal", vision.getDistanceToGoal());
+        SmartDashboard.putBoolean("Hood/IsCalibrated", isCalibrated);
     }
 }
