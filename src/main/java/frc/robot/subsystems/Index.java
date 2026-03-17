@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.IndexConstants;
 
 /** Transfers game pieces from the intake to the shooter using belt-driven rollers. */
@@ -37,5 +38,11 @@ public class Index extends SubsystemBase {
     /** Continuously stops the motor. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> indexMotor.set(0), this);
+    }
+
+    @Override
+    public void periodic() {
+        SmartDashboard.putNumber("Index/MotorSpeed", indexMotor.get());
+        SmartDashboard.putNumber("Index/MotorCurrent", indexMotor.getStatorCurrent().getValueAsDouble());
     }
 }

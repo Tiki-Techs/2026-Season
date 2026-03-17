@@ -23,6 +23,10 @@ public class Vision extends SubsystemBase {
     private double cachedTagDist = 0.0;
     private boolean[] lastTV = new boolean[VisionConstants.ALL_LIMELIGHTS.length];
 
+    // Loop counter for throttling dashboard updates
+    private int loopCounter = 0;
+    private static final int DASHBOARD_UPDATE_INTERVAL = 5; // Update dashboard every 5 loops (10Hz)
+
     public Vision(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
         posePublisher = NetworkTableInstance.getDefault()
@@ -135,6 +139,9 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
+        loopCounter++;
+        boolean updateDashboard = (loopCounter % DASHBOARD_UPDATE_INTERVAL == 0);
+
         Pose2d currentPose = drivetrain.getState().Pose;
         posePublisher.set(currentPose);
 
@@ -151,9 +158,6 @@ public class Vision extends SubsystemBase {
             boolean tv = LimelightHelpers.getTV(limelightName);
             double tx = LimelightHelpers.getTX(limelightName);
 
-            SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
-            SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
-
             if (tv != lastTV[i]) {
                 if (tv) {
                     LimelightHelpers.setLEDMode_ForceBlink(limelightName);
@@ -165,14 +169,18 @@ public class Vision extends SubsystemBase {
 
             LimelightHelpers.SetRobotOrientation(
                 limelightName,
-                drivetrain.getState().Pose.getRotation().getDegrees(),
+                currentPose.getRotation().getDegrees(),
                 0, 0, 0, 0, 0
             );
 
             LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
             if (mt2 != null && mt2.tagCount > 0) {
-                SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+                if (updateDashboard) {
+                    SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+                }
 
                 if (tv && mt2.avgTagDist < bestTagDist) {
                     cachedTV = true;
@@ -186,11 +194,19 @@ public class Vision extends SubsystemBase {
                     drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
                 }
+            } else if (updateDashboard) {
+                SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
             }
         }
 
-        SmartDashboard.putBoolean("Vision/TV", cachedTV);
-        SmartDashboard.putNumber("Vision/TX", cachedTX);
-        SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
+        if (updateDashboard) {
+            SmartDashboard.putBoolean("Vision/TV", cachedTV);
+            SmartDashboard.putNumber("Vision/TX", cachedTX);
+            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
+            SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
+            SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
+            SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
+        }
     }
 }

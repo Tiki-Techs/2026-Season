@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.ClimbConstants;
 
 /** Controls the climbing mechanism with limit switch protection. */
@@ -111,5 +112,14 @@ public class Climb extends SubsystemBase {
                 climbMotor.set(-0.5);
             }
         }, this);
+    }
+
+    @Override
+    public void periodic() {
+        SmartDashboard.putBoolean("Climb/IsCalibrated", isCalibrated);
+        SmartDashboard.putBoolean("Climb/UpperLimitPressed", isUpperLimitPressed());
+        SmartDashboard.putBoolean("Climb/ClimbDown", isClimbDown());
+        SmartDashboard.putNumber("Climb/Position", climbMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putNumber("Climb/MotorCurrent", climbMotor.getStatorCurrent().getValueAsDouble());
     }
 }

@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -201,6 +202,16 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
                 m_hasAppliedOperatorPerspective = true;
             });
         }
+
+        Pose2d pose = getPose();
+        ChassisSpeeds speeds = getRobotRelativeSpeeds();
+
+        SmartDashboard.putNumber("Swerve/Pose/X", pose.getX());
+        SmartDashboard.putNumber("Swerve/Pose/Y", pose.getY());
+        SmartDashboard.putNumber("Swerve/Pose/Rotation", pose.getRotation().getDegrees());
+        SmartDashboard.putNumber("Swerve/Speeds/Vx", speeds.vxMetersPerSecond);
+        SmartDashboard.putNumber("Swerve/Speeds/Vy", speeds.vyMetersPerSecond);
+        SmartDashboard.putNumber("Swerve/Speeds/Omega", speeds.omegaRadiansPerSecond);
     }
 
     private void startSimThread() {

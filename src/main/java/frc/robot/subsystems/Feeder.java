@@ -5,6 +5,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.FeederConstants;
 
 /** Controls the feeder roller that feeds game pieces to the shooter. */
@@ -25,5 +26,11 @@ public class Feeder extends SubsystemBase {
     /** Continuously stops the feeder motor. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> feederMotor.set(0), this);
+    }
+
+    @Override
+    public void periodic() {
+        SmartDashboard.putNumber("Feeder/MotorSpeed", feederMotor.get());
+        SmartDashboard.putNumber("Feeder/MotorCurrent", feederMotor.getStatorCurrent().getValueAsDouble());
     }
 }

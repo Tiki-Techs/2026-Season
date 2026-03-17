@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.ShooterConstants;
 
 import java.util.function.DoubleSupplier;
@@ -145,5 +146,21 @@ public class Shooter extends SubsystemBase {
         return Math.abs(currentOneVelocity - Math.abs(targetRPS)) <= tolerance &&
                Math.abs(currentTwoVelocity - Math.abs(targetRPS)) <= tolerance &&
                Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance;
+    }
+
+    @Override
+    public void periodic() {
+        BaseStatusSignal.refreshAll(velocityOne, velocityTwo, velocityThree);
+        double vel1 = Math.abs(velocityOne.getValueAsDouble());
+        double vel2 = Math.abs(velocityTwo.getValueAsDouble());
+        double vel3 = Math.abs(velocityThree.getValueAsDouble());
+        double avgVelocity = (vel1 + vel2 + vel3) / 3.0;
+
+        SmartDashboard.putNumber("Shooter/TargetVelocity", shooterTargetVelocity);
+        SmartDashboard.putNumber("Shooter/Motor1/Velocity", vel1);
+        SmartDashboard.putNumber("Shooter/Motor2/Velocity", vel2);
+        SmartDashboard.putNumber("Shooter/Motor3/Velocity", vel3);
+        SmartDashboard.putNumber("Shooter/AvgVelocity", avgVelocity);
+        SmartDashboard.putBoolean("Shooter/AtTargetSpeed", isAtTargetSpeed(shooterTargetVelocity, 2.0));
     }
 }

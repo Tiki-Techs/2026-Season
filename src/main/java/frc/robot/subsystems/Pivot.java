@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.PivotConstants;
 
 /** Controls the intake arm pivot mechanism. Raises and lowers the intake between deployed and stowed positions. */
@@ -29,6 +30,7 @@ public class Pivot extends SubsystemBase {
     private boolean isCalibrated = false;
     private double lowerEncoderPos = 0.0;
     private double upperEncoderPos = 0.0;
+    private int pivotLoopCounter = 0;
 
     /** Reference to climb for safety interlock - pivot cannot go up while climb is down. */
     private Climb climb = null;
@@ -222,5 +224,19 @@ public class Pivot extends SubsystemBase {
     /** Manually toggles the deployed state flag. Use to resync state if arm was moved externally. */
     public Command changeDeployState() {
         return new InstantCommand(() -> intakeDeployed = !intakeDeployed);
+    }
+
+    @Override
+    public void periodic() {
+        pivotLoopCounter++;
+        SmartDashboard.putBoolean("Pivot/IsCalibrated", isCalibrated);
+        SmartDashboard.putBoolean("Pivot/IntakeDeployed", intakeDeployed);
+        SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
+        if (pivotLoopCounter % 5 == 0) {
+            SmartDashboard.putNumber("Pivot/MotorCurrent", pivotArm.getOutputCurrent());
+        }
+        SmartDashboard.putBoolean("Pivot/CanRaise", canRaise());
+        SmartDashboard.putNumber("Pivot/LowerLimit", lowerEncoderPos);
+        SmartDashboard.putNumber("Pivot/UpperLimit", upperEncoderPos);
     }
 }

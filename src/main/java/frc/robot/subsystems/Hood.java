@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.HoodConstants;
 
 /** Controls the shooter hood angle for trajectory adjustment based on distance. */
@@ -116,5 +117,15 @@ public class Hood extends SubsystemBase {
 
     public boolean isCalibrated() {
         return isCalibrated;
+    }
+
+    @Override
+    public void periodic() {
+        SmartDashboard.putBoolean("Hood/IsCalibrated", isCalibrated);
+        SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putNumber("Hood/TargetPosition", targetPosition);
+        SmartDashboard.putBoolean("Hood/AtTarget", pidController.atSetpoint());
+        SmartDashboard.putNumber("Hood/MotorCurrent", hoodMotor.getStatorCurrent().getValueAsDouble());
+        SmartDashboard.putNumber("Hood/DistanceToGoal", vision.getDistanceToGoal());
     }
 }
