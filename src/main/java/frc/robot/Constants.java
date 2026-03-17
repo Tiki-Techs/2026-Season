@@ -4,73 +4,42 @@
 
 package frc.robot;
 
-import edu.wpi.first.math.util.Units;
-import frc.robot.generated.TunerConstants;
-// import frc.robot.subsystems.Climb;
-
 import static edu.wpi.first.units.Units.*;
 
-/**
- * Constants class for robot-wide configuration values.
- * All constants should be declared as public static (or public static final).
- *
- * This class should only contain constant values - no functional code.
- * Use static imports to access these values conveniently in other classes.
- */
+import frc.robot.generated.TunerConstants;
+
+/** Robot-wide configuration constants. */
 public final class Constants {
 
-    // ==================== GLOBAL STATE ====================
-
-    /**
-     * Override mode flag - when true, reverses direction of most mechanisms.
-     * Controlled by holding the Y button on the driver controller.
-     * Useful for unjamming or manual adjustment.
-     */
+    /** Override mode flag - when true, reverses direction of most mechanisms. */
     public static boolean overrideEnabled = false;
 
-    // ==================== OPERATOR INTERFACE ====================
-
-    /**
-     * Constants for operator interface devices (controllers, buttons, etc.)
-     */
     public static class OperatorConstants {
-        /** USB port for the primary driver Xbox controller */
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
     }
 
-    // ==================== DRIVE ====================
-
-    /**
-     * Constants for drivetrain configuration.
-     */
     public static class DriveConstants {
-        /** Maximum translational speed in meters per second */
         public static final double MAX_SPEED_METERS_PER_SECOND =
             TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-
-        /** Maximum rotational speed in radians per second (0.75 rotations/sec) */
         public static final double MAX_ANGULAR_SPEED_RADIANS_PER_SECOND =
             RotationsPerSecond.of(0.75).in(RadiansPerSecond);
     }
 
-    // Swerve system IDs, (DO NOT USE THESE AGAIN)
-    // Drive motors 1, 4, 7, 10
-    // Angle motors 2, 5, 8, 11
-    // Encoders     3, 6, 9, 12
+    // Swerve system IDs (DO NOT USE THESE AGAIN):
+    // Drive motors: 1, 4, 7, 10
+    // Angle motors: 2, 5, 8, 11
+    // Encoders: 3, 6, 9, 12
 
     public static final class ClimbConstants {
-        private ClimbConstants() {
-        }
+        private ClimbConstants() {}
         public static final int CLIMB_MOTOR = 31;
-        // public static final int LOWER_LIMIT_SWITCH = 4;
-        // public static final int UPPER_LIMIT_SWITCH = 5;
-        public static final double HOMING_STALL_AMPS = 15.0;
+        public static final int UPPER_LIMIT_SWITCH = 6;
+        public static final int LOWER_LIMIT_SWITCH = 0;
     }
 
     public static final class HoodConstants {
-        private HoodConstants() {
-        }
+        private HoodConstants() {}
         public static final int HOOD_MOTOR = 25;
         public static final int LOWER_LIMIT_SWITCH = 6;
         public static final double HOOD_SPEED = 0.05;
@@ -78,84 +47,61 @@ public final class Constants {
     }
 
     public static final class IndexConstants {
-        private IndexConstants() {
-        }
+        private IndexConstants() {}
         public static final int INDEX_MOTOR = 20;
-
         public static final double INDEX_SPEED = 1.0;
     }
 
     public static final class ShooterConstants {
-        private ShooterConstants() {
-        }
-
-        public static final int FLOOR_ONE = 21; // CW Positive
-        public static final int FLOOR_TWO = 22;  // CCW Positive
-        public static final int FLOOR_THREE = 23;  // CCW Positive
-        public static final int FLOOR_FOUR = 24;  // CCW Positive
-
-        
+        private ShooterConstants() {}
+        public static final int FLOOR_ONE = 21;
+        public static final int FLOOR_TWO = 22;
+        public static final int FLOOR_THREE = 23;
 
         // PID constants for velocity control
-        public static final double KS = 0.1;  // Static friction compensation (volts)
-        public static final double KV = 0.12; // Velocity feedforward (volts per RPS)
-        public static final double KP = 0.11; // Proportional gain (volts per RPS of error)
-        public static final double KI = 0;    // Integral gain (disabled)
-        public static final double KD = 0;    // Derivative gain (disabled)
+        public static final double KS = 0.1;
+        public static final double KV = 0.12;
+        public static final double KP = 0.11;
+        public static final double KI = 0;
+        public static final double KD = 0;
 
-        public static final double SHOOTER_TARGET_RPS = 85.0; // Target shooter speed in rotations per second
-        public static final double SHOOTER_DEFAULT_SPEED = 1.0; // Target shooter speed in rotations per second
-
-
+        public static final double SHOOTER_TARGET_RPS = 75.0;
+        public static final double SHOOTER_DEFAULT_SPEED = 1.0;
     }
 
     public static final class FeederConstants {
-        private FeederConstants() {
-        }
+        private FeederConstants() {}
         public static final int FEEDER = 28;
         public static final double FEEDER_SPEED = -1.0;
     }
 
     public static final class PivotConstants {
-        private PivotConstants() {
-        }
+        private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
-
         public static final double HOMING_SPEED = 0.075;
         public static final double HOMING_STALL_LOWER_AMPS = 35.0;
         public static final double HOMING_STALL_RAISE_AMPS = 65.0;
-
         public static final double PIVOT_SPEED = 0.25;
     }
 
     public static final class IntakeConstants {
-        private IntakeConstants() {
-        }
+        private IntakeConstants() {}
         public static final int INTAKE_MOTOR = 16;
-
         public static final double INTAKE_SPEED = -0.75;
     }
 
     public static final class VisionConstants {
-        private VisionConstants() {
-        }
-        /** Limelight camera names - must match names configured in Limelight web interface */
+        private VisionConstants() {}
         public static final String LIMELIGHT_ONE = "limelight-br";
         public static final String LIMELIGHT_TWO = "limelight-bl";
-        // public static final String LIMELIGHT_THREE = "limelight-fl";
-
-        /** Array of all Limelight names for iteration */
         public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_ONE, LIMELIGHT_TWO};
 
-        /** Desired stopping distance from camera to AprilTag in meters - tune this */
         public static final double TARGET_DISTANCE_METERS = 1.5;
 
-        /** Blue alliance goal position (blue alliance origin coordinates) */
+        // Goal positions (blue alliance origin coordinates)
         public static final double BLUE_GOAL_X_METERS = 4.5;
         public static final double BLUE_GOAL_Y_METERS = 4.0;
-
-        /** Red alliance goal position (blue alliance origin coordinates) */
-        public static final double RED_GOAL_X_METERS = 12.0;   // Roughly mirrored from blue goal
+        public static final double RED_GOAL_X_METERS = 12.0;
         public static final double RED_GOAL_Y_METERS = 4.0;
     }
 }
