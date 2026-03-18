@@ -22,10 +22,10 @@ public class Vision extends SubsystemBase {
     private boolean cachedTV = false;
     private double cachedTX = 0.0;
     private double cachedTagDist = 0.0;
-    private boolean[] lastTV = new boolean[VisionConstants.ALL_LIMELIGHTS.length];
 
     // Loop counter for throttling dashboard updates
     private int loopCounter = 0;
+    private double lastRotationError = 0.0;
     private static final int DASHBOARD_UPDATE_INTERVAL = 5; // Update dashboard every 5 loops (10Hz)
 
     public Vision(SwerveSubsystem drivetrain) {
@@ -42,7 +42,7 @@ public class Vision extends SubsystemBase {
     /** Calculates angular velocity for aiming at a target using proportional control. */
     public double limelight_aim_proportional() {
         double kP = 1.5;
-        double minOutput = 0.15;
+     double minOutput = 0.15;
 
         if (!cachedTV) return 0.0;
         if (Math.abs(cachedTX) < 5.0) return 0.0;
@@ -93,12 +93,13 @@ public class Vision extends SubsystemBase {
     /** Checks if the robot is within shooting range (not in the neutral zone). */
     public boolean isInShootingRange() {
         double robotX = drivetrain.getState().Pose.getX();
-        return robotX <= 4.5 || robotX >= 12.0;
+        return robotX <= VisionConstants.BLUE_GOAL_X_METERS || robotX >= VisionConstants.RED_GOAL_X_METERS;
     }
 
     /** Calculates angular velocity to rotate toward the goal or alliance wall. */
     public double getRotationToGoal() {
         double kP = 3.0;
+        double kD = 0.2;
         double minOutput = 0.2;
 
         Pose2d currentPose = drivetrain.getState().Pose;
@@ -122,13 +123,32 @@ public class Vision extends SubsystemBase {
         while (error > Math.PI) error -= 2 * Math.PI;
         while (error < -Math.PI) error += 2 * Math.PI;
 
-        if (Math.abs(error) < Math.toRadians(2.0)) return 0.0;
+        double derivative = (error - lastRotationError) / 0.02;
+        lastRotationError = error;
 
-        double output = error * kP;
+        if (Math.abs(error) < Math.toRadians(1.0)) return 0.0;
+
+        double output = error * kP + derivative * kD;
         if (output > 0) output = Math.max(output, minOutput);
         else output = Math.min(output, -minOutput);
 
         return output;
+    }
+
+    /**
+     * Sets the drivetrain pose from the best available vision estimate.
+     * Call this once at the start of auto to initialize position.
+     * @return true if pose was set successfully, false if no valid vision data
+     */
+    public boolean setInitialPoseFromVision() {
+        for (String limelightName : VisionConstants.ALL_LIMELIGHTS) {
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+            if (mt2 != null && mt2.tagCount > 0) {
+                drivetrain.resetPose(mt2.pose);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Calculates forward velocity for ranging to a target using cached tag distance. */
@@ -180,14 +200,6 @@ public class Vision extends SubsystemBase {
             boolean tv = LimelightHelpers.getTV(limelightName);
             double tx = LimelightHelpers.getTX(limelightName);
 
-            if (tv != lastTV[i]) {
-                if (tv) {
-                    LimelightHelpers.setLEDMode_ForceBlink(limelightName);
-                } else {
-                    LimelightHelpers.setLEDMode_ForceOff(limelightName);
-                }
-                lastTV[i] = tv;
-            }
 
             LimelightHelpers.SetRobotOrientation(
                 limelightName,
@@ -212,7 +224,8 @@ public class Vision extends SubsystemBase {
                 }
 
                 if (!rejectAllUpdates) {
-                    double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
+                    // Higher stdDev = less trust in vision, more reliance on odometry
+                    double stdDev = 1.2 * mt2.avgTagDist / mt2.tagCount;
                     drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
                 }

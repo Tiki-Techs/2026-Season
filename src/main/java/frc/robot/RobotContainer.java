@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import java.util.Set;
+
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -19,11 +21,11 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
-import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
@@ -120,7 +122,11 @@ public class RobotContainer {
         NamedCommands.registerCommand("RaiseClimb", m_climb.runClimbUp());
 
         // Intake roller command
-        NamedCommands.registerCommand("Intake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED));
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED));
+        NamedCommands.registerCommand("stopIntake", m_intake.stopAll());
+
+        // Reverse feeder
+        NamedCommands.registerCommand("reverseFeeder", m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED));
 
         // Shoot command (spins up shooter, then feeds when at speed)
         NamedCommands.registerCommand("Shoot", PIDShooter_Feeder_Index());
@@ -151,8 +157,8 @@ public class RobotContainer {
         m_driverController.a().whileTrue(
             drivetrain.applyRequest(() ->
                 drive
-                    .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed)
-                    .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed)
+                    .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
+                    .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
                     .withRotationalRate(m_vision.getRotationToGoal())
             )
         );
@@ -164,6 +170,9 @@ public class RobotContainer {
                 new Rotation2d()
             ))
         ));
+
+        // Left Bumper: Brake (X-pattern wheel lock)
+        m_driverController.leftBumper().whileTrue(drivetrain.brakeCommand());
     }
 
     private void configureShooterBindings() {
@@ -255,26 +264,31 @@ public class RobotContainer {
                 () -> Constants.overrideEnabled
             )
         );
+
     }
 
     private void configureDefaultCommands() {
         m_shooter.setDefaultCommand(m_shooter.stopAll());
         m_feeder.setDefaultCommand(m_feeder.stopAll());
         m_intake.setDefaultCommand(m_intake.stopAll());
-        m_pivot.setDefaultCommand(m_pivot.holdPosition());
+        m_pivot.setDefaultCommand(m_pivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
         m_hood.setDefaultCommand(m_hood.stopAll());
 
-        // Calibrate subsystems at start of auto
-        RobotModeTriggers.autonomous().onTrue(m_hood.calibrateHood().unless(m_hood::isCalibrated));
-        RobotModeTriggers.autonomous().onTrue(m_pivot.calibratePivot().unless(m_pivot::isCalibrated));
-        RobotModeTriggers.autonomous().onTrue(m_climb.calibrateClimb().unless(m_climb::isCalibrated));
+        // Set initial pose from vision at start of auto and teleop
+        RobotModeTriggers.autonomous().onTrue(new InstantCommand(() -> m_vision.setInitialPoseFromVision()));
+        RobotModeTriggers.teleop().onTrue(new InstantCommand(() -> m_vision.setInitialPoseFromVision()));
+
+        // Calibrate subsystems at start of auto (defer creates fresh command each time)
+        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
+        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
+        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated));
 
         // Calibrate subsystems on teleop start if not already calibrated
-        RobotModeTriggers.teleop().onTrue(m_hood.calibrateHood().unless(m_hood::isCalibrated));
-        RobotModeTriggers.teleop().onTrue(m_pivot.calibratePivot().unless(m_pivot::isCalibrated));
-        RobotModeTriggers.teleop().onTrue(m_climb.calibrateClimb().unless(m_climb::isCalibrated));
+        RobotModeTriggers.teleop().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
+        RobotModeTriggers.teleop().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
+        RobotModeTriggers.teleop().onTrue(Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated));
 
     
     }
@@ -286,10 +300,10 @@ public class RobotContainer {
     /** Creates a command that spins up the shooter, then feeds when at speed. */
     public Command PIDShooter_Feeder_Index() {
         return new SequentialCommandGroup(
-            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS)
-                .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
+                    .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
             new ParallelCommandGroup(
-                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                 m_index.runIndex(IndexConstants.INDEX_SPEED),
                 m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
             )

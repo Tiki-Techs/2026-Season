@@ -77,10 +77,10 @@ public final class Constants {
     public static final class PivotConstants {
         private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
-        public static final double HOMING_SPEED = 0.1;
-        public static final double HOMING_STALL_LOWER_AMPS = 30.0;
+        public static final double HOMING_SPEED = 0.2;
+        public static final double HOMING_STALL_LOWER_AMPS = 8.0;
         public static final double HOMING_STALL_RAISE_AMPS = 65.0;
-        public static final double PIVOT_SPEED = 0.25;
+        public static final double PIVOT_SPEED = 0.6;
     }
 
     public static final class IntakeConstants {

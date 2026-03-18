@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
@@ -46,6 +47,8 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
     private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.k180deg;
     private boolean m_hasAppliedOperatorPerspective = false;
+
+    private final Field2d m_field = new Field2d();
 
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
@@ -98,6 +101,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
 
     private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
     private final SwerveRequest.ApplyRobotSpeeds m_pathApplyRobotSpeeds = new SwerveRequest.ApplyRobotSpeeds();
+    private final SwerveRequest.SwerveDriveBrake m_brake = new SwerveRequest.SwerveDriveBrake();
 
     public SwerveSubsystem(
         SwerveDrivetrainConstants drivetrainConstants,
@@ -106,6 +110,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         super(drivetrainConstants, modules);
         if (Utils.isSimulation()) startSimThread();
         configureAutoBuilder();
+        SmartDashboard.putData("Field", m_field);
     }
 
     public SwerveSubsystem(
@@ -116,6 +121,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         super(drivetrainConstants, odometryUpdateFrequency, modules);
         if (Utils.isSimulation()) startSimThread();
         configureAutoBuilder();
+        SmartDashboard.putData("Field", m_field);
     }
 
     public SwerveSubsystem(
@@ -128,11 +134,17 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         super(drivetrainConstants, odometryUpdateFrequency, odometryStandardDeviation, visionStandardDeviation, modules);
         if (Utils.isSimulation()) startSimThread();
         configureAutoBuilder();
+        SmartDashboard.putData("Field", m_field);
     }
 
     /** Returns a command that applies the specified control request to this swerve drivetrain. */
     public Command applyRequest(Supplier<SwerveRequest> request) {
         return run(() -> this.setControl(request.get()));
+    }
+
+    /** Returns a command that locks the wheels in an X pattern to resist movement. */
+    public Command brakeCommand() {
+        return applyRequest(() -> m_brake);
     }
 
     private void configureAutoBuilder() {
@@ -205,6 +217,8 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
 
         Pose2d pose = getPose();
         ChassisSpeeds speeds = getRobotRelativeSpeeds();
+
+        m_field.setRobotPose(pose);
 
         SmartDashboard.putNumber("Swerve/Pose/X", pose.getX());
         SmartDashboard.putNumber("Swerve/Pose/Y", pose.getY());

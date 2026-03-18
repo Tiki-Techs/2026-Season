@@ -29,7 +29,7 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "runFeederReversed"
+                  "name": "reverseFeeder"
                 }
               }
             ]
@@ -67,19 +67,7 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "runPIDShooter"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runIndex"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runFeeder"
+                  "name": "Shoot"
                 }
               }
             ]
@@ -110,7 +98,7 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "runFeederReversed"
+                  "name": "reverseFeeder"
                 }
               }
             ]
@@ -135,19 +123,7 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "runPIDShooter"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runIndex"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runFeeder"
+                  "name": "Shoot"
                 }
               }
             ]

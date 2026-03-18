@@ -51,7 +51,7 @@ public class Climb extends SubsystemBase {
                     climbMotor.set(0);
                     return;
                 }
-                climbMotor.set(-0.3);
+                climbMotor.set(-0.5);
             }, this).until(() -> !lowerLimitSwitch.get()),
 
             // Zero encoder at bottom
@@ -61,18 +61,18 @@ public class Climb extends SubsystemBase {
                 isCalibrated = true;
             }, this)
             
-            ,
+            // ,
 
-            // Raise back up to top
-            new RunCommand(() -> {
-                if (!upperLimitSwitch.get()) {
-                    climbMotor.set(0);
-                } else {
-                    climbMotor.set(0.75);
-                }
-            }, this).until(() -> !upperLimitSwitch.get()),
+            // // Raise back up to top
+            // new RunCommand(() -> {
+            //     if (!upperLimitSwitch.get()) {
+            //         climbMotor.set(0);
+            //     } else {
+            //         climbMotor.set(0.75);
+            //     }
+            // }, this).until(() -> !upperLimitSwitch.get()),
 
-            new InstantCommand(() -> climbMotor.set(0.0), this)
+            // new InstantCommand(() -> climbMotor.set(0.0), this)
         );
     }
 

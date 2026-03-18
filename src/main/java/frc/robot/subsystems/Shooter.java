@@ -54,10 +54,10 @@ public class Shooter extends SubsystemBase {
 
         // Distance (meters) to shooter speed (RPS) lookup table
         // TODO: Calibrate these values by testing at known distances
-        distanceToShooterSpeed.put(2.88, 65.0);
-        distanceToShooterSpeed.put(4.1, 80.0);
-        distanceToShooterSpeed.put(1.9685, 53.0);
-        distanceToShooterSpeed.put(3.1877, 70.0);
+        distanceToShooterSpeed.put(2.88, 67.5);
+        distanceToShooterSpeed.put(4.1, 82.5);
+        distanceToShooterSpeed.put(1.9685, 55.5);
+        distanceToShooterSpeed.put(3.1877, 72.5);
     }
 
     /** Gets the ideal shooter speed for a given distance in meters. */

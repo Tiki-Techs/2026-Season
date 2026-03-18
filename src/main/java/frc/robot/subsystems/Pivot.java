@@ -41,25 +41,7 @@ public class Pivot extends SubsystemBase {
         pivotArm.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
     }
 
-    /** Default command that holds the arm in position. Applies power when stowed to counteract gravity. */
-    public Command holdPosition() {
-        return new RunCommand(() -> {
-            if (!intakeDeployed) {
-                if (!canRaise()) {
-                    pivotArm.set(stopSpeed);
-                    return;
-                }
-                boolean atUpperLimit = isCalibrated && Math.abs(encoder.getPosition() - upperEncoderPos) < 0.1;
-                if (!atUpperLimit) {
-                    pivotArm.set(holdUpPower);
-                } else {
-                    pivotArm.set(stopSpeed);
-                }
-            } else {
-                pivotArm.set(stopSpeed);
-            }
-        }, this);
-    }
+
 
     /** Calibrates the pivot by finding the lower hard stop via stall detection, then raising. */
     public Command calibratePivot() {
@@ -70,7 +52,7 @@ public class Pivot extends SubsystemBase {
             new InstantCommand(() -> {
                 isCalibrated = false;
                 loopCount[0] = 0;
-            }),
+            }, this),
 
             // Find lower hard stop
             new RunCommand(() -> {
@@ -116,30 +98,26 @@ public class Pivot extends SubsystemBase {
         return new RunCommand(() -> pivotArm.set(stopSpeed), this);
     }
 
-    /** Manually lowers the intake arm. Slows near bottom and stops on stall or limit. */
+    /** Manually lowers the intake arm. Slows near bottom and stops at limit. */
     public Command lowerArmManual(double pivotSpeed) {
         final double slowSpeed = 0.05;
-        final Debouncer stallDebouncer = new Debouncer(0.1, Debouncer.DebounceType.kRising);
 
         return new RunCommand(() -> {
-            boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > stallCurrentThreshold);
             double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
             boolean atLimit = isCalibrated && distanceToLower < 0.05;
 
-            if (stalled || atLimit) {
+            if (atLimit) {
                 pivotArm.set(stopSpeed);
-                if (stalled) intakeDeployed = true;
             } else {
                 boolean inSlowZone = isCalibrated && distanceToLower < (totalTravelDistance * 0.4);
-                pivotArm.set(inSlowZone ? slowSpeed : 0.075);
+                pivotArm.set(inSlowZone ? slowSpeed : pivotSpeed);
             }
         }, this);
     }
 
-    /** Manually raises the intake arm. Slows near top and stops on stall or limit. */
+    /** Manually raises the intake arm. Slows near top and stops at limit. */
     public Command raiseArmManual(double pivotSpeed) {
         final double slowSpeed = 0.2;
-        final Debouncer stallDebouncer = new Debouncer(0.1, Debouncer.DebounceType.kRising);
 
         return new RunCommand(() -> {
             if (!canRaise()) {
@@ -147,16 +125,14 @@ public class Pivot extends SubsystemBase {
                 return;
             }
 
-            boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_RAISE_AMPS);
             double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
             boolean atLimit = isCalibrated && distanceToUpper < 0.05;
 
             if (atLimit) {
                 pivotArm.set(stopSpeed);
-                if (stalled) intakeDeployed = false;
             } else {
                 boolean inSlowZone = isCalibrated && distanceToUpper < (totalTravelDistance * 0.4);
-                pivotArm.set(inSlowZone ? -slowSpeed : -1.0);
+                pivotArm.set(inSlowZone ? -slowSpeed : -pivotSpeed);
             }
         }, this);
     }
