@@ -30,7 +30,5 @@ public class Feeder extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Feeder/MotorSpeed", feederMotor.get());
-        SmartDashboard.putNumber("Feeder/MotorCurrent", feederMotor.getStatorCurrent().getValueAsDouble());
     }
 }

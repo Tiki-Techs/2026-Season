@@ -42,7 +42,5 @@ public class Index extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Index/MotorSpeed", indexMotor.get());
-        SmartDashboard.putNumber("Index/MotorCurrent", indexMotor.getStatorCurrent().getValueAsDouble());
     }
 }

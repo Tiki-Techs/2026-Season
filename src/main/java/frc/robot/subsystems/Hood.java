@@ -32,10 +32,10 @@ public class Hood extends SubsystemBase {
 
         // Distance (meters) to hood position lookup table
         // TODO: Calibrate these values by testing at known distances
-        distanceToHoodPosition.put(1.0, -0.1);
-        distanceToHoodPosition.put(2.0, -0.4);
-        distanceToHoodPosition.put(3.0, -0.7);
-        distanceToHoodPosition.put(4.0, -1.0);
+        distanceToHoodPosition.put(2.88, 0.0);
+        distanceToHoodPosition.put(4.1, 0.0);
+        distanceToHoodPosition.put(1.9685, 0.0);
+        distanceToHoodPosition.put(3.1877, 0.0);
 
         pidController.setTolerance(0.25);
     }
@@ -66,7 +66,7 @@ public class Hood extends SubsystemBase {
     }
 
     private void setHoodMotorSafe(double speed) {
-        if (hoodMotor.getStatorCurrent().getValueAsDouble() > HoodConstants.HOMING_STALL_AMPS) {
+        if (hoodMotor.getPosition().getValueAsDouble() >= maxPosition-.2 && speed > 0) {
             hoodMotor.set(0);
             return;
         }
@@ -123,9 +123,5 @@ public class Hood extends SubsystemBase {
     public void periodic() {
         SmartDashboard.putBoolean("Hood/IsCalibrated", isCalibrated);
         SmartDashboard.putNumber("Hood/Position", hoodMotor.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Hood/TargetPosition", targetPosition);
-        SmartDashboard.putBoolean("Hood/AtTarget", pidController.atSetpoint());
-        SmartDashboard.putNumber("Hood/MotorCurrent", hoodMotor.getStatorCurrent().getValueAsDouble());
-        SmartDashboard.putNumber("Hood/DistanceToGoal", vision.getDistanceToGoal());
     }
 }

@@ -54,10 +54,10 @@ public class Shooter extends SubsystemBase {
 
         // Distance (meters) to shooter speed (RPS) lookup table
         // TODO: Calibrate these values by testing at known distances
-        distanceToShooterSpeed.put(1.0, 50.0);
-        distanceToShooterSpeed.put(2.0, 60.0);
-        distanceToShooterSpeed.put(3.0, 75.0);
-        distanceToShooterSpeed.put(4.0, 85.0);
+        distanceToShooterSpeed.put(2.88, 65.0);
+        distanceToShooterSpeed.put(4.1, 80.0);
+        distanceToShooterSpeed.put(1.9685, 53.0);
+        distanceToShooterSpeed.put(3.1877, 70.0);
     }
 
     /** Gets the ideal shooter speed for a given distance in meters. */
@@ -71,9 +71,9 @@ public class Shooter extends SubsystemBase {
         return new RunCommand(() -> {
             double distance = distanceSupplier.getAsDouble();
             double targetRPS = getShooterSpeedForDistance(distance);
-            shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
         }, this);
     }
 
@@ -146,6 +146,12 @@ public class Shooter extends SubsystemBase {
         return Math.abs(currentOneVelocity - Math.abs(targetRPS)) <= tolerance &&
                Math.abs(currentTwoVelocity - Math.abs(targetRPS)) <= tolerance &&
                Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance;
+    }
+
+    /** Checks if shooter is at auto-aim target speed for given distance. */
+    public boolean isAtAutoAimTargetSpeed(double distanceMeters, double tolerance) {
+        double targetRPS = getShooterSpeedForDistance(distanceMeters);
+        return isAtTargetSpeed(targetRPS, tolerance);
     }
 
     @Override

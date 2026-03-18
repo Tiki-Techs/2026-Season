@@ -9,13 +9,12 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -24,6 +23,7 @@ import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
@@ -91,9 +91,10 @@ public class RobotContainer {
         new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
     public RobotContainer() {
-        // Wire up safety interlocks
+        // Wire up safety interlocks and dependencies
         m_climb.setPivot(m_pivot);
         m_pivot.setClimb(m_climb);
+        m_vision.setClimb(m_climb);
 
         registerNamedCommands();
 
@@ -105,35 +106,24 @@ public class RobotContainer {
         configureBindings();
 
         if (Utils.isSimulation()) {
-            drivetrain.resetPose(getStartingPose());
+            drivetrain.resetPose(new Pose2d(3.5052, 1.0668, Rotation2d.fromDegrees(0)));
         }
-    }
-
-    private Pose2d getStartingPose() {
-        boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
-        int location = DriverStation.getLocation().orElse(2);
-
-        final double fieldLength = 16.54;
-        final double fieldWidth = 8.21;
-
-        double[] yPositions = {fieldWidth * 0.75, fieldWidth * 0.5, fieldWidth * 0.25};
-        double y = yPositions[Math.min(Math.max(location - 1, 0), 2)];
-
-        double x;
-        Rotation2d rotation;
-        if (isRed) {
-            x = fieldLength - 1.5;
-            rotation = Rotation2d.fromDegrees(180);
-        } else {
-            x = 1.5;
-            rotation = Rotation2d.fromDegrees(0);
-        }
-
-        return new Pose2d(x, y, rotation);
     }
 
     private void registerNamedCommands() {
-        // No named commands registered - PathPlanner autos don't use them currently
+        // Intake pivot commands
+        NamedCommands.registerCommand("LowerIntake", m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED));
+        NamedCommands.registerCommand("RaiseIntake", m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED));
+
+        // Climb commands
+        NamedCommands.registerCommand("LowerClimb", m_climb.runClimbDown());
+        NamedCommands.registerCommand("RaiseClimb", m_climb.runClimbUp());
+
+        // Intake roller command
+        NamedCommands.registerCommand("Intake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED));
+
+        // Shoot command (spins up shooter, then feeds when at speed)
+        NamedCommands.registerCommand("Shoot", PIDShooter_Feeder_Index());
     }
 
     private void configureBindings() {
@@ -182,7 +172,7 @@ public class RobotContainer {
             .onTrue(new InstantCommand(() -> Constants.overrideEnabled = true))
             .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
 
-        // Right Trigger: PID shooter with auto-feed
+        // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
         m_driverController.rightTrigger().whileTrue(
             new ConditionalCommand(
                 new ParallelCommandGroup(
@@ -191,10 +181,10 @@ public class RobotContainer {
                     m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                 ),
                 new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
-                        .until(() -> m_shooter.isAtTargetSpeed(ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
+                        .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
                     new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
                         m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
                     )
@@ -234,7 +224,10 @@ public class RobotContainer {
         m_driverController.x().toggleOnTrue(
             new ConditionalCommand(
                 m_index.runIndex(1),
-                m_index.runIndex(-1),
+                new ParallelCommandGroup(
+                    m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                    m_index.runIndex(-1)
+                ),
                 () -> Constants.overrideEnabled
             )
         );
@@ -273,10 +266,17 @@ public class RobotContainer {
         m_climb.setDefaultCommand(m_climb.stopAll());
         m_hood.setDefaultCommand(m_hood.stopAll());
 
+        // Calibrate subsystems at start of auto
+        RobotModeTriggers.autonomous().onTrue(m_hood.calibrateHood().unless(m_hood::isCalibrated));
+        RobotModeTriggers.autonomous().onTrue(m_pivot.calibratePivot().unless(m_pivot::isCalibrated));
+        RobotModeTriggers.autonomous().onTrue(m_climb.calibrateClimb().unless(m_climb::isCalibrated));
+
         // Calibrate subsystems on teleop start if not already calibrated
         RobotModeTriggers.teleop().onTrue(m_hood.calibrateHood().unless(m_hood::isCalibrated));
         RobotModeTriggers.teleop().onTrue(m_pivot.calibratePivot().unless(m_pivot::isCalibrated));
         RobotModeTriggers.teleop().onTrue(m_climb.calibrateClimb().unless(m_climb::isCalibrated));
+
+    
     }
 
     public Command getAutonomousCommand() {

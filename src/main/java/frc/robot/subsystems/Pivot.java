@@ -75,7 +75,7 @@ public class Pivot extends SubsystemBase {
             // Find lower hard stop
             new RunCommand(() -> {
                 loopCount[0]++;
-                pivotArm.set(PivotConstants.HOMING_SPEED);
+                pivotArm.set(-PivotConstants.HOMING_SPEED);
             }, this).until(() -> {
                 if (loopCount[0] < 25) return false;
                 return phase1Stall.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_LOWER_AMPS);
@@ -89,10 +89,7 @@ public class Pivot extends SubsystemBase {
                 upperEncoderPos = -totalTravelDistance;
                 intakeDeployed = true;
                 isCalibrated = true;
-            }, this),
-
-            raiseArmAuto(),
-            new InstantCommand(() -> {})
+            }, this)
         );
     }
 

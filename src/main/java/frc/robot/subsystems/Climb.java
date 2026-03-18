@@ -59,7 +59,9 @@ public class Climb extends SubsystemBase {
                 climbMotor.set(0.0);
                 climbMotor.setPosition(0.0);
                 isCalibrated = true;
-            }, this),
+            }, this)
+            
+            ,
 
             // Raise back up to top
             new RunCommand(() -> {
@@ -78,8 +80,17 @@ public class Climb extends SubsystemBase {
         return isCalibrated;
     }
 
+    /** Gets the current climb position in motor rotations. */
+    public double getPosition() {
+        return climbMotor.getPosition().getValueAsDouble();
+    }
+
     public boolean isUpperLimitPressed() {
         return !upperLimitSwitch.get();
+    }
+
+    public boolean isLowerLimitPressed() {
+        return !lowerLimitSwitch.get();
     }
 
     /** Returns true if the climb is at the lower limit (down position). */
@@ -117,9 +128,8 @@ public class Climb extends SubsystemBase {
     @Override
     public void periodic() {
         SmartDashboard.putBoolean("Climb/IsCalibrated", isCalibrated);
-        SmartDashboard.putBoolean("Climb/UpperLimitPressed", isUpperLimitPressed());
-        SmartDashboard.putBoolean("Climb/ClimbDown", isClimbDown());
+        SmartDashboard.putBoolean("Climb/UpperLimit", isUpperLimitPressed());
+        SmartDashboard.putBoolean("Climb/LowerLimit", isLowerLimitPressed());
         SmartDashboard.putNumber("Climb/Position", climbMotor.getPosition().getValueAsDouble());
-        SmartDashboard.putNumber("Climb/MotorCurrent", climbMotor.getStatorCurrent().getValueAsDouble());
     }
 }

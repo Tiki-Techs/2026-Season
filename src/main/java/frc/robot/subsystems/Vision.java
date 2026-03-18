@@ -16,6 +16,7 @@ public class Vision extends SubsystemBase {
 
     private final SwerveSubsystem drivetrain;
     private final StructPublisher<Pose2d> posePublisher;
+    private Climb climb = null;
 
     // Cached Limelight state - updated once per loop in periodic()
     private boolean cachedTV = false;
@@ -31,6 +32,11 @@ public class Vision extends SubsystemBase {
         this.drivetrain = drivetrain;
         posePublisher = NetworkTableInstance.getDefault()
             .getStructTopic("RobotPose", Pose2d.struct).publish();
+    }
+
+    /** Sets the climb reference for dynamic camera pose updates. */
+    public void setClimb(Climb climb) {
+        this.climb = climb;
     }
 
     /** Calculates angular velocity for aiming at a target using proportional control. */
@@ -144,6 +150,22 @@ public class Vision extends SubsystemBase {
 
         Pose2d currentPose = drivetrain.getState().Pose;
         posePublisher.set(currentPose);
+
+        // Update climb-mounted camera pose based on climb position
+        if (climb != null && climb.isCalibrated()) {
+            double climbPosition = climb.getPosition();
+            double heightOffset = climbPosition * VisionConstants.CLIMB_METERS_PER_ROTATION;
+
+            LimelightHelpers.setCameraPose_RobotSpace(
+                VisionConstants.LIMELIGHT_CLIMB,
+                VisionConstants.CLIMB_CAM_FORWARD,
+                VisionConstants.CLIMB_CAM_SIDE,
+                VisionConstants.CLIMB_CAM_UP_BASE + heightOffset,
+                VisionConstants.CLIMB_CAM_ROLL,
+                VisionConstants.CLIMB_CAM_PITCH,
+                VisionConstants.CLIMB_CAM_YAW
+            );
+        }
 
         cachedTV = false;
         cachedTX = 0.0;
