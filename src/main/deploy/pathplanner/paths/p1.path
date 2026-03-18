@@ -3,35 +3,42 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.55,
-        "y": 0.75
+        "x": 4.374809228039042,
+        "y": 7.4432919254658385
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.55,
-        "y": 0.75
+        "x": 5.5350048938804,
+        "y": 7.280546928744893
       },
-      "isLocked": true,
-      "linkedName": "Default-DS-Right-Start"
+      "isLocked": false,
+      "linkedName": null
     },
     {
       "anchor": {
-        "x": 6.0,
-        "y": 0.75
+        "x": 8.141233362910382,
+        "y": 6.654596273291925
       },
       "prevControl": {
-        "x": 5.0,
-        "y": 0.7500000000000001
+        "x": 7.93411496020115,
+        "y": 6.794603299041264
       },
       "nextControl": null,
-      "isLocked": true,
-      "linkedName": null
+      "isLocked": false,
+      "linkedName": "p1"
     }
   ],
   "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
-  "eventMarkers": [],
+  "eventMarkers": [
+    {
+      "name": "lowerArmManual",
+      "waypointRelativePos": 0.0,
+      "endWaypointRelativePos": null,
+      "command": null
+    }
+  ],
   "globalConstraints": {
     "maxVelocity": 5.0,
     "maxAcceleration": 2.5,
@@ -41,11 +48,11 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
-    "rotation": 0.0
+    "velocity": 3.0,
+    "rotation": -72.67183684750408
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "Reif's really awesome path",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0

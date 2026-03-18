@@ -3,47 +3,47 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 0.8572619047619048,
-        "y": 5.979538690476191
+        "x": 6.540796130952381,
+        "y": 5.307433035714286
       },
       "prevControl": null,
       "nextControl": {
-        "x": 1.7937873585015103,
-        "y": 5.982407460288273
+        "x": 6.94143340373644,
+        "y": 5.226694612089848
       },
       "isLocked": false,
-      "linkedName": "CenterPathPart1.5"
+      "linkedName": "p4"
     },
     {
       "anchor": {
-        "x": 1.6337723214285713,
-        "y": 3.747886904761905
+        "x": 3.239,
+        "y": 5.862
       },
       "prevControl": {
-        "x": 1.6598540827161743,
-        "y": 3.4992511436008513
+        "x": 2.5121537487698875,
+        "y": 5.9795151157193
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "p5"
     }
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.3378378378378378,
-      "rotationDegrees": 0.0
+      "waypointRelativePos": 0.5,
+      "rotationDegrees": -45.0
     }
   ],
   "constraintZones": [],
   "pointTowardsZones": [
     {
       "fieldPosition": {
-        "x": 4.6,
-        "y": 4.0
+        "x": 4.625,
+        "y": 4.025
       },
       "rotationOffset": 0.0,
-      "minWaypointRelativePos": 0.03150684931506948,
-      "maxWaypointRelativePos": 0.75,
+      "minWaypointRelativePos": 0.40273972602739755,
+      "maxWaypointRelativePos": 1.0,
       "name": "Point Towards Zone"
     }
   ],
@@ -57,14 +57,14 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
-    "rotation": 0.0
+    "velocity": 0.0,
+    "rotation": -50.0
   },
   "reversed": false,
-  "folder": null,
+  "folder": "Reif's really awesome path",
   "idealStartingState": {
-    "velocity": 0,
-    "rotation": -179.17762902000175
+    "velocity": 2.0,
+    "rotation": 90.0
   },
   "useDefaultConstraints": true
 }

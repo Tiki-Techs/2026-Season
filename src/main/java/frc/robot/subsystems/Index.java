@@ -7,96 +7,40 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants.IndexConstants;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants.IndexConstants;
 
-/**
- * Index subsystem that controls the indexer/feeder mechanism.
- * Transfers game pieces from the intake to the shooter using belt-driven rollers.
- * Uses a TalonFX motor (CAN ID 25) for belt control.
- */
+/** Transfers game pieces from the intake to the shooter using belt-driven rollers. */
 public class Index extends SubsystemBase {
 
-    // ==================== HARDWARE ====================
+    private final TalonFX indexMotor = new TalonFX(IndexConstants.INDEX_MOTOR, "CANivore");
 
-    /** Index motor that drives the belt system */
-    private final TalonFX leaderIntake = new TalonFX(IndexConstants.INDEX_MOTOR);
-
-    // ==================== CONTROL COMMANDS ====================
-
-    /**
-     * Runs the indexer using controller trigger input for variable speed.
-     * Speed is proportional to right trigger position.
-     *
-     * @param controllerValue Xbox controller to read trigger axis from
-     * @return Command that continuously runs the indexer based on trigger input
-     */
-
-     // NEGATIVE runIndex RUNS THE INDEXER IN THE CORRECT DIRECTION
-    public Command runIndex(CommandXboxController controllerValue) {
-        return new RunCommand(() ->
-            leaderIntake.set(controllerValue.getRightTriggerAxis()),
-            this
-        );
+    /** Runs the indexer with speed proportional to the right trigger. */
+    public Command runIndex(CommandXboxController controller) {
+        return new RunCommand(() -> indexMotor.set(controller.getRightTriggerAxis()), this);
     }
 
-    /**
-     * Runs the indexer in reverse using controller trigger input.
-     * Useful for unjamming or repositioning game pieces.
-     *
-     * @param controllerValue Xbox controller to read trigger axis from
-     * @return Command that runs the indexer in reverse based on trigger input
-     */
-    public Command runReverseIndex(CommandXboxController controllerValue) {
-        return new RunCommand(() ->
-            leaderIntake.set(-controllerValue.getRightTriggerAxis()),
-            this
-        );
+    /** Runs the indexer in reverse using trigger input. */
+    public Command runReverseIndex(CommandXboxController controller) {
+        return new RunCommand(() -> indexMotor.set(-controller.getRightTriggerAxis()), this);
     }
 
-    /**
-     * Runs the indexer at a fixed speed.
-     *
-     * @param speed Motor output from -1.0 (reverse) to 1.0 (forward)
-     * @return Command that continuously runs the indexer at the specified speed
-     */
+    /** Runs the indexer at a fixed speed (-1.0 to 1.0). */
     public Command runIndex(double speed) {
-        return new RunCommand(() ->
-            leaderIntake.set(speed),
-            this
-        );
+        return new RunCommand(() -> indexMotor.set(speed), this);
     }
 
-    // ==================== STOP COMMANDS ====================
-
-    /**
-     * Immediately stops the indexer motor (instant command).
-     * Executes once and completes.
-     *
-     * @return InstantCommand that stops the indexer motor
-     */
+    /** Immediately stops the indexer motor. */
     public Command stopIndex() {
-        return new InstantCommand(() ->
-            leaderIntake.set(0),
-            this
-        );
+        return new InstantCommand(() -> indexMotor.set(0), this);
     }
 
-    /**
-     * Continuously commands the indexer motor to stop.
-     * Use as a default command to ensure the motor stays stopped when not in use.
-     * The "this" parameter ensures only one command can control this subsystem at a time.
-     *
-     * @return RunCommand that continuously sets the motor to zero
-     */
+    /** Continuously stops the motor. Use as default command. */
     public Command stopAll() {
-        return new RunCommand(() -> {
-            leaderIntake.set(0);
-        }, this);
+        return new RunCommand(() -> indexMotor.set(0), this);
     }
 
     @Override
     public void periodic() {
-        // Periodic updates (telemetry can be added here)
     }
 }

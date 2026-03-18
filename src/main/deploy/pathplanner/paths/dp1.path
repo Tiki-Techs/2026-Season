@@ -8,27 +8,32 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.55,
-        "y": 0.75
+        "x": 6.355813973446088,
+        "y": 0.716629470654188
       },
-      "isLocked": true,
+      "isLocked": false,
       "linkedName": "Default-DS-Right-Start"
     },
     {
       "anchor": {
-        "x": 6.0,
-        "y": 0.75
+        "x": 7.867604259094943,
+        "y": 1.0773913043478252
       },
       "prevControl": {
-        "x": 5.0,
-        "y": 0.7500000000000001
+        "x": 6.50895328492307,
+        "y": 0.5228514558000952
       },
       "nextControl": null,
-      "isLocked": true,
-      "linkedName": null
+      "isLocked": false,
+      "linkedName": "dend1"
     }
   ],
-  "rotationTargets": [],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.19144144144144198,
+      "rotationDegrees": 0.0
+    }
+  ],
   "constraintZones": [],
   "pointTowardsZones": [],
   "eventMarkers": [],
@@ -41,13 +46,13 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
-    "rotation": 0.0
+    "velocity": 4.0,
+    "rotation": 90.0
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "D Paths",
   "idealStartingState": {
-    "velocity": 0,
+    "velocity": 3.0,
     "rotation": 0.0
   },
   "useDefaultConstraints": true

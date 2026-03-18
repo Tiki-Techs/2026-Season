@@ -1,58 +1,46 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.hardware.TalonFX;
 
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
-import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants.ShooterConstants;
 
 import java.util.function.DoubleSupplier;
 
-import com.ctre.phoenix6.configs.CANcoderConfigurator;
-import com.ctre.phoenix6.controls.DutyCycleOut;
-import com.ctre.phoenix6.controls.VelocityVoltage;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.signals.InvertedValue;
-import frc.robot.Constants.ShooterConstants;
-
-/**
- * Shooter subsystem that controls the flywheel shooter mechanism.
- * Uses two TalonFX (Kraken) motors to launch game pieces.
- * Supports both open-loop (manual) and closed-loop (PID) velocity control.
- */
+/** Controls the flywheel shooter with three TalonFX motors. Supports open-loop and PID velocity control. */
 public class Shooter extends SubsystemBase {
 
-    // ==================== HARDWARE ====================
+    private final TalonFX shooterOne = new TalonFX(ShooterConstants.FLOOR_ONE, "CANivore");
+    private final TalonFX shooterTwo = new TalonFX(ShooterConstants.FLOOR_TWO, "CANivore");
+    private final TalonFX shooterThree = new TalonFX(ShooterConstants.FLOOR_THREE, "CANivore");
 
-    /** Center shooter motor */
-    private final TalonFX shooterOne = new TalonFX(ShooterConstants.FLOOR_ONE); 
-    private final TalonFX shooterTwo = new TalonFX(ShooterConstants.FLOOR_TWO);
-    private final TalonFX shooterThree = new TalonFX(ShooterConstants.FLOOR_THREE);
-    private final TalonFX shooterFour = new TalonFX(ShooterConstants.FLOOR_FOUR);
+    private final StatusSignal<AngularVelocity> velocityOne;
+    private final StatusSignal<AngularVelocity> velocityTwo;
+    private final StatusSignal<AngularVelocity> velocityThree;
 
-    // ==================== CONTROL PARAMETERS ====================
+    private final InterpolatingDoubleTreeMap distanceToShooterSpeed = new InterpolatingDoubleTreeMap();
+    private final double minSpeed = 40.0;
+    private final double maxSpeed = 100.0;
 
-    /** Target velocity for bang-bang control mode (rotations per second) */
     private double shooterTargetVelocity = 0;
+    private final VelocityVoltage shooterVoltageRequest = new VelocityVoltage(0.0).withSlot(0).withEnableFOC(false);
 
-    /** Velocity voltage control request for closed-loop PID control */
-    final VelocityVoltage shooterVoltageRequest = new VelocityVoltage(0.0).withSlot(0);
-
-    /**
-     * Constructs the Shooter subsystem and configures motor PID gains.
-     * Sets up Slot 0 with feedforward and PID constants for velocity control.
-     */
     public Shooter() {
-        // Configure PID gains for velocity control (Slot 0)
+        velocityOne = shooterOne.getVelocity();
+        velocityTwo = shooterTwo.getVelocity();
+        velocityThree = shooterThree.getVelocity();
+
         var slot0Configs = new Slot0Configs();
         slot0Configs.kS = ShooterConstants.KS;
         slot0Configs.kV = ShooterConstants.KV;
@@ -60,153 +48,125 @@ public class Shooter extends SubsystemBase {
         slot0Configs.kI = ShooterConstants.KI;
         slot0Configs.kD = ShooterConstants.KD;
 
-        // Apply PID configuration to all shooter motors
         shooterOne.getConfigurator().apply(slot0Configs);
         shooterTwo.getConfigurator().apply(slot0Configs);
         shooterThree.getConfigurator().apply(slot0Configs);
-        shooterFour.getConfigurator().apply(slot0Configs);
+
+        // Distance (meters) to shooter speed (RPS) lookup table
+        // TODO: Calibrate these values by testing at known distances
+        distanceToShooterSpeed.put(2.88, 67.5);
+        distanceToShooterSpeed.put(4.1, 82.5);
+        distanceToShooterSpeed.put(1.9685, 55.5);
+        distanceToShooterSpeed.put(3.1877, 72.5);
     }
 
-    // ==================== PID VELOCITY CONTROL ====================
+    /** Gets the ideal shooter speed for a given distance in meters. */
+    public double getShooterSpeedForDistance(double distanceMeters) {
+        double speed = distanceToShooterSpeed.get(distanceMeters);
+        return Math.max(minSpeed, Math.min(maxSpeed, speed));
+    }
 
-    /**
-     * Runs the shooter at a target velocity using closed-loop PID control.
-     * Uses velocity voltage control with feedforward for accurate speed control.
-     *
-     * @param targetRPS Target velocity in rotations per second
-     * @return Command that continuously runs the shooter at the target velocity
-     */
-
-     // NEGATIVE runPIDShooter RUNS THE SHOOTER IN THE CORRECT DIRECTION
-    public Command runPIDShooter(double targetRPS) {
+    /** Automatically adjusts shooter speed based on distance to goal. */
+    public Command autoAimShooter(DoubleSupplier distanceSupplier) {
         return new RunCommand(() -> {
-            // Apply velocity control with 0.5V feedforward to overcome friction/gravity
-            shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-            shooterFour.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            double distance = distanceSupplier.getAsDouble();
+            double targetRPS = getShooterSpeedForDistance(distance);
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(targetRPS).withFeedForward(0.5));
         }, this);
     }
 
+    /** Runs the shooter at a target velocity using PID control. */
+    public Command runPIDShooter(double targetRPS) {
+        return new RunCommand(() -> {
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
+        }, this);
+    }
 
-    // ==================== OPEN-LOOP CONTROL ====================
-
-    /**
-     * Runs the shooter using controller trigger input for variable speed.
-     * Uses open-loop duty cycle control (no velocity feedback).
-     *
-     * @param controllerValue Xbox controller to read trigger axis from
-     * @return Command that sets shooter speed based on left trigger position
-     */
+    /** Runs the shooter using trigger input for variable speed (open-loop). */
     public Command runShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
             shooterOne.set(speed);
             shooterTwo.set(speed);
             shooterThree.set(speed);
-            shooterFour.set(speed);
         }, this);
     }
 
-    /**
-     * Runs the shooter at a fixed speed using open-loop control.
-     *
-     * @param speed Motor output from -1.0 to 1.0
-     * @return Command that continuously runs the shooter at the specified speed
-     */
+    /** Runs the shooter at a fixed speed (open-loop). */
     public Command runShooter(double speed) {
         return new RunCommand(() -> {
             shooterOne.set(-speed);
             shooterTwo.set(-speed);
             shooterThree.set(-speed);
-            shooterFour.set(-speed);
         }, this);
     }
 
-    /**
-     * Runs the shooter in reverse using controller trigger input.
-     * Useful for unjamming or ejecting game pieces.
-     *
-     * @param controllerValue Xbox controller to read trigger axis from
-     * @return Command that sets reverse shooter speed based on left trigger
-     */
+    /** Runs the shooter in reverse using trigger input. */
     public Command runReverseShooter(CommandXboxController controllerValue) {
         return new RunCommand(() -> {
             double speed = controllerValue.getLeftTriggerAxis();
             shooterOne.set(-speed);
             shooterTwo.set(-speed);
             shooterThree.set(-speed);
-            shooterFour.set(-speed);
         }, this);
     }
 
-    // ==================== STOP COMMANDS ====================
-
-    /**
-     * Immediately stops the shooter motors (instant command).
-     * Executes once and completes.
-     *
-     * @return InstantCommand that sets both motors to zero
-     */
+    /** Immediately stops all shooter motors. */
     public Command stopShooter() {
         return new InstantCommand(() -> {
             shooterOne.set(0);
             shooterTwo.set(0);
             shooterThree.set(0);
-            shooterFour.set(0);
         }, this);
     }
 
-    /**
-     * Continuously commands the shooter motors to stop.
-     * Use as a default command to ensure motors stay stopped when not in use.
-     *
-     * @return RunCommand that continuously sets both motors to zero
-     */
+    /** Continuously stops all shooter motors. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> {
             shooterOne.set(0);
             shooterTwo.set(0);
             shooterThree.set(0);
-            shooterFour.set(0);
         }, this);
     }
 
-    // ==================== UTILITY METHODS ====================
-
-    /**
-     * Sets the target velocity for bang-bang control mode.
-     *
-     * @param velocityRPS Target velocity in rotations per second
-     */
     public void setShooterTargetVelocity(double velocityRPS) {
         this.shooterTargetVelocity = velocityRPS;
     }
 
-    /**
-     * Checks if the shooter has reached the target speed.
-     *
-     * @param targetRPS Target velocity in rotations per second
-     * @param tolerance Allowable error in RPS
-     * @return True if shooter is within tolerance of target speed
-     */
+    /** Checks if all shooter motors are within tolerance of target speed. */
     public boolean isAtTargetSpeed(double targetRPS, double tolerance) {
-        double currentOneVelocity = Math.abs(shooterOne.getVelocity().getValueAsDouble());
-        double currentTwoVelocity = Math.abs(shooterTwo.getVelocity().getValueAsDouble());
-        double currentThreeVelocity = Math.abs(shooterThree.getVelocity().getValueAsDouble());
-        double currentFourVelocity = Math.abs(shooterFour.getVelocity().getValueAsDouble());
+        BaseStatusSignal.refreshAll(velocityOne, velocityTwo, velocityThree);
+        double currentOneVelocity = Math.abs(velocityOne.getValueAsDouble());
+        double currentTwoVelocity = Math.abs(velocityTwo.getValueAsDouble());
+        double currentThreeVelocity = Math.abs(velocityThree.getValueAsDouble());
         return Math.abs(currentOneVelocity - Math.abs(targetRPS)) <= tolerance &&
                Math.abs(currentTwoVelocity - Math.abs(targetRPS)) <= tolerance &&
-               Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance &&
-               Math.abs(currentFourVelocity - Math.abs(targetRPS)) <= tolerance;
+               Math.abs(currentThreeVelocity - Math.abs(targetRPS)) <= tolerance;
     }
 
+    /** Checks if shooter is at auto-aim target speed for given distance. */
+    public boolean isAtAutoAimTargetSpeed(double distanceMeters, double tolerance) {
+        double targetRPS = getShooterSpeedForDistance(distanceMeters);
+        return isAtTargetSpeed(targetRPS, tolerance);
+    }
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Shooter/Motor1 Velocity", shooterOne.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter/Motor2 Velocity", shooterTwo.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter/Motor3 Velocity", shooterThree.getVelocity().getValueAsDouble());
-        SmartDashboard.putNumber("Shooter/Motor4 Velocity", shooterFour.getVelocity().getValueAsDouble());
+        BaseStatusSignal.refreshAll(velocityOne, velocityTwo, velocityThree);
+        double vel1 = Math.abs(velocityOne.getValueAsDouble());
+        double vel2 = Math.abs(velocityTwo.getValueAsDouble());
+        double vel3 = Math.abs(velocityThree.getValueAsDouble());
+        double avgVelocity = (vel1 + vel2 + vel3) / 3.0;
+
+        SmartDashboard.putNumber("Shooter/TargetVelocity", shooterTargetVelocity);
+        SmartDashboard.putNumber("Shooter/Motor1/Velocity", vel1);
+        SmartDashboard.putNumber("Shooter/Motor2/Velocity", vel2);
+        SmartDashboard.putNumber("Shooter/Motor3/Velocity", vel3);
+        SmartDashboard.putNumber("Shooter/AvgVelocity", avgVelocity);
+        SmartDashboard.putBoolean("Shooter/AtTargetSpeed", isAtTargetSpeed(shooterTargetVelocity, 2.0));
     }
 }

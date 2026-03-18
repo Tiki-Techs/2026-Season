@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.55,
-        "y": 0.75
+        "x": 3.2389955357142854,
+        "y": 5.8620833333333335
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.55,
-        "y": 0.75
+        "x": 3.4804315476190477,
+        "y": 6.2601264880952385
       },
-      "isLocked": true,
-      "linkedName": "Default-DS-Right-Start"
+      "isLocked": false,
+      "linkedName": "p5"
     },
     {
       "anchor": {
-        "x": 6.0,
-        "y": 0.75
+        "x": 3.7283928571428575,
+        "y": 7.402053571428571
       },
       "prevControl": {
-        "x": 5.0,
-        "y": 0.7500000000000001
+        "x": 3.134590773809524,
+        "y": 7.2454464285714275
       },
       "nextControl": null,
-      "isLocked": true,
-      "linkedName": null
+      "isLocked": false,
+      "linkedName": "p6"
     }
   ],
   "rotationTargets": [],
@@ -41,14 +41,14 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
-    "rotation": 0.0
+    "velocity": 3.0,
+    "rotation": 180.0
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "Reif's really awesome path",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -50.0
   },
   "useDefaultConstraints": true
 }

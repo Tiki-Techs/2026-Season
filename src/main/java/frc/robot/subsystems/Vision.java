@@ -2,149 +2,70 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
 
-/**
- * Vision subsystem that handles Limelight camera processing and pose estimation.
- * Provides proportional control outputs for aiming and ranging to targets.
- * Integrates with the drivetrain for vision-based pose correction using MegaTag.
- */
+/** Handles Limelight camera processing, pose estimation, and target tracking. */
 public class Vision extends SubsystemBase {
 
-    // ==================== DEPENDENCIES ====================
-
-    /** Reference to the swerve drivetrain for pose updates */
     private final SwerveSubsystem drivetrain;
-
-    // ==================== TELEMETRY ====================
-
-    /** 2D field visualization for SmartDashboard */
-    private final Field2d m_field = new Field2d();
-
-    /** NetworkTables publisher for AdvantageScope 3D visualization */
     private final StructPublisher<Pose2d> posePublisher;
+    private Climb climb = null;
 
-    // ==================== TARGET ANGLE VISUALIZATION ====================
-
-    /** Field object for the dx line (horizontal leg of triangle) */
-    private final FieldObject2d dxLineObj;
-
-    /** Field object for the dy line (vertical leg of triangle) */
-    private final FieldObject2d dyLineObj;
-
-    /** Field object for the hypotenuse (direct line to goal) */
-    private final FieldObject2d hypLineObj;
-
-    /** Field object for the goal marker */
-    private final FieldObject2d goalMarker;
-
-    // ==================== CACHED LIMELIGHT STATE ====================
-    // Updated once per loop in periodic() to avoid redundant NetworkTables reads.
-    // limelight_aim_proportional() and limelight_range_proportional() use these
-    // cached values instead of reading NT themselves.
-    // Values are aggregated from all three Limelights - using the best available data.
-
-    /** Whether a valid target is currently visible (from any Limelight) */
+    // Cached Limelight state - updated once per loop in periodic()
     private boolean cachedTV = false;
-
-    /** Horizontal offset to target in degrees (+ = right) - from Limelight with best view */
     private double cachedTX = 0.0;
-
-    /** Average distance from camera to visible AprilTags in meters (from MegaTag2) */
     private double cachedTagDist = 0.0;
 
-    /** Last TV state per Limelight - used to only write LED mode to NT on change */
-    private boolean[] lastTV = new boolean[VisionConstants.ALL_LIMELIGHTS.length];
+    // Loop counter for throttling dashboard updates
+    private int loopCounter = 0;
+    private double lastRotationError = 0.0;
+    private static final int DASHBOARD_UPDATE_INTERVAL = 5; // Update dashboard every 5 loops (10Hz)
 
-    /**
-     * Constructs the Vision subsystem.
-     * Sets up field visualization and NetworkTables publishing for AdvantageScope.
-     *
-     * @param drivetrain The swerve drivetrain to send vision measurements to
-     */
     public Vision(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
-        SmartDashboard.putData("Field", m_field);
-
-        // Setup field objects for target angle triangle visualization
-        dxLineObj = m_field.getObject("dx");
-        dyLineObj = m_field.getObject("dy");
-        hypLineObj = m_field.getObject("hypotenuse");
-        goalMarker = m_field.getObject("goal");
-
-        // Setup pose publisher for AdvantageScope 3D field visualization
         posePublisher = NetworkTableInstance.getDefault()
             .getStructTopic("RobotPose", Pose2d.struct).publish();
     }
 
-    // ==================== PROPORTIONAL CONTROL ====================
+    /** Sets the climb reference for dynamic camera pose updates. */
+    public void setClimb(Climb climb) {
+        this.climb = climb;
+    }
 
-    /**
-     * Calculates angular velocity for aiming at a target using proportional control.
-     * Uses cached TX from periodic() - no extra NetworkTables reads.
-     *
-     * A minimum output is applied outside the deadband to ensure the robot
-     * actually rotates even when the error is small (overcomes static friction).
-     *
-     * @return Angular velocity in radians/second to aim at target, or 0 if no target
-     */
+    /** Calculates angular velocity for aiming at a target using proportional control. */
     public double limelight_aim_proportional() {
         double kP = 1.5;
-        double minOutput = 0.15; // rad/s - minimum to overcome static friction, tune if needed
+     double minOutput = 0.15;
 
-        if (!cachedTV) {
-            return 0.0;
-        }
+        if (!cachedTV) return 0.0;
+        if (Math.abs(cachedTX) < 5.0) return 0.0;
 
-        // Deadband to ignore small errors and prevent jitter
-        if (Math.abs(cachedTX) < 5.0) {
-            return 0.0;
-        }
-
-        // Convert TX from degrees to radians for proper units
         double txRadians = Math.toRadians(cachedTX);
         double output = txRadians * kP;
 
-        // Clamp to minimum output so the robot always moves when a correction is needed
         if (output > 0) output = Math.max(output, minOutput);
-        else            output = Math.min(output, -minOutput);
+        else output = Math.min(output, -minOutput);
 
         return output;
     }
 
-    /**
-     * Gets the cached distance to the nearest AprilTag in meters.
-     * Updated every loop from MegaTag2 data.
-     *
-     * @return Distance in meters, or 0 if no tag visible
-     */
+    /** Gets the cached distance to the nearest AprilTag in meters. */
     public double getTagDistance() {
         return cachedTagDist;
     }
 
-    /**
-     * Returns whether a valid target is currently visible.
-     *
-     * @return True if target is visible
-     */
+    /** Returns whether a valid target is currently visible. */
     public boolean hasTarget() {
         return cachedTV;
     }
 
-    /**
-     * Gets the X coordinate of the goal based on current alliance.
-     * @return Goal X in meters (blue alliance origin)
-     */
     private double getGoalX() {
         var alliance = DriverStation.getAlliance();
         if (alliance.isPresent() && alliance.get() == Alliance.Red) {
@@ -153,10 +74,6 @@ public class Vision extends SubsystemBase {
         return VisionConstants.BLUE_GOAL_X_METERS;
     }
 
-    /**
-     * Gets the Y coordinate of the goal based on current alliance.
-     * @return Goal Y in meters (blue alliance origin)
-     */
     private double getGoalY() {
         var alliance = DriverStation.getAlliance();
         if (alliance.isPresent() && alliance.get() == Alliance.Red) {
@@ -165,13 +82,7 @@ public class Vision extends SubsystemBase {
         return VisionConstants.BLUE_GOAL_Y_METERS;
     }
 
-    /**
-     * Calculates the distance from the robot's current position to the goal.
-     * Uses odometry pose (updated by vision) rather than direct tag detection.
-     * Automatically selects the correct goal based on alliance.
-     *
-     * @return Distance to goal in meters
-     */
+    /** Calculates the distance from the robot's current position to the goal. */
     public double getDistanceToGoal() {
         Pose2d currentPose = drivetrain.getState().Pose;
         double dx = getGoalX() - currentPose.getX();
@@ -179,64 +90,45 @@ public class Vision extends SubsystemBase {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Checks if the robot is within shooting range (not in the neutral zone).
-     * Neutral zone is between X = 4.5 and X = 12.0 (middle of field).
-     * @return True if in alliance zone where shooting is possible
-     */
+    /** Checks if the robot is within shooting range (not in the neutral zone). */
     public boolean isInShootingRange() {
         double robotX = drivetrain.getState().Pose.getX();
-        // In shooting range if NOT in neutral zone (X <= 4.5 or X >= 12.0)
-        return robotX <= 4.5 || robotX >= 12.0;
+        return robotX <= VisionConstants.BLUE_GOAL_X_METERS || robotX >= VisionConstants.RED_GOAL_X_METERS;
     }
 
-    /**
-     * Calculates the angular velocity needed to rotate the robot.
-     * - In shooting range: faces the goal for accurate shots
-     * - Outside shooting range: faces toward alliance wall for driving back
-     *
-     * @return Angular velocity in radians/second
-     */
+    /** Calculates angular velocity to rotate toward the goal or alliance wall. */
     public double getRotationToGoal() {
-        double kP = 3.0;  // Proportional gain for rotation
-        double minOutput = 0.2;  // Minimum angular velocity to overcome friction
+        double kP = 3.0;
+        double kD = 0.2;
+        double minOutput = 0.2;
 
         Pose2d currentPose = drivetrain.getState().Pose;
-
         double targetAngle;
+
         if (isInShootingRange()) {
-            // In shooting range - face the goal
             double dx = getGoalX() - currentPose.getX();
             double dy = getGoalY() - currentPose.getY();
             targetAngle = Math.atan2(dy, dx);
         } else {
-            // Outside shooting range - face toward alliance wall
             var alliance = DriverStation.getAlliance();
             if (alliance.isPresent() && alliance.get() == Alliance.Red) {
-                // Red alliance: face toward X = 16.5 (positive X direction)
-                targetAngle = 0;  // 0 radians = facing positive X
+                targetAngle = 0;
             } else {
-                // Blue alliance: face toward X = 0 (negative X direction)
-                targetAngle = Math.PI;  // PI radians = facing negative X
+                targetAngle = Math.PI;
             }
         }
 
-        // Current robot heading
         double currentHeading = currentPose.getRotation().getRadians();
-
-        // Error: how much we need to rotate (wrapped to -pi to pi)
         double error = targetAngle - currentHeading;
         while (error > Math.PI) error -= 2 * Math.PI;
         while (error < -Math.PI) error += 2 * Math.PI;
 
-        // Deadband - stop rotating when close enough
-        if (Math.abs(error) < Math.toRadians(2.0)) {
-            return 0.0;
-        }
+        double derivative = (error - lastRotationError) / 0.02;
+        lastRotationError = error;
 
-        double output = error * kP;
+        if (Math.abs(error) < Math.toRadians(1.0)) return 0.0;
 
-        // Apply minimum output to overcome static friction
+        double output = error * kP + derivative * kD;
         if (output > 0) output = Math.max(output, minOutput);
         else output = Math.min(output, -minOutput);
 
@@ -244,85 +136,86 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Calculates forward velocity for ranging to a target using proportional control.
-     * Uses cachedTagDist (actual meters to tag from MegaTag2) instead of TY angle,
-     * which is more accurate and doesn't depend on camera mount geometry.
-     * Uses cached values from periodic() - no extra NetworkTables reads.
-     *
-     * @return Forward velocity in m/s to approach target, or 0 if no target or at distance
+     * Sets the drivetrain pose from the best available vision estimate.
+     * Call this once at the start of auto to initialize position.
+     * @return true if pose was set successfully, false if no valid vision data
      */
+    public boolean setInitialPoseFromVision() {
+        for (String limelightName : VisionConstants.ALL_LIMELIGHTS) {
+            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+            if (mt2 != null && mt2.tagCount > 0) {
+                drivetrain.resetPose(mt2.pose);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Calculates forward velocity for ranging to a target using cached tag distance. */
     public double limelight_range_proportional() {
-        double kP = 0.4; // tune for desired approach speed (output in m/s per meter of error)
+        double kP = 0.4;
 
-        if (!cachedTV || cachedTagDist == 0.0) {
-            return 0.0;
-        }
+        if (!cachedTV || cachedTagDist == 0.0) return 0.0;
 
-        // Error in meters: positive = too far, negative = too close
         double error = cachedTagDist - VisionConstants.TARGET_DISTANCE_METERS;
-
-        // Deadband - stop within 10 cm of target distance
-        if (Math.abs(error) < 0.1) {
-            return 0.0;
-        }
+        if (Math.abs(error) < 0.1) return 0.0;
 
         return error * kP;
     }
 
     @Override
     public void periodic() {
-        // ==================== TELEMETRY ====================
+        loopCounter++;
+        boolean updateDashboard = (loopCounter % DASHBOARD_UPDATE_INTERVAL == 0);
 
-        // Update field visualization with current pose
         Pose2d currentPose = drivetrain.getState().Pose;
-        m_field.setRobotPose(currentPose);
         posePublisher.set(currentPose);
 
-        // ==================== PROCESS ALL LIMELIGHTS ====================
-        // Reset cached values before aggregating from all Limelights
+        // Update climb-mounted camera pose based on climb position
+        if (climb != null && climb.isCalibrated()) {
+            double climbPosition = climb.getPosition();
+            double heightOffset = climbPosition * VisionConstants.CLIMB_METERS_PER_ROTATION;
+
+            LimelightHelpers.setCameraPose_RobotSpace(
+                VisionConstants.LIMELIGHT_CLIMB,
+                VisionConstants.CLIMB_CAM_FORWARD,
+                VisionConstants.CLIMB_CAM_SIDE,
+                VisionConstants.CLIMB_CAM_UP_BASE + heightOffset,
+                VisionConstants.CLIMB_CAM_ROLL,
+                VisionConstants.CLIMB_CAM_PITCH,
+                VisionConstants.CLIMB_CAM_YAW
+            );
+        }
+
         cachedTV = false;
         cachedTX = 0.0;
         cachedTagDist = 0.0;
-        double bestTagDist = Double.MAX_VALUE; // Track which Limelight has closest tags for TX
+        double bestTagDist = Double.MAX_VALUE;
 
-        // Reject all updates during fast rotation (>720 deg/s) - camera images will be blurry
         boolean rejectAllUpdates = Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720;
 
         for (int i = 0; i < VisionConstants.ALL_LIMELIGHTS.length; i++) {
             String limelightName = VisionConstants.ALL_LIMELIGHTS[i];
 
-            // Read Limelight NT values
             boolean tv = LimelightHelpers.getTV(limelightName);
             double tx = LimelightHelpers.getTX(limelightName);
 
-            SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
-            SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
 
-            // Visual feedback: blink LEDs when target is visible (only write on change)
-            if (tv != lastTV[i]) {
-                if (tv) {
-                    LimelightHelpers.setLEDMode_ForceBlink(limelightName);
-                } else {
-                    LimelightHelpers.setLEDMode_ForceOff(limelightName);
-                }
-                lastTV[i] = tv;
-            }
-
-            // ==================== VISION POSE ESTIMATION (MEGATAG 2) ====================
-            // Send current robot orientation to this Limelight for better solving
             LimelightHelpers.SetRobotOrientation(
                 limelightName,
-                drivetrain.getState().Pose.getRotation().getDegrees(),
+                currentPose.getRotation().getDegrees(),
                 0, 0, 0, 0, 0
             );
 
             LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
-            // Process pose estimate if valid
             if (mt2 != null && mt2.tagCount > 0) {
-                SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+                if (updateDashboard) {
+                    SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+                }
 
-                // Use this Limelight for aiming if it has the closest tags
                 if (tv && mt2.avgTagDist < bestTagDist) {
                     cachedTV = true;
                     cachedTX = tx;
@@ -330,65 +223,25 @@ public class Vision extends SubsystemBase {
                     bestTagDist = mt2.avgTagDist;
                 }
 
-                // Apply vision measurement if it passes quality checks
                 if (!rejectAllUpdates) {
-                    // Scale trust based on tag distance and count
-                    double stdDev = 0.5 * mt2.avgTagDist / mt2.tagCount;
+                    // Higher stdDev = less trust in vision, more reliance on odometry
+                    double stdDev = 1.2 * mt2.avgTagDist / mt2.tagCount;
                     drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
                 }
+            } else if (updateDashboard) {
+                SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
             }
         }
 
-        // Publish aggregated values
-        SmartDashboard.putBoolean("Vision/TV", cachedTV);
-        SmartDashboard.putNumber("Vision/TX", cachedTX);
-        SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
-
-        // ==================== UPDATE TARGET ANGLE TRIANGLE ====================
-        double goalX = getGoalX();
-        double goalY = getGoalY();
-        double robotX = currentPose.getX();
-        double robotY = currentPose.getY();
-        double dx = goalX - robotX;
-        double dy = goalY - robotY;
-        double distance = Math.sqrt(dx * dx + dy * dy);
-        double targetAngleDeg = Math.toDegrees(Math.atan2(dy, dx));
-
-        // Draw triangle on field using pose arrays (lines drawn as series of points)
-        int numPoints = 10;
-
-        // dx line: horizontal from robot to (goalX, robotY)
-        Pose2d[] dxPoses = new Pose2d[numPoints];
-        for (int i = 0; i < numPoints; i++) {
-            double t = (double) i / (numPoints - 1);
-            dxPoses[i] = new Pose2d(robotX + dx * t, robotY, Rotation2d.fromDegrees(0));
+        if (updateDashboard) {
+            SmartDashboard.putBoolean("Vision/TV", cachedTV);
+            SmartDashboard.putNumber("Vision/TX", cachedTX);
+            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
+            SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
+            SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
+            SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
         }
-        dxLineObj.setPoses(dxPoses);
-
-        // dy line: vertical from (goalX, robotY) to goal
-        Pose2d[] dyPoses = new Pose2d[numPoints];
-        for (int i = 0; i < numPoints; i++) {
-            double t = (double) i / (numPoints - 1);
-            dyPoses[i] = new Pose2d(goalX, robotY + dy * t, Rotation2d.fromDegrees(90));
-        }
-        dyLineObj.setPoses(dyPoses);
-
-        // Hypotenuse: direct line from robot to goal
-        Pose2d[] hypPoses = new Pose2d[numPoints];
-        for (int i = 0; i < numPoints; i++) {
-            double t = (double) i / (numPoints - 1);
-            hypPoses[i] = new Pose2d(robotX + dx * t, robotY + dy * t, Rotation2d.fromDegrees(targetAngleDeg));
-        }
-        hypLineObj.setPoses(hypPoses);
-
-        // Goal marker
-        goalMarker.setPose(new Pose2d(goalX, goalY, Rotation2d.fromDegrees(0)));
-
-        // Publish the numeric values too for reference
-        SmartDashboard.putNumber("Vision/TargetAngle/dx", dx);
-        SmartDashboard.putNumber("Vision/TargetAngle/dy", dy);
-        SmartDashboard.putNumber("Vision/TargetAngle/distance", distance);
-        SmartDashboard.putNumber("Vision/TargetAngle/angle", targetAngleDeg);
     }
 }
