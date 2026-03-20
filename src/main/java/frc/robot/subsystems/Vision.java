@@ -23,10 +23,7 @@ public class Vision extends SubsystemBase {
     private double cachedTX = 0.0;
     private double cachedTagDist = 0.0;
 
-    // Loop counter for throttling dashboard updates
-    private int loopCounter = 0;
     private double lastRotationError = 0.0;
-    private static final int DASHBOARD_UPDATE_INTERVAL = 5; // Update dashboard every 5 loops (10Hz)
 
     public Vision(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
@@ -37,6 +34,18 @@ public class Vision extends SubsystemBase {
     /** Sets the climb reference for dynamic camera pose updates. */
     public void setClimb(Climb climb) {
         this.climb = climb;
+    }
+
+    /** Calculates forward velocity for ranging to a target using cached tag distance. */
+    public double limelight_range_proportional() {
+        double kP = 0.4;
+
+        if (!cachedTV || cachedTagDist == 0.0) return 0.0;
+
+        double error = cachedTagDist - VisionConstants.TARGET_DISTANCE_METERS;
+        if (Math.abs(error) < 0.1) return 0.0;
+
+        return error * kP;
     }
 
     /** Calculates angular velocity for aiming at a target using proportional control. */
@@ -135,39 +144,8 @@ public class Vision extends SubsystemBase {
         return output;
     }
 
-    /**
-     * Sets the drivetrain pose from the best available vision estimate.
-     * Call this once at the start of auto to initialize position.
-     * @return true if pose was set successfully, false if no valid vision data
-     */
-    public boolean setInitialPoseFromVision() {
-        for (String limelightName : VisionConstants.ALL_LIMELIGHTS) {
-            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
-            if (mt2 != null && mt2.tagCount > 0) {
-                drivetrain.resetPose(mt2.pose);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Calculates forward velocity for ranging to a target using cached tag distance. */
-    public double limelight_range_proportional() {
-        double kP = 0.4;
-
-        if (!cachedTV || cachedTagDist == 0.0) return 0.0;
-
-        double error = cachedTagDist - VisionConstants.TARGET_DISTANCE_METERS;
-        if (Math.abs(error) < 0.1) return 0.0;
-
-        return error * kP;
-    }
-
     @Override
     public void periodic() {
-        loopCounter++;
-        boolean updateDashboard = (loopCounter % DASHBOARD_UPDATE_INTERVAL == 0);
-
         Pose2d currentPose = drivetrain.getState().Pose;
         posePublisher.set(currentPose);
 
@@ -209,12 +187,11 @@ public class Vision extends SubsystemBase {
 
             LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
-            if (mt2 != null && mt2.tagCount > 0) {
-                if (updateDashboard) {
-                    SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
-                    SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
-                    SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
-                }
+            SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
+            SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
+
+            if (mt2 != null && mt2.tagCount >= 2) {
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
 
                 if (tv && mt2.avgTagDist < bestTagDist) {
                     cachedTV = true;
@@ -225,23 +202,14 @@ public class Vision extends SubsystemBase {
 
                 if (!rejectAllUpdates) {
                     // Higher stdDev = less trust in vision, more reliance on odometry
-                    double stdDev = 1.2 * mt2.avgTagDist / mt2.tagCount;
-                    drivetrain.setVisionMeasurementStdDevs(VecBuilder.fill(stdDev, stdDev, 9999999));
-                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+                    double stdDev = 0.7 * mt2.avgTagDist / mt2.tagCount;
+                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds, VecBuilder.fill(stdDev, stdDev, 9999999));
                 }
-            } else if (updateDashboard) {
-                SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
-                SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
             }
         }
 
-        if (updateDashboard) {
-            SmartDashboard.putBoolean("Vision/TV", cachedTV);
-            SmartDashboard.putNumber("Vision/TX", cachedTX);
-            SmartDashboard.putNumber("Vision/TagDist", cachedTagDist);
-            SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
-            SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
-            SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
-        }
+        SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
+        SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
+        SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
     }
 }

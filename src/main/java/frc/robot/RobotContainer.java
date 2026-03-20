@@ -276,14 +276,8 @@ public class RobotContainer {
         m_climb.setDefaultCommand(m_climb.stopAll());
         m_hood.setDefaultCommand(m_hood.stopAll());
 
-        // Set initial pose from vision at start of auto and teleop
-        RobotModeTriggers.autonomous().onTrue(new InstantCommand(() -> m_vision.setInitialPoseFromVision()));
-        RobotModeTriggers.teleop().onTrue(new InstantCommand(() -> m_vision.setInitialPoseFromVision()));
-
-        // Calibrate subsystems at start of auto (defer creates fresh command each time)
-        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
-        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
-        RobotModeTriggers.autonomous().onTrue(Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated));
+        // Calibration at start of auto is handled in getAutonomousCommand() to ensure
+        // the auto routine waits for calibration to finish before running.
 
         // Calibrate subsystems on teleop start if not already calibrated
         RobotModeTriggers.teleop().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
@@ -294,7 +288,16 @@ public class RobotContainer {
     }
 
     public Command getAutonomousCommand() {
-        return autoChooser.getSelected();
+        return Commands.sequence(
+            // Run all calibrations in parallel first (skips any already calibrated)
+            Commands.parallel(
+                Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated),
+                Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated),
+                Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated)
+            ),
+            // Then run the selected auto routine
+            Commands.defer(() -> autoChooser.getSelected(), Set.of())
+        );
     }
 
     /** Creates a command that spins up the shooter, then feeds when at speed. */

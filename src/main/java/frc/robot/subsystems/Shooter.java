@@ -2,7 +2,9 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 
@@ -48,12 +50,21 @@ public class Shooter extends SubsystemBase {
         slot0Configs.kI = ShooterConstants.KI;
         slot0Configs.kD = ShooterConstants.KD;
 
-        shooterOne.getConfigurator().apply(slot0Configs);
-        shooterTwo.getConfigurator().apply(slot0Configs);
-        shooterThree.getConfigurator().apply(slot0Configs);
+        var currentLimits = new CurrentLimitsConfigs()
+            .withStatorCurrentLimit(80)
+            .withStatorCurrentLimitEnable(true)
+            .withSupplyCurrentLimit(40)
+            .withSupplyCurrentLimitEnable(true);
+
+        var talonConfig = new TalonFXConfiguration()
+            .withCurrentLimits(currentLimits)
+            .withSlot0(slot0Configs);
+
+        shooterOne.getConfigurator().apply(talonConfig);
+        shooterTwo.getConfigurator().apply(talonConfig);
+        shooterThree.getConfigurator().apply(talonConfig);
 
         // Distance (meters) to shooter speed (RPS) lookup table
-        // TODO: Calibrate these values by testing at known distances
         distanceToShooterSpeed.put(2.88, 67.5);
         distanceToShooterSpeed.put(4.1, 82.5);
         distanceToShooterSpeed.put(1.9685, 55.5);
@@ -83,35 +94,6 @@ public class Shooter extends SubsystemBase {
             shooterOne.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
             shooterTwo.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
             shooterThree.setControl(shooterVoltageRequest.withVelocity(-targetRPS).withFeedForward(0.5));
-        }, this);
-    }
-
-    /** Runs the shooter using trigger input for variable speed (open-loop). */
-    public Command runShooter(CommandXboxController controllerValue) {
-        return new RunCommand(() -> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooterOne.set(speed);
-            shooterTwo.set(speed);
-            shooterThree.set(speed);
-        }, this);
-    }
-
-    /** Runs the shooter at a fixed speed (open-loop). */
-    public Command runShooter(double speed) {
-        return new RunCommand(() -> {
-            shooterOne.set(-speed);
-            shooterTwo.set(-speed);
-            shooterThree.set(-speed);
-        }, this);
-    }
-
-    /** Runs the shooter in reverse using trigger input. */
-    public Command runReverseShooter(CommandXboxController controllerValue) {
-        return new RunCommand(() -> {
-            double speed = controllerValue.getLeftTriggerAxis();
-            shooterOne.set(-speed);
-            shooterTwo.set(-speed);
-            shooterThree.set(-speed);
         }, this);
     }
 
@@ -162,7 +144,6 @@ public class Shooter extends SubsystemBase {
         double vel3 = Math.abs(velocityThree.getValueAsDouble());
         double avgVelocity = (vel1 + vel2 + vel3) / 3.0;
 
-        SmartDashboard.putNumber("Shooter/TargetVelocity", shooterTargetVelocity);
         SmartDashboard.putNumber("Shooter/Motor1/Velocity", vel1);
         SmartDashboard.putNumber("Shooter/Motor2/Velocity", vel2);
         SmartDashboard.putNumber("Shooter/Motor3/Velocity", vel3);

@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -13,7 +14,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.ClimbConstants;
 
-/** Controls the climbing mechanism with limit switch protection. */
 public class Climb extends SubsystemBase {
 
     private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR, "CANivore");
@@ -21,12 +21,16 @@ public class Climb extends SubsystemBase {
     private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
     private boolean isCalibrated = false;
 
-    /** Reference to pivot for safety interlock - climb cannot go down while pivot is up. */
     private Pivot pivot = null;
 
     public Climb() {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.CurrentLimits = new CurrentLimitsConfigs()
+            .withStatorCurrentLimit(80)
+            .withStatorCurrentLimitEnable(true)
+            .withSupplyCurrentLimit(60)
+            .withSupplyCurrentLimitEnable(true);
         climbMotor.getConfigurator().apply(config);
     }
 
@@ -93,7 +97,7 @@ public class Climb extends SubsystemBase {
         return !lowerLimitSwitch.get();
     }
 
-    /** Returns true if the climb is at the lower limit (down position). */
+    /** Returns true if the climb is at the lower limit (down position). Used for Pivot Safety */
     public boolean isClimbDown() {
         return !lowerLimitSwitch.get();
     }
