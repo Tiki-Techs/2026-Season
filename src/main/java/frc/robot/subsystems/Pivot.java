@@ -23,7 +23,6 @@ public class Pivot extends SubsystemBase {
     private final RelativeEncoder encoder = pivotArm.getEncoder();
     private final double stallCurrentThreshold = PivotConstants.HOMING_STALL_LOWER_AMPS;
     private final double stopSpeed = 0.0;
-    private final double holdUpPower = -0.05;
     private final double totalTravelDistance = 7.5;
 
     private boolean intakeDeployed = true;
@@ -38,6 +37,7 @@ public class Pivot extends SubsystemBase {
     public Pivot() {
         SparkMaxConfig config = new SparkMaxConfig();
         config.idleMode(IdleMode.kBrake);
+        config.smartCurrentLimit(20);
         pivotArm.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
     }
 
@@ -137,67 +137,6 @@ public class Pivot extends SubsystemBase {
         }, this);
     }
 
-    /** Toggles the arm between deployed and stowed positions. */
-    public Command toggleArm() {
-        return new ConditionalCommand(raiseArmAuto(), lowerArmAuto(), () -> intakeDeployed);
-    }
-
-    /** Automatically lowers the intake arm until stall or limit reached. */
-    public Command lowerArmAuto() {
-        final double fastSpeed = 0.6;
-        final double slowSpeed = 0.15;
-        final Debouncer stallDebouncer = new Debouncer(0.15, Debouncer.DebounceType.kRising);
-
-        return new RunCommand(() -> {
-            double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
-            boolean inSlowZone = isCalibrated && distanceToLower < (totalTravelDistance * 0.4);
-            pivotArm.set(inSlowZone ? slowSpeed : fastSpeed);
-        }, this)
-            .until(() -> {
-                boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > stallCurrentThreshold);
-                double distanceToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
-                boolean atLimit = isCalibrated && distanceToLower < 0.05;
-                return stalled || atLimit;
-            })
-            .unless(() -> isCalibrated && Math.abs(encoder.getPosition() - lowerEncoderPos) < 0.05)
-            .finallyDo(interrupted -> {
-                pivotArm.set(stopSpeed);
-                if (!interrupted) intakeDeployed = true;
-            });
-    }
-
-    /** Automatically raises the intake arm until stall or limit reached. */
-    public Command raiseArmAuto() {
-        final double fastSpeed = 0.6;
-        final double slowSpeed = 0.15;
-        final Debouncer stallDebouncer = new Debouncer(0.15, Debouncer.DebounceType.kRising);
-
-        return new RunCommand(() -> {
-            if (!canRaise()) {
-                pivotArm.set(stopSpeed);
-                return;
-            }
-            double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
-            boolean inSlowZone = isCalibrated && distanceToUpper < (totalTravelDistance * 0.4);
-            pivotArm.set(inSlowZone ? -slowSpeed : -fastSpeed);
-        }, this)
-            .until(() -> {
-                boolean stalled = stallDebouncer.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_RAISE_AMPS);
-                double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
-                boolean atLimit = isCalibrated && distanceToUpper < 0.05;
-                return stalled || atLimit;
-            })
-            .unless(() -> isCalibrated && Math.abs(encoder.getPosition() - upperEncoderPos) < 0.05)
-            .finallyDo(interrupted -> {
-                pivotArm.set(stopSpeed);
-                if (!interrupted) intakeDeployed = false;
-            });
-    }
-
-    /** Manually toggles the deployed state flag. Use to resync state if arm was moved externally. */
-    public Command changeDeployState() {
-        return new InstantCommand(() -> intakeDeployed = !intakeDeployed);
-    }
 
     @Override
     public void periodic() {
@@ -205,11 +144,6 @@ public class Pivot extends SubsystemBase {
         SmartDashboard.putBoolean("Pivot/IsCalibrated", isCalibrated);
         SmartDashboard.putBoolean("Pivot/IntakeDeployed", intakeDeployed);
         SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
-        if (pivotLoopCounter % 5 == 0) {
-            SmartDashboard.putNumber("Pivot/MotorCurrent", pivotArm.getOutputCurrent());
-        }
         SmartDashboard.putBoolean("Pivot/CanRaise", canRaise());
-        SmartDashboard.putNumber("Pivot/LowerLimit", lowerEncoderPos);
-        SmartDashboard.putNumber("Pivot/UpperLimit", upperEncoderPos);
-    }
+       }
 }

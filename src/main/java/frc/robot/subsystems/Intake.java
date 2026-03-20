@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -13,6 +14,12 @@ import frc.robot.Constants.IntakeConstants;
 public class Intake extends SubsystemBase {
 
     private final SparkMax intakeMotor = new SparkMax(IntakeConstants.INTAKE_MOTOR, MotorType.kBrushless);
+
+    public Intake() {
+        SparkMaxConfig config = new SparkMaxConfig();
+        config.smartCurrentLimit(40);
+        intakeMotor.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
+    }
 
     /** Runs the intake at a specified speed (-1.0 to 1.0). */
     public Command runIntake(double speed) {

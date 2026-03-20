@@ -1,5 +1,7 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import edu.wpi.first.wpilibj2.command.Command;
@@ -15,14 +17,13 @@ public class Index extends SubsystemBase {
 
     private final TalonFX indexMotor = new TalonFX(IndexConstants.INDEX_MOTOR, "CANivore");
 
-    /** Runs the indexer with speed proportional to the right trigger. */
-    public Command runIndex(CommandXboxController controller) {
-        return new RunCommand(() -> indexMotor.set(controller.getRightTriggerAxis()), this);
-    }
-
-    /** Runs the indexer in reverse using trigger input. */
-    public Command runReverseIndex(CommandXboxController controller) {
-        return new RunCommand(() -> indexMotor.set(-controller.getRightTriggerAxis()), this);
+    public Index() {
+        var currentLimits = new CurrentLimitsConfigs()
+            .withStatorCurrentLimit(40)
+            .withStatorCurrentLimitEnable(true)
+            .withSupplyCurrentLimit(25)
+            .withSupplyCurrentLimitEnable(true);
+        indexMotor.getConfigurator().apply(new TalonFXConfiguration().withCurrentLimits(currentLimits));
     }
 
     /** Runs the indexer at a fixed speed (-1.0 to 1.0). */
