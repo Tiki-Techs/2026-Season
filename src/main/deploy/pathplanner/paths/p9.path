@@ -1,0 +1,65 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 5.744709821428571,
+        "y": 5.353110119047619
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 5.994709821428571,
+        "y": 5.353110119047619
+      },
+      "isLocked": false,
+      "linkedName": "p8"
+    },
+    {
+      "anchor": {
+        "x": 3.239,
+        "y": 5.353
+      },
+      "prevControl": {
+        "x": 2.992204781541714,
+        "y": 5.392901380253406
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": null
+    }
+  ],
+  "rotationTargets": [],
+  "constraintZones": [],
+  "pointTowardsZones": [
+    {
+      "fieldPosition": {
+        "x": 4.62,
+        "y": 4.03
+      },
+      "rotationOffset": 0.0,
+      "minWaypointRelativePos": 0.21643835616438364,
+      "maxWaypointRelativePos": 0.9835616438356165,
+      "name": "Point Towards Zone"
+    }
+  ],
+  "eventMarkers": [],
+  "globalConstraints": {
+    "maxVelocity": 5.0,
+    "maxAcceleration": 2.5,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": -45.32585656411205
+  },
+  "reversed": false,
+  "folder": "Reif's really awesome path",
+  "idealStartingState": {
+    "velocity": 3.0,
+    "rotation": -68.07822140604084
+  },
+  "useDefaultConstraints": true
+}
