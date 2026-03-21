@@ -113,6 +113,16 @@ public class Climb extends SubsystemBase {
         }, this);
     }
 
+    public Command runHopperUp() {
+        return new RunCommand(() -> {
+            if (!upperLimitSwitch.get()) {
+                climbMotor.set(0);
+            } else {
+                climbMotor.set(1.0);
+            }
+        }, this);
+    }
+
     /** Runs the climb motor down. Includes safety interlock with pivot. */
     public Command runClimbDown() {
         return new RunCommand(() -> {
@@ -126,6 +136,21 @@ public class Climb extends SubsystemBase {
             } else {
                 climbMotor.set(-1.0);
             }
+        }, this);
+    }
+
+    public Command runHopperDown() {
+        return new RunCommand(() -> {
+            // Safety: prevent going down while pivot is up
+            if (pivot != null && !pivot.isPivotDown()) {
+                climbMotor.set(0);
+                return;
+            }
+            if(!lowerLimitSwitch.get()) {
+                climbMotor.set(0);
+                return;
+            }
+            climbMotor.set(-.1);
         }, this);
     }
 

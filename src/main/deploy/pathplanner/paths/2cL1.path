@@ -3,34 +3,34 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.55,
-        "y": 0.75
+        "x": 3.5,
+        "y": 7.5
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.353406700929376,
-        "y": 0.8353700070587031
+        "x": 4.5,
+        "y": 7.5
       },
       "isLocked": false,
-      "linkedName": "Default-DS-Right-Start"
+      "linkedName": "Default-DS-Left-Start"
     },
     {
       "anchor": {
-        "x": 7.867604259094943,
-        "y": 1.0773913043478252
+        "x": 7.754933451641527,
+        "y": 7.193806566104703
       },
       "prevControl": {
-        "x": 5.47046636037982,
-        "y": 0.5601217052176954
+        "x": 7.52154426017149,
+        "y": 7.419148531346437
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "dend1"
+      "linkedName": "2cL1"
     }
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.19144144144144198,
+      "waypointRelativePos": 0.5,
       "rotationDegrees": 0.0
     }
   ],
@@ -46,13 +46,13 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 3.0,
-    "rotation": 90.0
+    "velocity": 2.0,
+    "rotation": -90.0
   },
   "reversed": false,
-  "folder": "D Paths",
+  "folder": "2cLeft",
   "idealStartingState": {
-    "velocity": 3.0,
+    "velocity": 0,
     "rotation": 0.0
   },
   "useDefaultConstraints": true

@@ -115,6 +115,10 @@ public class RobotContainer {
         NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED));
         NamedCommands.registerCommand("stopIntake", m_intake.stopAll());
 
+        // Index 
+        NamedCommands.registerCommand("runIndex", m_index.runIndex(IndexConstants.INDEX_SPEED));
+        NamedCommands.registerCommand("stopIndex", m_index.stopAll());
+
         // Reverse feeder
         NamedCommands.registerCommand("reverseFeeder", m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED));
         // Shoot command (spins up shooter, then feeds when at speed)
@@ -184,8 +188,8 @@ public class RobotContainer {
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                     () -> Constants.overrideEnabled
-                    )
-                    );
+                )
+            );
                     
             // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
             m_driverController.rightTrigger().whileTrue(
@@ -201,20 +205,10 @@ public class RobotContainer {
                         new ParallelCommandGroup(
                             m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                             m_index.runIndex(IndexConstants.INDEX_SPEED),
-                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
+                            m_climb.runHopperDown()
                             )
                     ),
-                    () -> Constants.overrideEnabled
-                )
-            );
-                                        
-                                        
-                                        
-            // Left Trigger: Run intake rollers
-            m_driverController.leftTrigger().whileTrue(
-                new ConditionalCommand(
-                    m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
-                    m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
                     () -> Constants.overrideEnabled
                 )
             );
@@ -239,24 +233,19 @@ public class RobotContainer {
     }
                                                         
     private void configureIntakeBindings() {
-//     // D-Pad Up: Raise intake arm (or climb up in override mode)
-//     m_driverController.povUp().whileTrue(
-//         new ConditionalCommand(
-//         m_climb.runClimbUp(),
-//         m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
-//         () -> Constants.overrideEnabled
-//         )
-//         );
-                                                                    
-//         // D-Pad Down: Lower intake arm (or climb down in override mode)
-//         m_driverController.povDown().whileTrue(
-//             new ConditionalCommand(
-//                 m_climb.runClimbDown(),
-//                 m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
-//         () -> Constants.overrideEnabled
-//     )
-// );
-        
+
+        // Left Trigger: Run intake rollers
+        m_driverController.leftTrigger().whileTrue(
+            new ConditionalCommand(
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                new ParallelCommandGroup(
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
+                m_climb.runHopperUp()
+                ),
+                () -> Constants.overrideEnabled
+            )
+        );
+
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
                 m_climb.runClimbUp(),
@@ -314,7 +303,8 @@ public class RobotContainer {
             new ParallelCommandGroup(
                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                 m_index.runIndex(IndexConstants.INDEX_SPEED),
-                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                m_climb.runHopperDown()
             )
         );
     }
