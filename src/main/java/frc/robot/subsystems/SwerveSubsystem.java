@@ -200,11 +200,12 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
 
     public Command sysIdDynamic(SysIdRoutine.Direction direction) {
         return m_sysIdRoutineToApply.dynamic(direction);
+
     }
 
     @Override
     public void periodic() {
-        if (!m_hasAppliedOperatorPerspective) {
+        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
             DriverStation.getAlliance().ifPresent(allianceColor -> {
                 setOperatorPerspectiveForward(
                     allianceColor == Alliance.Red

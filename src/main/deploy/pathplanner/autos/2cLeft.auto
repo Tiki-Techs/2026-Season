@@ -1,0 +1,205 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibratePivot"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibrateHood"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibrateClimb"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL1"
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL2"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "RaiseClimb"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "reverseFeeder"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL3"
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 3.75
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Shoot"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL4"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "LowerClimb"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL5"
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL6"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "RaiseClimb"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "reverseFeeder"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL7"
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 3.75
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Shoot"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL8"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2cL9"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}

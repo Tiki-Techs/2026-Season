@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 4.0
+        "x": 2.7626488095238098,
+        "y": 2.168764880952382
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.5,
-        "y": 4.0
+        "x": 3.3434002976190476,
+        "y": 1.764196428571429
       },
       "isLocked": false,
-      "linkedName": "Default-DS-Center-Start"
+      "linkedName": "2c3"
     },
     {
       "anchor": {
-        "x": 2.0579166666666664,
-        "y": 4.0
+        "x": 3.64,
+        "y": 0.6026934523809531
       },
       "prevControl": {
-        "x": 2.4758898605974156,
-        "y": 4.0
+        "x": 2.64,
+        "y": 0.6026934523809532
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "2c4"
     }
   ],
   "rotationTargets": [],
@@ -41,14 +41,14 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
+    "velocity": 2.0,
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "nothingPaths",
+  "folder": "2cRight",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 45.20174486874688
   },
   "useDefaultConstraints": true
 }

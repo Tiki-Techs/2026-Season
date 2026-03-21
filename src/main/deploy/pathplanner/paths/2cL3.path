@@ -1,0 +1,65 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 7.754933451641527,
+        "y": 5.310594498669032
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 8.382241005612967,
+        "y": 5.60224258735588
+      },
+      "isLocked": false,
+      "linkedName": "2cL2"
+    },
+    {
+      "anchor": {
+        "x": 2.797,
+        "y": 5.649
+      },
+      "prevControl": {
+        "x": 3.049838679402267,
+        "y": 4.951316737809711
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": "2cL3"
+    }
+  ],
+  "rotationTargets": [],
+  "constraintZones": [],
+  "pointTowardsZones": [
+    {
+      "fieldPosition": {
+        "x": 4.63,
+        "y": 4.03
+      },
+      "rotationOffset": 0.0,
+      "minWaypointRelativePos": 0.6275167785234926,
+      "maxWaypointRelativePos": 1.0,
+      "name": "Point Towards Zone"
+    }
+  ],
+  "eventMarkers": [],
+  "globalConstraints": {
+    "maxVelocity": 5.0,
+    "maxAcceleration": 2.5,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": -45.0
+  },
+  "reversed": false,
+  "folder": "2cLeft",
+  "idealStartingState": {
+    "velocity": 1.0,
+    "rotation": -90.0
+  },
+  "useDefaultConstraints": true
+}

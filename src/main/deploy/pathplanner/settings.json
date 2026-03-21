@@ -3,10 +3,12 @@
   "robotLength": 0.86,
   "holonomicMode": true,
   "pathFolders": [
-    "nothingPaths",
     "dtopPaths",
+    "2cMiddle",
     "Default Starting Position",
-    "D Paths"
+    "D Paths",
+    "2cRight",
+    "2cLeft"
   ],
   "autoFolders": [
     "Practice Autos"
