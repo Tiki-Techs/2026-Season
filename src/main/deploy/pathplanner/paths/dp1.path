@@ -8,8 +8,8 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 6.355813973446088,
-        "y": 0.716629470654188
+        "x": 6.453288491864988,
+        "y": 0.4342190874422968
       },
       "isLocked": false,
       "linkedName": "Default-DS-Right-Start"
@@ -20,8 +20,8 @@
         "y": 1.0773913043478252
       },
       "prevControl": {
-        "x": 6.50895328492307,
-        "y": 0.5228514558000952
+        "x": 6.146734310675671,
+        "y": 0.7195396718021037
       },
       "nextControl": null,
       "isLocked": false,
@@ -46,7 +46,7 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 4.0,
+    "velocity": 3.0,
     "rotation": 90.0
   },
   "reversed": false,

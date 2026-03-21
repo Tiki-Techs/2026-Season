@@ -6,9 +6,8 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.RelativeEncoder;
 
-import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
@@ -21,7 +20,7 @@ public class Pivot extends SubsystemBase {
 
     private final SparkMax pivotArm = new SparkMax(PivotConstants.PIVOT_MOTOR, MotorType.kBrushless);
     private final RelativeEncoder encoder = pivotArm.getEncoder();
-    private final double stallCurrentThreshold = PivotConstants.HOMING_STALL_LOWER_AMPS;
+    private final DigitalInput lowerLimitSwitch = new DigitalInput(PivotConstants.LOWER_LIMIT_SWITCH_DIO);
     private final double stopSpeed = 0.0;
     private final double totalTravelDistance = 7.5;
 
@@ -37,31 +36,22 @@ public class Pivot extends SubsystemBase {
     public Pivot() {
         SparkMaxConfig config = new SparkMaxConfig();
         config.idleMode(IdleMode.kBrake);
-        config.smartCurrentLimit(20);
         pivotArm.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
     }
 
 
 
-    /** Calibrates the pivot by finding the lower hard stop via stall detection, then raising. */
+    /** Calibrates the pivot by finding the lower limit switch, then zeroing the encoder. */
     public Command calibratePivot() {
-        final Debouncer phase1Stall = new Debouncer(0.15, Debouncer.DebounceType.kRising);
-        final int[] loopCount = {0};
-
         return new SequentialCommandGroup(
             new InstantCommand(() -> {
                 isCalibrated = false;
-                loopCount[0] = 0;
             }, this),
 
-            // Find lower hard stop
+            // Move down until limit switch is triggered
             new RunCommand(() -> {
-                loopCount[0]++;
-                pivotArm.set(-PivotConstants.HOMING_SPEED);
-            }, this).until(() -> {
-                if (loopCount[0] < 25) return false;
-                return phase1Stall.calculate(pivotArm.getOutputCurrent() > PivotConstants.HOMING_STALL_LOWER_AMPS);
-            }),
+                pivotArm.set(PivotConstants.HOMING_SPEED);
+            }, this).until(this::isLowerLimitPressed),
 
             // Zero encoder and set calibration state
             new InstantCommand(() -> {
@@ -73,6 +63,11 @@ public class Pivot extends SubsystemBase {
                 isCalibrated = true;
             }, this)
         );
+    }
+
+    /** Returns true if the lower limit switch is pressed (switch is normally open, so false = pressed). */
+    public boolean isLowerLimitPressed() {
+        return !lowerLimitSwitch.get();
     }
 
     public boolean isCalibrated() {
@@ -138,12 +133,19 @@ public class Pivot extends SubsystemBase {
     }
 
 
+    public Command runPivot(double pivotSpeed) {
+        return new RunCommand(() -> {
+            pivotArm.set(pivotSpeed);
+        }, this);
+    }
+
+
     @Override
     public void periodic() {
-        pivotLoopCounter++;
         SmartDashboard.putBoolean("Pivot/IsCalibrated", isCalibrated);
         SmartDashboard.putBoolean("Pivot/IntakeDeployed", intakeDeployed);
         SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
         SmartDashboard.putBoolean("Pivot/CanRaise", canRaise());
-       }
+        SmartDashboard.putBoolean("Pivot/LowerLimitSwitch", isLowerLimitPressed());
+    }
 }

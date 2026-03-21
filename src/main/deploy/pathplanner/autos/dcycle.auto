@@ -5,13 +5,45 @@
     "data": {
       "commands": [
         {
-          "type": "path",
+          "type": "parallel",
           "data": {
-            "pathName": "dp1"
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibratePivot"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibrateClimb"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibrateHood"
+                }
+              }
+            ]
           }
         },
         {
           "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "dp1"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "race",
           "data": {
             "commands": [
               {
@@ -36,7 +68,7 @@
           }
         },
         {
-          "type": "parallel",
+          "type": "race",
           "data": {
             "commands": [
               {
@@ -55,7 +87,7 @@
           }
         },
         {
-          "type": "deadline",
+          "type": "race",
           "data": {
             "commands": [
               {
@@ -80,7 +112,7 @@
           }
         },
         {
-          "type": "parallel",
+          "type": "race",
           "data": {
             "commands": [
               {
@@ -111,7 +143,7 @@
           }
         },
         {
-          "type": "deadline",
+          "type": "race",
           "data": {
             "commands": [
               {

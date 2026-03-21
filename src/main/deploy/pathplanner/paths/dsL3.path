@@ -3,45 +3,61 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 5.862165178571429,
-        "y": 1.1899702380952386
+        "x": 7.8273646850044365,
+        "y": 4.618473824312333
       },
       "prevControl": null,
       "nextControl": {
-        "x": 5.738184523809523,
-        "y": 2.5537574404761907
+        "x": 6.636273291925465,
+        "y": 5.165732031943212
       },
       "isLocked": false,
-      "linkedName": "dend4"
+      "linkedName": "dsL2"
     },
     {
       "anchor": {
-        "x": 5.862165178571429,
-        "y": 3.596388642413486
+        "x": 5.638331854480923,
+        "y": 5.181827861579413
       },
       "prevControl": {
-        "x": 5.868690476190476,
-        "y": 2.865555309080153
+        "x": 7.285159716060338,
+        "y": 5.004773735581188
+      },
+      "nextControl": {
+        "x": 3.9915039929015084,
+        "y": 5.358881987577639
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 2.419165927240461,
+        "y": 6.163673469387755
+      },
+      "prevControl": {
+        "x": 2.942280390417036,
+        "y": 5.165732031943212
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "dend5"
+      "linkedName": "dsL3"
     }
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.4831081081081081,
-      "rotationDegrees": 90.0
+      "waypointRelativePos": 1.0,
+      "rotationDegrees": -45.0
     }
   ],
   "constraintZones": [
     {
       "name": "Constraints Zone",
-      "minWaypointRelativePos": 0,
-      "maxWaypointRelativePos": 1.0,
+      "minWaypointRelativePos": 1.0805369127516782,
+      "maxWaypointRelativePos": 1.6510067114093978,
       "constraints": {
-        "maxVelocity": 1.0,
-        "maxAcceleration": 2.5,
+        "maxVelocity": 2.0,
+        "maxAcceleration": 1.0,
         "maxAngularVelocity": 540.0,
         "maxAngularAcceleration": 720.0,
         "nominalVoltage": 12.0,
@@ -61,13 +77,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 90.0
+    "rotation": -42.599785539143376
   },
   "reversed": false,
-  "folder": "D Paths",
+  "folder": "dtopPaths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 90.0
+    "rotation": -90.0
   },
   "useDefaultConstraints": true
 }

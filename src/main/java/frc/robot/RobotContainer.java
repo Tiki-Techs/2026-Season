@@ -14,7 +14,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -25,6 +24,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -36,6 +36,7 @@ import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.PivotConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.*;
 
@@ -61,20 +62,6 @@ public class RobotContainer {
     private final double maxSpeed = DriveConstants.MAX_SPEED_METERS_PER_SECOND;
     private final double maxAngularRate = DriveConstants.MAX_ANGULAR_SPEED_RADIANS_PER_SECOND;
 
-    // Slew rate limiters for acceleration-only limiting
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(3.0);
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(3.0);
-    private double lastXVelocity = 0.0;
-    private double lastYVelocity = 0.0;
-
-    private double accelOnlyLimit(double target, double lastValue, SlewRateLimiter limiter) {
-        if (Math.abs(target) < Math.abs(lastValue) || (target * lastValue < 0 && target != 0)) {
-            limiter.reset(target);
-            return target;
-        }
-        return limiter.calculate(target);
-    }
-
     // Swerve requests
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
             .withDeadband(maxSpeed * 0.1)
@@ -85,6 +72,9 @@ public class RobotContainer {
             .withDeadband(0)
             .withRotationalDeadband(0)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+
+    // Slow drive command
+    private final SlowDriveTrain slowDriveTrain = new SlowDriveTrain();
 
     // Controllers
     private final CommandXboxController m_driverController =
@@ -127,9 +117,14 @@ public class RobotContainer {
 
         // Reverse feeder
         NamedCommands.registerCommand("reverseFeeder", m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED));
-
         // Shoot command (spins up shooter, then feeds when at speed)
         NamedCommands.registerCommand("Shoot", PIDShooter_Feeder_Index());
+
+
+        // Calibration commands
+        NamedCommands.registerCommand("calibrateHood", m_hood.calibrateHood());
+        NamedCommands.registerCommand("calibratePivot", m_pivot.calibratePivot());  
+        NamedCommands.registerCommand("calibrateClimb", m_climb.calibrateClimb());
     }
 
     private void configureBindings() {
@@ -141,16 +136,11 @@ public class RobotContainer {
 
     private void configureDrivetrainBindings() {
         drivetrain.setDefaultCommand(
-            drivetrain.applyRequest(() -> {
-                double targetX = MathUtil.applyDeadband(-m_driverController.getLeftY() * maxSpeed, 0.15);
-                double targetY = MathUtil.applyDeadband(-m_driverController.getLeftX() * maxSpeed, 0.15);
-                lastXVelocity = accelOnlyLimit(targetX, lastXVelocity, xLimiter);
-                lastYVelocity = accelOnlyLimit(targetY, lastYVelocity, yLimiter);
-                return drive
-                    .withVelocityX(lastXVelocity)
-                    .withVelocityY(lastYVelocity)
-                    .withRotationalRate(MathUtil.applyDeadband(-m_driverController.getRightX() * maxAngularRate, 0.15));
-            })
+            drivetrain.applyRequest(() -> drive
+                .withVelocityX(MathUtil.applyDeadband(-m_driverController.getLeftY(), 0.15) * maxSpeed)
+                .withVelocityY(MathUtil.applyDeadband(-m_driverController.getLeftX(), 0.15) * maxSpeed)
+                .withRotationalRate(MathUtil.applyDeadband(-m_driverController.getRightX(), 0.15) * maxAngularRate)
+            )
         );
 
         // A Button: Auto-aim to goal using odometry
@@ -168,105 +158,130 @@ public class RobotContainer {
             drivetrain.resetPose(new Pose2d(
                 drivetrain.getState().Pose.getTranslation(),
                 new Rotation2d()
+
             ))
         ));
 
-        // Left Bumper: Brake (X-pattern wheel lock)
-        m_driverController.leftBumper().whileTrue(drivetrain.brakeCommand());
-    }
-
-    private void configureShooterBindings() {
-        // Y Button: Override mode toggle
-        m_driverController.y()
+        
+        // Right Bumper: Slow drive mode
+        m_operatorController.rightBumper().whileTrue(
+            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+            );
+            
+            m_operatorController.leftBumper().whileTrue(drivetrain.brakeCommand());
+            
+        }
+        
+        
+        private void configureShooterBindings() {
+            // Y Button: Override mode toggle
+            m_driverController.y()
             .onTrue(new InstantCommand(() -> Constants.overrideEnabled = true))
             .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
-
-        // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
-        m_driverController.rightTrigger().whileTrue(
-            new ConditionalCommand(
-                new ParallelCommandGroup(
-                    m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                    m_index.runIndex(IndexConstants.INDEX_SPEED),
-                    m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
-                ),
-                new SequentialCommandGroup(
-                    m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-                        .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
-                    new ParallelCommandGroup(
-                        m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
-                        m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+            
+            m_operatorController.leftTrigger().whileTrue(
+                new ConditionalCommand(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
                     )
-                ),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // Right Bumper: Shooter only
-        m_driverController.rightBumper().whileTrue(
-            new ConditionalCommand(
-                m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // Left Trigger: Run intake rollers
-        m_driverController.leftTrigger().whileTrue(
-            new ConditionalCommand(
-                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
-                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // B Button: Feeder only
-        m_driverController.b().whileTrue(
-            new ConditionalCommand(
-                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
-                m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
-                () -> Constants.overrideEnabled
-            )
-        );
-
-        // X Button: Toggle index belt
-        m_driverController.x().toggleOnTrue(
-            new ConditionalCommand(
-                m_index.runIndex(1),
-                new ParallelCommandGroup(
+                    );
+                    
+            // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
+            m_driverController.rightTrigger().whileTrue(
+                new ConditionalCommand(
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+                    ),
+                    new SequentialCommandGroup(
+                        m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
+                            .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
+                        new ParallelCommandGroup(
+                            m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
+                            m_index.runIndex(IndexConstants.INDEX_SPEED),
+                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                            )
+                    ),
+                    () -> Constants.overrideEnabled
+                )
+            );
+                                        
+                                        
+                                        
+            // Left Trigger: Run intake rollers
+            m_driverController.leftTrigger().whileTrue(
+                new ConditionalCommand(
+                    m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                    m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
+                    () -> Constants.overrideEnabled
+                )
+            );
+                                                
+                                                
+            // X Button: Toggle index belt
+            m_driverController.x().toggleOnTrue(
+                new ConditionalCommand(
+                    m_index.runIndex(1),
+                    new ParallelCommandGroup(
                     m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
                     m_index.runIndex(-1)
-                ),
-                () -> Constants.overrideEnabled
+                    ),
+                    () -> Constants.overrideEnabled
             )
         );
-
+            
+                                                            
         // D-Pad Left/Right: Hood control
         m_driverController.povLeft().whileTrue(m_hood.runHood(0.1));
         m_driverController.povRight().whileTrue(m_hood.runHood(-0.1));
     }
-
+                                                        
     private void configureIntakeBindings() {
-        // D-Pad Up: Raise intake arm (or climb up in override mode)
+//     // D-Pad Up: Raise intake arm (or climb up in override mode)
+//     m_driverController.povUp().whileTrue(
+//         new ConditionalCommand(
+//         m_climb.runClimbUp(),
+//         m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+//         () -> Constants.overrideEnabled
+//         )
+//         );
+                                                                    
+//         // D-Pad Down: Lower intake arm (or climb down in override mode)
+//         m_driverController.povDown().whileTrue(
+//             new ConditionalCommand(
+//                 m_climb.runClimbDown(),
+//                 m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
+//         () -> Constants.overrideEnabled
+//     )
+// );
+        
         m_driverController.povUp().whileTrue(
             new ConditionalCommand(
                 m_climb.runClimbUp(),
-                m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED),
+                m_pivot.runPivot(-1.0),
                 () -> Constants.overrideEnabled
-            )
-        );
-
-        // D-Pad Down: Lower intake arm (or climb down in override mode)
+                )
+                );
+                
         m_driverController.povDown().whileTrue(
             new ConditionalCommand(
-                m_climb.runClimbDown(),
-                m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED),
+                m_climb.runClimbDown(),                
+                m_pivot.runPivot(.5),
                 () -> Constants.overrideEnabled
-            )
-        );
-
+                )
+            );
+                        
+        // Left Bumper: Brake (X-pattern wheel lock)
+        m_driverController.leftBumper().whileTrue(m_climb.runClimbDown());
+                
+        // Right Bumper: Climb up
+        m_driverController.rightBumper().whileTrue(m_climb.runClimbUp());
+                        
+                        
     }
-
+                    
     private void configureDefaultCommands() {
         m_shooter.setDefaultCommand(m_shooter.stopAll());
         m_feeder.setDefaultCommand(m_feeder.stopAll());
@@ -275,36 +290,27 @@ public class RobotContainer {
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
         m_hood.setDefaultCommand(m_hood.stopAll());
-
+                        
         // Calibration at start of auto is handled in getAutonomousCommand() to ensure
         // the auto routine waits for calibration to finish before running.
-
+                        
         // Calibrate subsystems on teleop start if not already calibrated
         RobotModeTriggers.teleop().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
         RobotModeTriggers.teleop().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
         RobotModeTriggers.teleop().onTrue(Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated));
-
-    
-    }
+                        
+                        
+        }
 
     public Command getAutonomousCommand() {
-        return Commands.sequence(
-            // Run all calibrations in parallel first (skips any already calibrated)
-            Commands.parallel(
-                Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated),
-                Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated),
-                Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated)
-            ),
-            // Then run the selected auto routine
-            Commands.defer(() -> autoChooser.getSelected(), Set.of())
-        );
+        return autoChooser.getSelected();
     }
 
     /** Creates a command that spins up the shooter, then feeds when at speed. */
     public Command PIDShooter_Feeder_Index() {
         return new SequentialCommandGroup(
                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-                    .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
+                    .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 8.0)),
             new ParallelCommandGroup(
                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                 m_index.runIndex(IndexConstants.INDEX_SPEED),

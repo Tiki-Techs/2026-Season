@@ -41,7 +41,7 @@ public final class Constants {
     public static final class HoodConstants {
         private HoodConstants() {}
         public static final int HOOD_MOTOR = 25;
-        public static final double HOOD_SPEED = 0.05;
+        public static final double HOOD_SPEED = 0.1;
         public static final double HOMING_STALL_AMPS = 10.0;
     }
 
@@ -64,7 +64,7 @@ public final class Constants {
         public static final double KI = 0;
         public static final double KD = 0;
 
-        public static final double SHOOTER_TARGET_RPS = 85.0;
+        public static final double SHOOTER_TARGET_RPS = 10.0;
         public static final double SHOOTER_DEFAULT_SPEED = 1.0;
     }
 
@@ -77,10 +77,9 @@ public final class Constants {
     public static final class PivotConstants {
         private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
-        public static final double HOMING_SPEED = 0.2;
-        public static final double HOMING_STALL_LOWER_AMPS = 8.0;
-        public static final double HOMING_STALL_RAISE_AMPS = 65.0;
-        public static final double PIVOT_SPEED = 0.6;
+        public static final int LOWER_LIMIT_SWITCH_DIO = 7;
+        public static final double HOMING_SPEED = 0.4;
+        public static final double PIVOT_SPEED = 0.4;
     }
 
     public static final class IntakeConstants {
@@ -104,16 +103,21 @@ public final class Constants {
         public static final double RED_GOAL_X_METERS = 12.257;
         public static final double RED_GOAL_Y_METERS = 4.021;
 
-        // Climb-mounted Limelight base pose (when climb is at zero)
+        // Climb-mounted Limelight base pose (when climb is at position=0, fully extended up)
         // TODO: Measure and set these values for your robot
         public static final double CLIMB_CAM_FORWARD = -0.3429;   // meters from robot center
         public static final double CLIMB_CAM_SIDE = 0.339725;      // meters (positive = right)
-        public static final double CLIMB_CAM_UP_BASE = 0.4572;   // meters height when climb is down
+        public static final double CLIMB_CAM_UP_BASE = 0.4572;   // meters height when climb is at top (pos=0)
         public static final double CLIMB_CAM_ROLL = 0.0;      // degrees
         public static final double CLIMB_CAM_PITCH = 0.0;     // degrees
         public static final double CLIMB_CAM_YAW = 0.0;       // degrees
 
         // Conversion from climb motor rotations to camera height change
         public static final double CLIMB_METERS_PER_ROTATION = 0.00257;
+
+        // Field dimensions for pose validation
+        public static final double FIELD_LENGTH_METERS = 16.54;
+        public static final double FIELD_WIDTH_METERS = 8.02;
+        public static final double FIELD_BORDER_MARGIN = 0.5;
     }
 }

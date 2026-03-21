@@ -5,15 +5,15 @@
     "data": {
       "commands": [
         {
-          "type": "named",
+          "type": "path",
           "data": {
-            "name": "autoAlign"
+            "pathName": "nothingPath3"
           }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": "Practice Autos",
+  "folder": null,
   "choreoAuto": false
 }

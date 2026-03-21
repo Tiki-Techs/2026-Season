@@ -3,8 +3,11 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 
@@ -50,25 +53,28 @@ public class Shooter extends SubsystemBase {
         slot0Configs.kI = ShooterConstants.KI;
         slot0Configs.kD = ShooterConstants.KD;
 
-        var currentLimits = new CurrentLimitsConfigs()
-            .withStatorCurrentLimit(80)
-            .withStatorCurrentLimitEnable(true)
-            .withSupplyCurrentLimit(40)
-            .withSupplyCurrentLimitEnable(true);
 
-        var talonConfig = new TalonFXConfiguration()
-            .withCurrentLimits(currentLimits)
-            .withSlot0(slot0Configs);
+        var motorOutputClockwise = new MotorOutputConfigs()
+            .withInverted(InvertedValue.Clockwise_Positive);
+        var motorOutputCounterClockwise = new MotorOutputConfigs()
+            .withInverted(InvertedValue.CounterClockwise_Positive);
 
-        shooterOne.getConfigurator().apply(talonConfig);
-        shooterTwo.getConfigurator().apply(talonConfig);
-        shooterThree.getConfigurator().apply(talonConfig);
+        var talonConfigOne = new TalonFXConfiguration()
+            .withSlot0(slot0Configs)
+            .withMotorOutput(motorOutputClockwise);
+        var talonConfigTwoThree = new TalonFXConfiguration()
+            .withSlot0(slot0Configs)
+            .withMotorOutput(motorOutputCounterClockwise);
+
+        shooterOne.getConfigurator().apply(talonConfigOne);
+        shooterTwo.getConfigurator().apply(talonConfigTwoThree);
+        shooterThree.getConfigurator().apply(talonConfigTwoThree);
 
         // Distance (meters) to shooter speed (RPS) lookup table
-        distanceToShooterSpeed.put(2.88, 67.5);
-        distanceToShooterSpeed.put(4.1, 82.5);
-        distanceToShooterSpeed.put(1.9685, 55.5);
-        distanceToShooterSpeed.put(3.1877, 72.5);
+        distanceToShooterSpeed.put(2.88, 68.0);
+        distanceToShooterSpeed.put(4.1, 83.0);
+        distanceToShooterSpeed.put(1.9685, 56.0);
+        distanceToShooterSpeed.put(3.1877, 73.0);
     }
 
     /** Gets the ideal shooter speed for a given distance in meters. */

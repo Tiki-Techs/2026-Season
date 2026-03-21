@@ -17,7 +17,6 @@ public class Intake extends SubsystemBase {
 
     public Intake() {
         SparkMaxConfig config = new SparkMaxConfig();
-        config.smartCurrentLimit(40);
         intakeMotor.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
     }
 

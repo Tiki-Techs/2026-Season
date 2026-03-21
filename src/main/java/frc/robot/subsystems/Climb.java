@@ -49,14 +49,14 @@ public class Climb extends SubsystemBase {
         return new SequentialCommandGroup(
             new InstantCommand(() -> {}, this),
 
-            // Move down until lower limit switch is triggered (bypasses pivot interlock)
+            // Move up until upper limit switch is triggered (bypasses pivot interlock)
             new RunCommand(() -> {
-                if (!lowerLimitSwitch.get()) {
+                if (!upperLimitSwitch.get()) {
                     climbMotor.set(0);
                     return;
                 }
-                climbMotor.set(-0.5);
-            }, this).until(() -> !lowerLimitSwitch.get()),
+                climbMotor.set(0.5);
+            }, this).until(() -> !upperLimitSwitch.get()),
 
             // Zero encoder at bottom
             new InstantCommand(() -> {
@@ -65,18 +65,18 @@ public class Climb extends SubsystemBase {
                 isCalibrated = true;
             }, this)
             
-            // ,
+            ,
 
-            // // Raise back up to top
-            // new RunCommand(() -> {
-            //     if (!upperLimitSwitch.get()) {
-            //         climbMotor.set(0);
-            //     } else {
-            //         climbMotor.set(0.75);
-            //     }
-            // }, this).until(() -> !upperLimitSwitch.get()),
+            // Go back down
+            new RunCommand(() -> {
+                if (!lowerLimitSwitch.get()) {
+                    climbMotor.set(0);
+                } else {
+                    climbMotor.set(-0.75);
+                }
+            }, this).until(() -> !lowerLimitSwitch.get()),
 
-            // new InstantCommand(() -> climbMotor.set(0.0), this)
+            new InstantCommand(() -> climbMotor.set(0.0), this)
         );
     }
 
@@ -108,7 +108,7 @@ public class Climb extends SubsystemBase {
             if (!upperLimitSwitch.get()) {
                 climbMotor.set(0);
             } else {
-                climbMotor.set(0.75);
+                climbMotor.set(1.0);
             }
         }, this);
     }
@@ -124,7 +124,7 @@ public class Climb extends SubsystemBase {
             if (!lowerLimitSwitch.get()) {
                 climbMotor.set(0);
             } else {
-                climbMotor.set(-0.5);
+                climbMotor.set(-1.0);
             }
         }, this);
     }

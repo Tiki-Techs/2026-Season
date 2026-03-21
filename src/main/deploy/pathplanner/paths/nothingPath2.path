@@ -3,50 +3,34 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 0.8572619047619048,
-        "y": 5.979538690476191
+        "x": 3.5,
+        "y": 4.0
       },
       "prevControl": null,
       "nextControl": {
-        "x": 1.7937873585015103,
-        "y": 5.982407460288273
+        "x": 2.5,
+        "y": 4.0
       },
       "isLocked": false,
-      "linkedName": "CenterPathPart1.5"
+      "linkedName": "Default-DS-Center-Start"
     },
     {
       "anchor": {
-        "x": 1.6337723214285713,
-        "y": 3.747886904761905
+        "x": 2.0579166666666664,
+        "y": 4.0
       },
       "prevControl": {
-        "x": 1.6598540827161743,
-        "y": 3.4992511436008513
+        "x": 2.4758898605974156,
+        "y": 4.0
       },
       "nextControl": null,
       "isLocked": false,
       "linkedName": null
     }
   ],
-  "rotationTargets": [
-    {
-      "waypointRelativePos": 0.3378378378378378,
-      "rotationDegrees": 0.0
-    }
-  ],
+  "rotationTargets": [],
   "constraintZones": [],
-  "pointTowardsZones": [
-    {
-      "fieldPosition": {
-        "x": 4.6,
-        "y": 4.0
-      },
-      "rotationOffset": 0.0,
-      "minWaypointRelativePos": 0.03150684931506948,
-      "maxWaypointRelativePos": 0.75,
-      "name": "Point Towards Zone"
-    }
-  ],
+  "pointTowardsZones": [],
   "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 5.0,
@@ -61,10 +45,10 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": null,
+  "folder": "nothingPaths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -179.17762902000175
+    "rotation": 0.0
   },
   "useDefaultConstraints": true
 }
