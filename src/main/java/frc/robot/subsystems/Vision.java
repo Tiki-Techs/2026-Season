@@ -150,6 +150,7 @@ public class Vision extends SubsystemBase {
         posePublisher.set(currentPose);
 
         // Update climb-mounted camera pose based on climb position
+        // Climb zeros at top (position=0), negative when retracted down
         if (climb != null && climb.isCalibrated()) {
             double climbPosition = climb.getPosition();
             double heightOffset = climbPosition * VisionConstants.CLIMB_METERS_PER_ROTATION;
@@ -193,6 +194,16 @@ public class Vision extends SubsystemBase {
             if (mt2 != null && mt2.tagCount >= 2) {
                 SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
 
+                // Reject poses outside the field (bad data from transitional frames)
+                double poseX = mt2.pose.getX();
+                double poseY = mt2.pose.getY();
+                if (poseX < -VisionConstants.FIELD_BORDER_MARGIN
+                    || poseX > VisionConstants.FIELD_LENGTH_METERS + VisionConstants.FIELD_BORDER_MARGIN
+                    || poseY < -VisionConstants.FIELD_BORDER_MARGIN
+                    || poseY > VisionConstants.FIELD_WIDTH_METERS + VisionConstants.FIELD_BORDER_MARGIN) {
+                    continue;
+                }
+
                 if (tv && mt2.avgTagDist < bestTagDist) {
                     cachedTV = true;
                     cachedTX = tx;
@@ -202,7 +213,8 @@ public class Vision extends SubsystemBase {
 
                 if (!rejectAllUpdates) {
                     // Higher stdDev = less trust in vision, more reliance on odometry
-                    double stdDev = 0.7 * mt2.avgTagDist / mt2.tagCount;
+                    // Floor at 0.5 to prevent over-trusting vision at close range
+                    double stdDev = Math.max(0.5, 0.7 * mt2.avgTagDist / mt2.tagCount);
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds, VecBuilder.fill(stdDev, stdDev, 9999999));
                 }
             }

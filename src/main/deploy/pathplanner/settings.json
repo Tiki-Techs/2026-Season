@@ -3,13 +3,12 @@
   "robotLength": 0.86,
   "holonomicMode": true,
   "pathFolders": [
-    "D Paths",
+    "nothingPaths",
+    "dtopPaths",
     "Default Starting Position",
-    "Reif's really awesome path"
+    "D Paths"
   ],
   "autoFolders": [
-    "Actual Autos",
-    "Reif's really awesome paths",
     "Practice Autos"
   ],
   "defaultMaxVel": 5.0,
@@ -22,9 +21,9 @@
   "robotTrackwidth": 0.546,
   "driveWheelRadius": 0.051,
   "driveGearing": 5.273,
-  "maxDriveSpeed": 5.0,
+  "maxDriveSpeed": 5.5,
   "driveMotorType": "krakenX60",
-  "driveCurrentLimit": 40.0,
+  "driveCurrentLimit": 60.0,
   "wheelCOF": 1.2,
   "flModuleX": 0.343,
   "flModuleY": 0.343,

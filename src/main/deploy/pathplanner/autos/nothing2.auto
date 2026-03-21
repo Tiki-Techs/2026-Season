@@ -7,13 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Reif's 2cycle 1"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Reif's 2cycle 2"
+            "pathName": "nothingPath2"
           }
         }
       ]

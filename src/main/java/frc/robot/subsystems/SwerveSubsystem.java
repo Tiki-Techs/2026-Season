@@ -204,7 +204,7 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
 
     @Override
     public void periodic() {
-        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+        if (!m_hasAppliedOperatorPerspective) {
             DriverStation.getAlliance().ifPresent(allianceColor -> {
                 setOperatorPerspectiveForward(
                     allianceColor == Alliance.Red
