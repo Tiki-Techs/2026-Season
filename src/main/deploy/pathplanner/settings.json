@@ -4,10 +4,11 @@
   "holonomicMode": true,
   "pathFolders": [
     "dtopPaths",
-    "2cMiddle",
+    "Preload Paths",
     "Default Starting Position",
     "D Paths",
     "2cRight",
+    "2cMiddle",
     "2cLeft"
   ],
   "autoFolders": [

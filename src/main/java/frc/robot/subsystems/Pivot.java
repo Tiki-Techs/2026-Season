@@ -30,9 +30,6 @@ public class Pivot extends SubsystemBase {
     private double upperEncoderPos = 0.0;
     private int pivotLoopCounter = 0;
 
-    /** Reference to climb for safety interlock - pivot cannot go up while climb is down. */
-    private Climb climb = null;
-
     public Pivot() {
         SparkMaxConfig config = new SparkMaxConfig();
         config.idleMode(IdleMode.kBrake);
@@ -79,15 +76,6 @@ public class Pivot extends SubsystemBase {
         return intakeDeployed;
     }
 
-    /** Sets the climb reference for safety interlock. Must be called after construction. */
-    public void setClimb(Climb climb) {
-        this.climb = climb;
-    }
-
-    private boolean canRaise() {
-        return climb == null || !climb.isClimbDown();
-    }
-
     /** Continuously stops the pivot motor. */
     public Command stopAll() {
         return new RunCommand(() -> pivotArm.set(stopSpeed), this);
@@ -115,11 +103,6 @@ public class Pivot extends SubsystemBase {
         final double slowSpeed = 0.2;
 
         return new RunCommand(() -> {
-            if (!canRaise()) {
-                pivotArm.set(stopSpeed);
-                return;
-            }
-
             double distanceToUpper = Math.abs(encoder.getPosition() - upperEncoderPos);
             boolean atLimit = isCalibrated && distanceToUpper < 0.05;
 
@@ -145,7 +128,6 @@ public class Pivot extends SubsystemBase {
         SmartDashboard.putBoolean("Pivot/IsCalibrated", isCalibrated);
         SmartDashboard.putBoolean("Pivot/IntakeDeployed", intakeDeployed);
         SmartDashboard.putNumber("Pivot/EncoderPosition", encoder.getPosition());
-        SmartDashboard.putBoolean("Pivot/CanRaise", canRaise());
         SmartDashboard.putBoolean("Pivot/LowerLimitSwitch", isLowerLimitPressed());
     }
 }

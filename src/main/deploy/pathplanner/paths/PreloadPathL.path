@@ -8,29 +8,40 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.415178571428573,
-        "y": 7.369427083333334
+        "x": 2.260200892857142,
+        "y": 6.149196428571429
       },
-      "isLocked": true,
+      "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
     },
     {
       "anchor": {
-        "x": 6.0,
-        "y": 7.5
+        "x": 2.273251488095238,
+        "y": 5.9664880952380965
       },
       "prevControl": {
-        "x": 5.0,
-        "y": 7.5
+        "x": 2.429858630952381,
+        "y": 6.397157738095238
       },
       "nextControl": null,
-      "isLocked": true,
+      "isLocked": false,
       "linkedName": null
     }
   ],
   "rotationTargets": [],
   "constraintZones": [],
-  "pointTowardsZones": [],
+  "pointTowardsZones": [
+    {
+      "fieldPosition": {
+        "x": 4.5,
+        "y": 4.0
+      },
+      "rotationOffset": 0.0,
+      "minWaypointRelativePos": 0.2808219178082191,
+      "maxWaypointRelativePos": 0.75,
+      "name": "Point Towards Zone"
+    }
+  ],
   "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 5.0,
@@ -42,10 +53,10 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -38.679
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "Preload Paths",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 0.0

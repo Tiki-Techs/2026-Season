@@ -92,10 +92,14 @@ public final class Constants {
         private VisionConstants() {}
         public static final String LIMELIGHT_RIGHT = "limelight-right";
         public static final String LIMELIGHT_LEFT = "limelight-left";
-        public static final String LIMELIGHT_CLIMB = "limelight-climb";
-        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT, LIMELIGHT_CLIMB};
+        // public static final String LIMELIGHT_CLIMB = "limelight-climb";
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT};
 
         public static final double TARGET_DISTANCE_METERS = 1.5;
+
+        // Hub AprilTag IDs for TX-based aiming
+        public static final int[] BLUE_HUB_TAG_IDS = {18, 19, 20, 21, 24, 25, 26, 27};
+        public static final int[] RED_HUB_TAG_IDS = {2, 3, 4, 5, 8, 9, 10, 11};
 
         // Hub center positions (blue alliance origin coordinates)
         public static final double BLUE_GOAL_X_METERS = 4.612;
@@ -110,7 +114,7 @@ public final class Constants {
         public static final double CLIMB_CAM_UP_BASE = 0.4572;   // meters height when climb is at top (pos=0)
         public static final double CLIMB_CAM_ROLL = 0.0;      // degrees
         public static final double CLIMB_CAM_PITCH = 0.0;     // degrees
-        public static final double CLIMB_CAM_YAW = 0.0;       // degrees
+        public static final double CLIMB_CAM_YAW = 180.0;     // degrees (camera facing backwards)
 
         // Conversion from climb motor rotations to camera height change
         public static final double CLIMB_METERS_PER_ROTATION = 0.00257;
