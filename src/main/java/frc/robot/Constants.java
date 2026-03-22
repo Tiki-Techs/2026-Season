@@ -38,13 +38,6 @@ public final class Constants {
         public static final int LOWER_LIMIT_SWITCH = 0;
     }
 
-    public static final class HoodConstants {
-        private HoodConstants() {}
-        public static final int HOOD_MOTOR = 25;
-        public static final double HOOD_SPEED = 0.1;
-        public static final double HOMING_STALL_AMPS = 10.0;
-    }
-
     public static final class IndexConstants {
         private IndexConstants() {}
         public static final int INDEX_MOTOR = 20;
@@ -92,10 +85,14 @@ public final class Constants {
         private VisionConstants() {}
         public static final String LIMELIGHT_RIGHT = "limelight-right";
         public static final String LIMELIGHT_LEFT = "limelight-left";
-        // public static final String LIMELIGHT_CLIMB = "limelight-climb";
-        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT};
+        public static final String LIMELIGHT_CLIMB = "limelight-climb";
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT, LIMELIGHT_CLIMB};
 
         public static final double TARGET_DISTANCE_METERS = 1.5;
+
+        // Pigeon offset in degrees (+ = add to calculated angle, - = subtract from calculated angle)
+        // Accounts for pigeon not being centered on the robot
+        public static final double PIGEON_ANGLE_OFFSET_DEGREES = 90;
 
         // Hub AprilTag IDs for TX-based aiming
         public static final int[] BLUE_HUB_TAG_IDS = {18, 19, 20, 21, 24, 25, 26, 27};

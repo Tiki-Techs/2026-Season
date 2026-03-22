@@ -13,18 +13,6 @@
                 "data": {
                   "name": "calibratePivot"
                 }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibrateHood"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibrateClimb"
-                }
               }
             ]
           }

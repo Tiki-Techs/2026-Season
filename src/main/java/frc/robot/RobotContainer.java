@@ -24,7 +24,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
-import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -51,7 +50,6 @@ public class RobotContainer {
     private final Index m_index = new Index();
     private final Intake m_intake = new Intake();
     private final Pivot m_pivot = new Pivot();
-    private final Hood m_hood = new Hood(m_vision);
     private final Climb m_climb = new Climb();
 
     // Autonomous
@@ -126,8 +124,7 @@ public class RobotContainer {
 
 
         // Calibration commands
-        NamedCommands.registerCommand("calibrateHood", m_hood.calibrateHood());
-        NamedCommands.registerCommand("calibratePivot", m_pivot.calibratePivot());  
+        NamedCommands.registerCommand("calibratePivot", m_pivot.calibratePivot());
         NamedCommands.registerCommand("calibrateClimb", m_climb.calibrateClimb());
     }
 
@@ -147,30 +144,60 @@ public class RobotContainer {
             )
         );
 
-        // A Button: Auto-aim to goal
-        // TWO OPTIONS - Comment/uncomment the one you want to use:
+        // Configure PID for auto-aim rotation controller
+        autoAim.HeadingController.setPID(10.0, 0.0, 0.1);
+        autoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
-        // OPTION 2: Odometry-based PID (uses pose, may drift)
-        
-        m_driverController.a().whileTrue(
-            drivetrain.applyRequest(() ->
-                drive
-                    .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
-                    .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
-                    .withRotationalRate(m_vision.getRotationToGoal())
-            )
-        );
-        
+        // A Button: Auto-aim to goal with lookahead (Luna-style implementation)
+        m_driverController.a().whileTrue(drivetrain.applyRequest(() -> {
+            var state = drivetrain.getState();
 
-        // OPTION 3: TX-based aiming (direct camera, works with bad pose!)
+            // 1. Get raw inputs from controller (reduced to 50% for better control while aiming)
+            double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
+            double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+
+            /* 2. POSE PREDICTION (Lookahead)
+             * Predict where the robot will be in 50ms to compensate for
+             * latency and the robot's own momentum.
+             */
+            double lookaheadSeconds = 0.050;
+            Pose2d futurePose = new Pose2d(
+                state.Pose.getX() + (state.Speeds.vxMetersPerSecond * lookaheadSeconds),
+                state.Pose.getY() + (state.Speeds.vyMetersPerSecond * lookaheadSeconds),
+                state.Pose.getRotation()
+            );
+
+            // 3. Calculate target angle using the predicted pose
+            Rotation2d targetAngle = FieldAiming.getAngleToHub(futurePose);
+            double distance = FieldAiming.getDistanceToHub(state.Pose);
+
+            // 4. LOGGING - Send everything to SmartDashboard for tuning
+            SmartDashboard.putNumber("AutoAim/Distance Meters", distance);
+            SmartDashboard.putNumber("AutoAim/Target Heading", targetAngle.getDegrees());
+            SmartDashboard.putNumber("AutoAim/Current Heading", state.Pose.getRotation().getDegrees());
+            SmartDashboard.putNumber("AutoAim/Heading Error", targetAngle.minus(state.Pose.getRotation()).getDegrees());
+            SmartDashboard.putNumber("AutoAim/Lookahead Offset",
+                targetAngle.minus(FieldAiming.getAngleToHub(state.Pose)).getDegrees());
+
+            // 5. Apply Request with FieldCentricFacingAngle for smooth rotation
+            return autoAim
+                .withVelocityX(vx)
+                .withVelocityY(vy)
+                .withTargetDirection(targetAngle);
+        }));
+
+        // // OPTION 2 (LEGACY): Limelight proportional (climb camera only) - direct TX feedback
+        // // Uncomment this and comment out the above if you want camera-based aiming instead
         // m_driverController.a().whileTrue(
         //     drivetrain.applyRequest(() ->
         //         drive
         //             .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
         //             .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
-        //             .withRotationalRate(m_vision.getRotationToGoalTX())
+        //             .withRotationalRate(m_vision.limelight_aim_proportional())
         //     )
         // );
+        
+
 
         // Start Button: Reset gyro heading
         m_driverController.start().onTrue(new InstantCommand(() ->
@@ -208,56 +235,57 @@ public class RobotContainer {
             // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
 
             // OPTION 1: Shooter only (no auto-rotation)
-            // m_driverController.rightTrigger().whileTrue(
-            //     new ConditionalCommand(
-            //         new ParallelCommandGroup(
-            //             m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-            //             m_index.runIndex(-IndexConstants.INDEX_SPEED),
-            //             m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
-            //         ),
-            //         new SequentialCommandGroup(
-            //             m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-            //                 .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
-            //             new ParallelCommandGroup(
-            //                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
-            //                 m_index.runIndex(IndexConstants.INDEX_SPEED),
-            //                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-            //                 )
-            //         ),
-            //         () -> Constants.overrideEnabled
-            //     )
-            // );
-
-            // OPTION 2: Shooter + auto-rotation (comment out OPTION 1 above and uncomment below)
             m_driverController.rightTrigger().whileTrue(
-                new ParallelCommandGroup(
-                    // Auto-rotate drivetrain to goal
-                    drivetrain.applyRequest(() ->
-                        drive
-                            .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
-                            .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
-                            .withRotationalRate(m_vision.getRotationToGoal())
+                new ConditionalCommand(
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
                     ),
-                    // Shooter/feeder/index functionality
-                    new ConditionalCommand(
+                    new SequentialCommandGroup(
+                        m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
+                            .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
                         new ParallelCommandGroup(
-                            m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-                            m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                            m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
-                        ),
-                        new SequentialCommandGroup(
-                            m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-                                .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
-                            new ParallelCommandGroup(
-                                m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
-                                m_index.runIndex(IndexConstants.INDEX_SPEED),
-                                m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                                )
-                        ),
-                        () -> Constants.overrideEnabled
-                    )
+                            m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
+                            m_index.runIndex(IndexConstants.INDEX_SPEED),
+                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                            )
+                    ),
+                    () -> Constants.overrideEnabled
                 )
             );
+
+            // // OPTION 2: Shooter + auto-rotation (comment out OPTION 1 above and uncomment below)
+            // m_driverController.rightTrigger().whileTrue(
+            //     new ParallelCommandGroup(
+            //         // Auto-rotate drivetrain to goal
+            //         // Use getRotationToGoal() for field telemetry OR limelight_aim_proportional() for climb camera
+            //         drivetrain.applyRequest(() ->
+            //             drive
+            //                 .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
+            //                 .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
+            //                 .withRotationalRate(m_vision.getRotationToGoal())  // Change to limelight_aim_proportional() if needed
+            //         ),
+            //         // Shooter/feeder/index functionality
+            //         new ConditionalCommand(
+            //             new ParallelCommandGroup(
+            //                 m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
+            //                 m_index.runIndex(-IndexConstants.INDEX_SPEED),
+            //                 m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+            //             ),
+            //             new SequentialCommandGroup(
+            //                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
+            //                     .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
+            //                 new ParallelCommandGroup(
+            //                     m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
+            //                     m_index.runIndex(IndexConstants.INDEX_SPEED),
+            //                     m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+            //                     )
+            //             ),
+            //             () -> Constants.overrideEnabled
+            //         )
+            //     )
+            // );
                                                 
                                                 
             // X Button: Toggle index belt
@@ -271,42 +299,26 @@ public class RobotContainer {
                     () -> Constants.overrideEnabled
             )
         );
-            
-                                                            
-        // D-Pad Left/Right: Hood control
-        m_driverController.povLeft().whileTrue(m_hood.runHood(0.1));
-        m_driverController.povRight().whileTrue(m_hood.runHood(-0.1));
     }
                                                         
     private void configureIntakeBindings() {
 
-        // Left Trigger: Run intake rollers + slow drive
+        // Left Trigger: Run intake rollers
         m_driverController.leftTrigger().whileTrue(
-            new ParallelCommandGroup(
-                slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController),
-                new ConditionalCommand(
-                    m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
-                    m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
-                    () -> Constants.overrideEnabled
-                )
+            new ConditionalCommand(
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
+                m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
+                () -> Constants.overrideEnabled
             )
         );
 
         m_driverController.povUp().whileTrue(
-            new ConditionalCommand(
-                m_pivot.runPivot(.1),
-                m_pivot.runPivot(-1.0),
-                () -> Constants.overrideEnabled
-                )
-                );
+            m_pivot.runPivot(1.0)
+        );
                 
         m_driverController.povDown().whileTrue(
-            new ConditionalCommand(
-                m_pivot.runPivot(.1),                
-                m_pivot.runPivot(.5),
-                () -> Constants.overrideEnabled
-                )
-            );
+            m_pivot.runPivot(-1.0)
+        );
 
         m_operatorController.povUp().toggleOnTrue(
             m_climb.getReady()
@@ -331,15 +343,12 @@ public class RobotContainer {
         m_pivot.setDefaultCommand(m_pivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
-        m_hood.setDefaultCommand(m_hood.stopAll());
 
         // Calibration at start of auto is handled in getAutonomousCommand() to ensure
         // the auto routine waits for calibration to finish before running.
 
         // Calibrate subsystems on teleop start if not already calibrated
-        RobotModeTriggers.teleop().onTrue(Commands.defer(m_hood::calibrateHood, Set.of(m_hood)).unless(m_hood::isCalibrated));
         RobotModeTriggers.teleop().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
-        RobotModeTriggers.teleop().onTrue(Commands.defer(m_climb::calibrateClimb, Set.of(m_climb)).unless(m_climb::isCalibrated));
 
         // Configure Limelight 4 IMU modes for better pose estimation
         // Mode 1 (seeding) during disabled - syncs internal IMU with Pigeon
