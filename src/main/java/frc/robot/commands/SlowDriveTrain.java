@@ -36,8 +36,8 @@ public class SlowDriveTrain {
 
         return drivetrain.applyRequest(() -> {
             // Speed scaling factors
-            double vscale = 0.1;       // 10% of normal translational speed
-            double vrotation = 0.025;  // 2.5% of normal rotational speed
+            double vscale = 0.6;       // 60% of normal translational speed
+            double vrotation = 0.4;    // 40% of normal rotational speed
 
             return drive
                 .withVelocityX(-joystick.getLeftY() * currentMaxSpeed * vscale)

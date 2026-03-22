@@ -32,6 +32,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
+import frc.robot.Constants.VisionConstants;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 /**
@@ -181,8 +182,30 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         return getState().Pose;
     }
 
+    /**
+     * Validates that a pose is within the field boundaries.
+     *
+     * @param pose The pose to validate
+     * @return true if the pose is within field boundaries, false otherwise
+     */
+    private boolean isValidPose(Pose2d pose) {
+        double poseX = pose.getX();
+        double poseY = pose.getY();
+        return !(poseX < -VisionConstants.FIELD_BORDER_MARGIN
+            || poseX > VisionConstants.FIELD_LENGTH_METERS + VisionConstants.FIELD_BORDER_MARGIN
+            || poseY < -VisionConstants.FIELD_BORDER_MARGIN
+            || poseY > VisionConstants.FIELD_WIDTH_METERS + VisionConstants.FIELD_BORDER_MARGIN);
+    }
+
     @Override
     public void resetPose(Pose2d pose) {
+        // Reject poses outside the field boundaries
+        if (!isValidPose(pose)) {
+            // Log rejected pose for debugging
+            SmartDashboard.putString("Swerve/RejectedPose",
+                String.format("X: %.2f, Y: %.2f (out of bounds)", pose.getX(), pose.getY()));
+            return; // Reject the pose update
+        }
         super.resetPose(pose);
     }
 
@@ -242,6 +265,10 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
 
     @Override
     public void addVisionMeasurement(Pose2d visionRobotPoseMeters, double timestampSeconds) {
+        // Reject poses outside the field boundaries
+        if (!isValidPose(visionRobotPoseMeters)) {
+            return; // Reject the pose update
+        }
         super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds));
     }
 
@@ -251,6 +278,10 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
         double timestampSeconds,
         Matrix<N3, N1> visionMeasurementStdDevs
     ) {
+        // Reject poses outside the field boundaries
+        if (!isValidPose(visionRobotPoseMeters)) {
+            return; // Reject the pose update
+        }
         super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds), visionMeasurementStdDevs);
     }
 

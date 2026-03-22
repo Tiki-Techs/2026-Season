@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
+import frc.robot.FieldAiming;
 import frc.robot.LimelightHelpers;
 
 /** Handles Limelight camera processing, pose estimation, and target tracking. */
@@ -24,6 +25,10 @@ public class Vision extends SubsystemBase {
     private boolean cachedTV = false;
     private double cachedTX = 0.0;
     private double cachedTagDist = 0.0;
+
+    // Climb limelight specific cache for aim control
+    private boolean cachedClimbTV = false;
+    private double cachedClimbTX = 0.0;
 
     private double lastTargetAngle = 0.0;
 
@@ -50,21 +55,20 @@ public class Vision extends SubsystemBase {
         return error * kP;
     }
 
-    /** Calculates angular velocity for aiming at a target using proportional control. */
+    /** Calculates angular velocity for aiming at a target using proportional control (climb limelight only). */
     public double limelight_aim_proportional() {
         double kP = 1.5;
-     double minOutput = 0.15;
+        double deadzone = 0.5; // degrees - tight deadzone for accuracy
 
-        if (!cachedTV) return 0.0;
-        if (Math.abs(cachedTX) < 5.0) return 0.0;
+        if (!cachedClimbTV) return 0.0;
 
-        double txRadians = Math.toRadians(cachedTX);
-        double output = txRadians * kP;
+        // Apply pigeon offset to account for off-center mounting
+        double adjustedTX = cachedClimbTX + VisionConstants.PIGEON_ANGLE_OFFSET_DEGREES;
 
-        if (output > 0) output = Math.max(output, minOutput);
-        else output = Math.min(output, -minOutput);
+        if (Math.abs(adjustedTX) < deadzone) return 0.0;
 
-        return output;
+        double txRadians = Math.toRadians(adjustedTX);
+        return txRadians * kP;
     }
 
     /** Gets the cached distance to the nearest AprilTag in meters. */
@@ -96,15 +100,15 @@ public class Vision extends SubsystemBase {
     /** Calculates the distance from the robot's current position to the goal. */
     public double getDistanceToGoal() {
         Pose2d currentPose = drivetrain.getState().Pose;
-        double dx = getGoalX() - currentPose.getX();
-        double dy = getGoalY() - currentPose.getY();
-        return Math.sqrt(dx * dx + dy * dy);
+        // Use FieldGeomUtils for consistency
+        return FieldAiming.getDistanceToHub(currentPose);
     }
 
     /** Checks if the robot is within shooting range (not in the neutral zone). */
     public boolean isInShootingRange() {
-        double robotX = drivetrain.getState().Pose.getX();
-        return robotX <= VisionConstants.BLUE_GOAL_X_METERS || robotX >= VisionConstants.RED_GOAL_X_METERS;
+        Pose2d currentPose = drivetrain.getState().Pose;
+        // Use FieldGeomUtils for consistency
+        return FieldAiming.isInScoringRange(currentPose);
     }
 
     /** Returns the target rotation to face the goal or alliance wall. */
@@ -112,9 +116,8 @@ public class Vision extends SubsystemBase {
         Pose2d currentPose = drivetrain.getState().Pose;
 
         if (isInShootingRange()) {
-            double dx = getGoalX() - currentPose.getX();
-            double dy = getGoalY() - currentPose.getY();
-            return new Rotation2d(Math.atan2(dy, dx));
+            // Use FieldGeomUtils for consistency
+            return FieldAiming.getAngleToHub(currentPose);
         } else {
             var alliance = DriverStation.getAlliance();
             return (alliance.isPresent() && alliance.get() == Alliance.Red)
@@ -165,11 +168,17 @@ public class Vision extends SubsystemBase {
         cachedTV = false;
         cachedTX = 0.0;
         cachedTagDist = 0.0;
+        cachedClimbTV = false;
+        cachedClimbTX = 0.0;
         double bestTagDist = Double.MAX_VALUE;
 
         // For averaging TX from multiple hub tags
         double txSum = 0.0;
         int hubTagCount = 0;
+
+        // For climb limelight TX averaging
+        double climbTxSum = 0.0;
+        int climbHubTagCount = 0;
 
         // Get hub tag IDs for current alliance (for TX-based aiming)
         var alliance = DriverStation.getAlliance();
@@ -200,6 +209,9 @@ public class Vision extends SubsystemBase {
 
             if (mt2 != null && mt2.tagCount >= 1) {
                 SmartDashboard.putNumber("Vision/" + limelightName + "/TagDist", mt2.avgTagDist);
+                SmartDashboard.putNumber("Vision/" + limelightName + "/TagCount", mt2.tagCount);
+                SmartDashboard.putNumber("Vision/" + limelightName + "/PoseX", mt2.pose.getX());
+                SmartDashboard.putNumber("Vision/" + limelightName + "/PoseY", mt2.pose.getY());
 
                 // Reject poses outside the field (bad data from transitional frames)
                 double poseX = mt2.pose.getX();
@@ -225,6 +237,12 @@ public class Vision extends SubsystemBase {
                     txSum += tx;
                     hubTagCount++;
 
+                    // Track climb limelight TX separately for aim control
+                    if (limelightName.equals(VisionConstants.LIMELIGHT_CLIMB)) {
+                        climbTxSum += tx;
+                        climbHubTagCount++;
+                    }
+
                     // Track closest tag distance
                     if (mt2.avgTagDist < bestTagDist) {
                         bestTagDist = mt2.avgTagDist;
@@ -237,7 +255,13 @@ public class Vision extends SubsystemBase {
                     // Floor at 0.5 to prevent over-trusting vision at close range
                     double xyStdDev = Math.max(0.5, 0.7 * mt2.avgTagDist / mt2.tagCount);
 
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/StdDev", xyStdDev);
+                    SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", true);
+
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds, VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+                } else {
+                    SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", false);
+                    SmartDashboard.putString("Vision/" + limelightName + "/RejectReason", "High angular velocity");
                 }
             }
         }
@@ -248,9 +272,19 @@ public class Vision extends SubsystemBase {
             cachedTX = txSum / hubTagCount;
         }
 
+        // Average TX from climb limelight hub tags for aim control
+        if (climbHubTagCount > 0) {
+            cachedClimbTV = true;
+            cachedClimbTX = climbTxSum / climbHubTagCount;
+        }
+
         SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
         SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
         SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
+        SmartDashboard.putBoolean("Vision/ClimbLimelightTV", cachedClimbTV);
+        SmartDashboard.putNumber("Vision/ClimbLimelightTX", cachedClimbTX);
+        SmartDashboard.putNumber("Vision/ClimbTXWithOffset", cachedClimbTX + VisionConstants.PIGEON_ANGLE_OFFSET_DEGREES);
+        SmartDashboard.putNumber("Vision/ClimbAimOutput", limelight_aim_proportional());
 
         // Debug info for auto-align
         Pose2d pose = drivetrain.getState().Pose;
