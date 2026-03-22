@@ -222,8 +222,6 @@ public class RobotContainer {
             //                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
             //                 m_index.runIndex(IndexConstants.INDEX_SPEED),
             //                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-            //                 // ,
-            //                 // m_climb.runHopperDown()
             //                 )
             //         ),
             //         () -> Constants.overrideEnabled
@@ -254,8 +252,6 @@ public class RobotContainer {
                                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                                 m_index.runIndex(IndexConstants.INDEX_SPEED),
                                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                                // ,
-                                // m_climb.runHopperDown()
                                 )
                         ),
                         () -> Constants.overrideEnabled
@@ -312,19 +308,19 @@ public class RobotContainer {
                 )
             );
 
-        // m_operatorController.povUp().toggleOnTrue(
-        //     m_climb.getReady()
-        // );
+        m_operatorController.povUp().toggleOnTrue(
+            m_climb.getReady()
+        );
 
-        // m_operatorController.povDown().toggleOnTrue(
-        //     m_climb.climb()
-        // );
+        m_operatorController.povDown().toggleOnTrue(
+            m_climb.climb()
+        );
                         
-        // // Left Bumper: Brake (X-pattern wheel lock)
-        // m_driverController.leftBumper().whileTrue(m_climb.runClimbDown());
+        // Left Bumper: Brake (X-pattern wheel lock)
+        m_driverController.leftBumper().whileTrue(m_climb.runClimbDown());
                 
-        // // Right Bumper: Climb up
-        // m_driverController.rightBumper().whileTrue(m_climb.runClimbUp());
+        // Right Bumper: Climb up
+        m_driverController.rightBumper().whileTrue(m_climb.runClimbUp());
                        
     }
                     
@@ -379,8 +375,6 @@ public class RobotContainer {
                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                 m_index.runIndex(IndexConstants.INDEX_SPEED),
                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                // ,
-                // m_climb.runHopperDown()
             )
         );
     }

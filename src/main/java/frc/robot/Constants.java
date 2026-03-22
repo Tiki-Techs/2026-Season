@@ -78,8 +78,8 @@ public final class Constants {
         private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
         public static final int LOWER_LIMIT_SWITCH_DIO = 7;
-        public static final double HOMING_SPEED = 0.4;
-        public static final double PIVOT_SPEED = 0.4;
+        public static final double HOMING_SPEED = 0.6;
+        public static final double PIVOT_SPEED = 0.6;
     }
 
     public static final class IntakeConstants {
