@@ -3,16 +3,32 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 7.5
+        "x": 3.415178571428571,
+        "y": 7.369427083333334
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.5,
-        "y": 7.5
+        "x": 2.6908705357142857,
+        "y": 6.5015625
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
+    },
+    {
+      "anchor": {
+        "x": 4.015505952380952,
+        "y": 5.444464285714287
+      },
+      "prevControl": {
+        "x": 3.246928240725791,
+        "y": 5.714403774685856
+      },
+      "nextControl": {
+        "x": 5.353191964285714,
+        "y": 4.974642857142857
+      },
+      "isLocked": false,
+      "linkedName": null
     },
     {
       "anchor": {
@@ -30,7 +46,7 @@
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.5,
+      "waypointRelativePos": 1.0,
       "rotationDegrees": 0.0
     }
   ],

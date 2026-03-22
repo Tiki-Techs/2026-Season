@@ -8,72 +8,48 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.3542314426116064,
-        "y": 1.2538696989227456
+        "x": 4.873779946761313,
+        "y": 2.695022182786157
       },
       "isLocked": false,
       "linkedName": "dend3"
     },
     {
       "anchor": {
-        "x": 3.206369047624026,
-        "y": 0.5961681547557953
+        "x": 5.726858917480035,
+        "y": 2.638686779059449
       },
       "prevControl": {
-        "x": 3.004975161328336,
-        "y": 0.7442914228898689
-      },
-      "nextControl": {
-        "x": 3.6110842496316558,
-        "y": 0.2985040126730735
-      },
-      "isLocked": false,
-      "linkedName": null
-    },
-    {
-      "anchor": {
-        "x": 5.431495535714285,
-        "y": 0.5961681547557953
-      },
-      "prevControl": {
-        "x": 4.663519557032792,
-        "y": 0.12521715839179842
-      },
-      "nextControl": {
-        "x": 5.707642667385495,
-        "y": 0.7655116894675147
-      },
-      "isLocked": false,
-      "linkedName": null
-    },
-    {
-      "anchor": {
-        "x": 5.862165178571429,
-        "y": 1.1899702380952386
-      },
-      "prevControl": {
-        "x": 5.670777512211149,
-        "y": 0.8330048392720637
+        "x": 5.0347382431233365,
+        "y": 2.5903992901508426
       },
       "nextControl": null,
       "isLocked": false,
       "linkedName": "dend4"
     }
   ],
-  "rotationTargets": [],
-  "constraintZones": [],
-  "pointTowardsZones": [
+  "rotationTargets": [
     {
-      "fieldPosition": {
-        "x": 8.0,
-        "y": 0.5
-      },
-      "rotationOffset": 0.0,
-      "minWaypointRelativePos": 1.0684931506849322,
-      "maxWaypointRelativePos": 1.5616438356164353,
-      "name": "Point Towards Zone"
+      "waypointRelativePos": 0.1525198938992039,
+      "rotationDegrees": 45.0
     }
   ],
+  "constraintZones": [
+    {
+      "name": "Constraints Zone",
+      "minWaypointRelativePos": 0.21140939597315425,
+      "maxWaypointRelativePos": 0.7701342281879204,
+      "constraints": {
+        "maxVelocity": 2.0,
+        "maxAcceleration": 2.5,
+        "maxAngularVelocity": 540.0,
+        "maxAngularAcceleration": 720.0,
+        "nominalVoltage": 12.0,
+        "unlimited": false
+      }
+    }
+  ],
+  "pointTowardsZones": [],
   "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 5.0,
@@ -85,7 +61,7 @@
   },
   "goalEndState": {
     "velocity": 4.0,
-    "rotation": 90.0
+    "rotation": 45.0
   },
   "reversed": false,
   "folder": "D Paths",

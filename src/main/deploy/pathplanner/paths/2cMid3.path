@@ -3,42 +3,46 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 5.726858917480035,
-        "y": 2.638686779059449
+        "x": 2.6525554569653944,
+        "y": 5.141588287488908
       },
       "prevControl": null,
       "nextControl": {
-        "x": 5.69787129857005,
-        "y": 3.872332144564628
+        "x": 2.54793256433008,
+        "y": 5.7210381543921915
       },
       "isLocked": false,
-      "linkedName": "dend4"
+      "linkedName": "2cMid2"
     },
     {
       "anchor": {
-        "x": 5.862165178571429,
-        "y": 3.596388642413486
+        "x": 6.394835847382431,
+        "y": 5.511792369121561
       },
       "prevControl": {
-        "x": 5.874872175244123,
-        "y": 3.100897752416634
+        "x": 5.487888107052298,
+        "y": 5.349625294655193
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "dend5"
+      "linkedName": "2cMid3"
     }
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.4831081081081081,
-      "rotationDegrees": 90.0
+      "waypointRelativePos": 0.3435013262599464,
+      "rotationDegrees": -45.0
+    },
+    {
+      "waypointRelativePos": 0.7546419098143231,
+      "rotationDegrees": -45.0
     }
   ],
   "constraintZones": [
     {
       "name": "Constraints Zone",
-      "minWaypointRelativePos": 0,
-      "maxWaypointRelativePos": 1.0,
+      "minWaypointRelativePos": 0.3875838926174504,
+      "maxWaypointRelativePos": 0.6694630872483233,
       "constraints": {
         "maxVelocity": 1.0,
         "maxAcceleration": 2.5,
@@ -61,13 +65,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 90.0
+    "rotation": -90.0
   },
   "reversed": false,
-  "folder": "D Paths",
+  "folder": "2cMiddle",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 45.0
+    "rotation": -28.87411396610367
   },
   "useDefaultConstraints": true
 }

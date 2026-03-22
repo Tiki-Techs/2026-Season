@@ -8,34 +8,40 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.300993213795392,
-        "y": 1.5168695634029787
+        "x": 2.397021036675539,
+        "y": 1.2646171158680852
       },
       "isLocked": false,
       "linkedName": "Default-DS-Right-Start"
     },
     {
       "anchor": {
-        "x": 7.867604259094943,
-        "y": 1.0773913043478252
+        "x": 2.221049107142857,
+        "y": 2.2274925595238098
       },
       "prevControl": {
-        "x": 5.47046636037982,
-        "y": 0.5601217052176954
+        "x": 1.333608630952381,
+        "y": 1.6467410714285722
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "dend1"
+      "linkedName": null
     }
   ],
-  "rotationTargets": [
-    {
-      "waypointRelativePos": 0.19144144144144198,
-      "rotationDegrees": 0.0
-    }
-  ],
+  "rotationTargets": [],
   "constraintZones": [],
-  "pointTowardsZones": [],
+  "pointTowardsZones": [
+    {
+      "fieldPosition": {
+        "x": 4.5,
+        "y": 4.0
+      },
+      "rotationOffset": 0.0,
+      "minWaypointRelativePos": 0.5671232876712327,
+      "maxWaypointRelativePos": 1.0,
+      "name": "Point Towards Zone"
+    }
+  ],
   "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 5.0,
@@ -46,13 +52,13 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 3.0,
-    "rotation": 90.0
+    "velocity": 0,
+    "rotation": 40.1142764318904
   },
   "reversed": false,
-  "folder": "D Paths",
+  "folder": "Preload Paths",
   "idealStartingState": {
-    "velocity": 3.0,
+    "velocity": 0,
     "rotation": 0.0
   },
   "useDefaultConstraints": true

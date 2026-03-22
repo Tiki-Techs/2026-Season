@@ -21,8 +21,6 @@ public class Climb extends SubsystemBase {
     private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
     private boolean isCalibrated = false;
 
-    private Pivot pivot = null;
-
     public Climb() {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -32,11 +30,6 @@ public class Climb extends SubsystemBase {
             .withSupplyCurrentLimit(60)
             .withSupplyCurrentLimitEnable(true);
         climbMotor.getConfigurator().apply(config);
-    }
-
-    /** Sets the pivot reference for safety interlock. Must be called after construction. */
-    public void setPivot(Pivot pivot) {
-        this.pivot = pivot;
     }
 
     /** Continuously stops the climb motor. Use as default command. */
@@ -88,6 +81,26 @@ public class Climb extends SubsystemBase {
     public double getPosition() {
         return climbMotor.getPosition().getValueAsDouble();
     }
+    
+    public Command getReady() {
+        return new RunCommand(() -> {
+            double currentPos = getPosition();
+            if (currentPos < -9.0) {
+                climbMotor.set(1.0);  // Move up if below target
+            } else if (currentPos > -9.0) {
+                climbMotor.set(-1.0); // Move down if above target
+            } else {
+                climbMotor.set(0);
+            }
+        }, this).until(() -> Math.abs(getPosition() - (-9.2)) < 0.5);
+    }
+
+    public Command climb() {
+        return new RunCommand(() -> {
+            climbMotor.set(1.0);
+        }, this).until(() -> !lowerLimitSwitch.get());
+    }
+
 
     public boolean isUpperLimitPressed() {
         return !upperLimitSwitch.get();
@@ -97,7 +110,7 @@ public class Climb extends SubsystemBase {
         return !lowerLimitSwitch.get();
     }
 
-    /** Returns true if the climb is at the lower limit (down position). Used for Pivot Safety */
+    /** Returns true if the climb is at the lower limit (down position). */
     public boolean isClimbDown() {
         return !lowerLimitSwitch.get();
     }
@@ -123,14 +136,9 @@ public class Climb extends SubsystemBase {
         }, this);
     }
 
-    /** Runs the climb motor down. Includes safety interlock with pivot. */
+    /** Runs the climb motor down. */
     public Command runClimbDown() {
         return new RunCommand(() -> {
-            // Safety: prevent going down while pivot is up
-            if (pivot != null && !pivot.isPivotDown()) {
-                climbMotor.set(0);
-                return;
-            }
             if (!lowerLimitSwitch.get()) {
                 climbMotor.set(0);
             } else {
@@ -141,11 +149,6 @@ public class Climb extends SubsystemBase {
 
     public Command runHopperDown() {
         return new RunCommand(() -> {
-            // Safety: prevent going down while pivot is up
-            if (pivot != null && !pivot.isPivotDown()) {
-                climbMotor.set(0);
-                return;
-            }
             if(!lowerLimitSwitch.get()) {
                 climbMotor.set(0);
                 return;
@@ -153,6 +156,7 @@ public class Climb extends SubsystemBase {
             climbMotor.set(-.1);
         }, this);
     }
+
 
     @Override
     public void periodic() {

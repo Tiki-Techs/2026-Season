@@ -8,27 +8,32 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.8364085670594674,
-        "y": 5.895547662361548
+        "x": 3.4332031943212065,
+        "y": 5.576175687666371
       },
       "isLocked": false,
       "linkedName": "2cL3"
     },
     {
       "anchor": {
-        "x": 3.5,
-        "y": 7.5
+        "x": 3.415178571428571,
+        "y": 7.369427083333334
       },
       "prevControl": {
-        "x": 3.285290048648345,
-        "y": 7.37193893335377
+        "x": 3.200468620076916,
+        "y": 7.241366016687104
       },
       "nextControl": null,
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
     }
   ],
-  "rotationTargets": [],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.22546419098143228,
+      "rotationDegrees": -45.0
+    }
+  ],
   "constraintZones": [],
   "pointTowardsZones": [],
   "eventMarkers": [],

@@ -3,41 +3,41 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 7.5
+        "x": 3.415178571428571,
+        "y": 7.369427083333334
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.5,
-        "y": 7.5
+        "x": 0.4265922619047613,
+        "y": 3.8653422619047624
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
     },
     {
       "anchor": {
-        "x": 5.9,
-        "y": 7.23
+        "x": 7.553735581188997,
+        "y": 5.648606921029281
       },
       "prevControl": {
-        "x": 5.666829611788302,
-        "y": 7.320175218664579
+        "x": 7.5130654761904765,
+        "y": 6.5015625
       },
       "nextControl": {
-        "x": 6.201685891748003,
-        "y": 7.113327417923691
+        "x": 7.56914113680875,
+        "y": 5.3255132232507805
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 6.241925465838509,
-        "y": 6.300488021295474
+        "x": 7.835412599822538,
+        "y": 3.9263531499556343
       },
       "prevControl": {
-        "x": 6.253816753192372,
-        "y": 6.550205055726583
+        "x": 7.8473038871764,
+        "y": 4.176070184386743
       },
       "nextControl": null,
       "isLocked": false,
@@ -46,8 +46,8 @@
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.5,
-      "rotationDegrees": 0.0
+      "waypointRelativePos": 1.1273209549071626,
+      "rotationDegrees": -90.0
     }
   ],
   "constraintZones": [],

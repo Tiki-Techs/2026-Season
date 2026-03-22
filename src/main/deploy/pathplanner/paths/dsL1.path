@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 7.5
+        "x": 3.415178571428571,
+        "y": 7.369427083333334
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.5,
-        "y": 7.5
+        "x": 4.415178571428571,
+        "y": 7.369427083333334
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
