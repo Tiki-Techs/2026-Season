@@ -22,7 +22,7 @@ public class FieldAiming {
     public static final Pose2d RED_HUB = new Pose2d(
         VisionConstants.RED_GOAL_X_METERS,
         VisionConstants.RED_GOAL_Y_METERS,
-        Rotation2d.fromDegrees(180)
+        Rotation2d.fromDegrees(0)
     );
 
     /**
@@ -47,7 +47,7 @@ public class FieldAiming {
     public static Rotation2d getAngleToHub(Pose2d robotPose) {
         Translation2d relativeTranslation = getTargetHub().getTranslation().minus(robotPose.getTranslation());
         // getAngle() returns the vector direction from robot to hub
-        return relativeTranslation.getAngle().plus(Rotation2d.fromDegrees(90));
+        return relativeTranslation.getAngle();
     }
 
     /**
@@ -86,4 +86,5 @@ public class FieldAiming {
             return robotPose.getX() <= VisionConstants.BLUE_GOAL_X_METERS;
         }
     }
+
 }

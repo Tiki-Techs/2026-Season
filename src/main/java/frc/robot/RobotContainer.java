@@ -186,16 +186,6 @@ public class RobotContainer {
                 .withTargetDirection(targetAngle);
         }));
 
-        // // OPTION 2 (LEGACY): Limelight proportional (climb camera only) - direct TX feedback
-        // // Uncomment this and comment out the above if you want camera-based aiming instead
-        // m_driverController.a().whileTrue(
-        //     drivetrain.applyRequest(() ->
-        //         drive
-        //             .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
-        //             .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
-        //             .withRotationalRate(m_vision.limelight_aim_proportional())
-        //     )
-        // );
         
 
 

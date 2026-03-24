@@ -90,10 +90,6 @@ public final class Constants {
 
         public static final double TARGET_DISTANCE_METERS = 1.5;
 
-        // Pigeon offset in degrees (+ = add to calculated angle, - = subtract from calculated angle)
-        // Accounts for pigeon not being centered on the robot
-        public static final double PIGEON_ANGLE_OFFSET_DEGREES = 90;
-
         // Hub AprilTag IDs for TX-based aiming
         public static final int[] BLUE_HUB_TAG_IDS = {18, 19, 20, 21, 24, 25, 26, 27};
         public static final int[] RED_HUB_TAG_IDS = {2, 3, 4, 5, 8, 9, 10, 11};
@@ -104,17 +100,6 @@ public final class Constants {
         public static final double RED_GOAL_X_METERS = 12.257;
         public static final double RED_GOAL_Y_METERS = 4.021;
 
-        // Climb-mounted Limelight base pose (when climb is at position=0, fully extended up)
-        // TODO: Measure and set these values for your robot
-        public static final double CLIMB_CAM_FORWARD = -0.3429;   // meters from robot center
-        public static final double CLIMB_CAM_SIDE = 0.339725;      // meters (positive = right)
-        public static final double CLIMB_CAM_UP_BASE = 0.4572;   // meters height when climb is at top (pos=0)
-        public static final double CLIMB_CAM_ROLL = 0.0;      // degrees
-        public static final double CLIMB_CAM_PITCH = 0.0;     // degrees
-        public static final double CLIMB_CAM_YAW = 180.0;     // degrees (camera facing backwards)
-
-        // Conversion from climb motor rotations to camera height change
-        public static final double CLIMB_METERS_PER_ROTATION = 0.00257;
 
         // Field dimensions for pose validation
         public static final double FIELD_LENGTH_METERS = 16.54;

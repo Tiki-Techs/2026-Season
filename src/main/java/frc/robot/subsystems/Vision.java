@@ -62,12 +62,7 @@ public class Vision extends SubsystemBase {
 
         if (!cachedClimbTV) return 0.0;
 
-        // Apply pigeon offset to account for off-center mounting
-        double adjustedTX = cachedClimbTX + VisionConstants.PIGEON_ANGLE_OFFSET_DEGREES;
-
-        if (Math.abs(adjustedTX) < deadzone) return 0.0;
-
-        double txRadians = Math.toRadians(adjustedTX);
+        double txRadians = Math.toRadians(cachedClimbTX);
         return txRadians * kP;
     }
 
@@ -111,54 +106,8 @@ public class Vision extends SubsystemBase {
         return FieldAiming.isInScoringRange(currentPose);
     }
 
-    /** Returns the target rotation to face the goal or alliance wall. */
-    public Rotation2d getTargetRotation() {
-        Pose2d currentPose = drivetrain.getState().Pose;
+ 
 
-        if (isInShootingRange()) {
-            // Use FieldGeomUtils for consistency
-            return FieldAiming.getAngleToHub(currentPose);
-        } else {
-            var alliance = DriverStation.getAlliance();
-            return (alliance.isPresent() && alliance.get() == Alliance.Red)
-                ? new Rotation2d(0)
-                : new Rotation2d(Math.PI);
-        }
-    }
-
-    /** Calculates angular velocity to rotate toward the goal or alliance wall (odometry-based). */
-    public double getRotationToGoal() {
-        Pose2d currentPose = drivetrain.getState().Pose;
-        double targetAngle = getTargetRotation().getRadians();
-
-        // Reset controller if target changed (switching between hub/wall)
-        if (Math.abs(targetAngle - lastTargetAngle) > 0.1) {
-            m_aimController.reset();
-            lastTargetAngle = targetAngle;
-        }
-
-        if (m_aimController.atSetpoint()) {
-            return 0.0;
-        }
-
-        return m_aimController.calculate(currentPose.getRotation().getRadians(), targetAngle);
-    }
-
-    /** Calculates angular velocity using TX from Limelight (direct camera feedback, no odometry). */
-    public double getRotationToGoalTX() {
-        if (!cachedTV) return 0.0;
-
-        // TX is already the angular error to the tag - use it directly
-        double txRadians = Math.toRadians(cachedTX);
-
-        if (Math.abs(cachedTX) < 0.5) {  // 0.5 degree dead zone
-            m_aimController.reset();
-            return 0.0;
-        }
-
-        // PID with TX as measurement, 0 as setpoint
-        return m_aimController.calculate(txRadians, 0.0);
-    }
 
     @Override
     public void periodic() {
@@ -280,10 +229,8 @@ public class Vision extends SubsystemBase {
 
         SmartDashboard.putNumber("Vision/DistanceToGoal", getDistanceToGoal());
         SmartDashboard.putBoolean("Vision/InShootingRange", isInShootingRange());
-        SmartDashboard.putNumber("Vision/RotationToGoal", getRotationToGoal());
         SmartDashboard.putBoolean("Vision/ClimbLimelightTV", cachedClimbTV);
         SmartDashboard.putNumber("Vision/ClimbLimelightTX", cachedClimbTX);
-        SmartDashboard.putNumber("Vision/ClimbTXWithOffset", cachedClimbTX + VisionConstants.PIGEON_ANGLE_OFFSET_DEGREES);
         SmartDashboard.putNumber("Vision/ClimbAimOutput", limelight_aim_proportional());
 
         // Debug info for auto-align
@@ -299,7 +246,6 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putNumber("Vision/TargetAngleDeg", Math.toDegrees(targetAngle));
         SmartDashboard.putNumber("Vision/CurrentHeadingDeg", Math.toDegrees(currentHeading));
         SmartDashboard.putNumber("Vision/AngleErrorDeg", Math.toDegrees(error));
-        SmartDashboard.putNumber("Vision/PIDOutput", getRotationToGoal());
         SmartDashboard.putBoolean("Vision/PIDAtSetpoint", m_aimController.atSetpoint());
     }
 }
