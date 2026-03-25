@@ -129,10 +129,18 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
+        // Y Button: Override mode toggle
+        m_driverController.y()
+            .onTrue(new InstantCommand(() -> Constants.overrideEnabled = true))
+            .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
+
         configureDrivetrainBindings();
         configureShooterBindings();
         configureIntakeBindings();
+        configureClimbBindings();
         configureDefaultCommands();
+        configureOperatorBindings();
+
     }
 
     private void configureDrivetrainBindings() {
@@ -148,8 +156,8 @@ public class RobotContainer {
         autoAim.HeadingController.setPID(10.0, 0.0, 0.1);
         autoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
-        // A Button: Auto-aim to goal with lookahead (Luna-style implementation)
-        m_driverController.a().whileTrue(drivetrain.applyRequest(() -> {
+        // Right Bumper: Auto-aim to goal with lookahead
+        m_driverController.rightBumper().whileTrue(drivetrain.applyRequest(() -> {
             var state = drivetrain.getState();
 
             // 1. Get raw inputs from controller (reduced to 50% for better control while aiming)
@@ -187,45 +195,16 @@ public class RobotContainer {
         }));
 
         
+        // Start Button: Reset heading
+        m_driverController.start().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
-
-        // Start Button: Reset gyro heading
-        m_driverController.start().onTrue(new InstantCommand(() ->
-            drivetrain.resetPose(new Pose2d(
-                drivetrain.getState().Pose.getTranslation(),
-                new Rotation2d()
-            ))
-        ));
-
-        
-        // Right Bumper: Slow drive mode
-        m_operatorController.rightBumper().whileTrue(
-            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
-            );
-            
-            m_operatorController.leftBumper().whileTrue(drivetrain.brakeCommand());
-            
         }
         
         
         private void configureShooterBindings() {
-            // Y Button: Override mode toggle
-            m_driverController.y()
-            .onTrue(new InstantCommand(() -> Constants.overrideEnabled = true))
-            .onFalse(new InstantCommand(() -> Constants.overrideEnabled = false));
-            
-            m_operatorController.leftTrigger().whileTrue(
-                new ConditionalCommand(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                    () -> Constants.overrideEnabled
-                )
-            );
-                    
-            // Right Trigger: Auto-aim shooter with auto-feed (waits for speed)
-
-            // OPTION 1: Shooter only (no auto-rotation)
-            m_driverController.rightTrigger().whileTrue(
+                
+            // Right Trigger: Flow
+            m_driverController.rightTrigger().onTrue(
                 new ConditionalCommand(
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
@@ -244,42 +223,9 @@ public class RobotContainer {
                     () -> Constants.overrideEnabled
                 )
             );
-
-            // // OPTION 2: Shooter + auto-rotation (comment out OPTION 1 above and uncomment below)
-            // m_driverController.rightTrigger().whileTrue(
-            //     new ParallelCommandGroup(
-            //         // Auto-rotate drivetrain to goal
-            //         // Use getRotationToGoal() for field telemetry OR limelight_aim_proportional() for climb camera
-            //         drivetrain.applyRequest(() ->
-            //             drive
-            //                 .withVelocityX(-MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * maxSpeed * 0.75)
-            //                 .withVelocityY(-MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * maxSpeed * 0.75)
-            //                 .withRotationalRate(m_vision.getRotationToGoal())  // Change to limelight_aim_proportional() if needed
-            //         ),
-            //         // Shooter/feeder/index functionality
-            //         new ConditionalCommand(
-            //             new ParallelCommandGroup(
-            //                 m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
-            //                 m_index.runIndex(-IndexConstants.INDEX_SPEED),
-            //                 m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
-            //             ),
-            //             new SequentialCommandGroup(
-            //                 m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-            //                     .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
-            //                 new ParallelCommandGroup(
-            //                     m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
-            //                     m_index.runIndex(IndexConstants.INDEX_SPEED),
-            //                     m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-            //                     )
-            //             ),
-            //             () -> Constants.overrideEnabled
-            //         )
-            //     )
-            // );
-                                                
-                                                
-            // X Button: Toggle index belt
-            m_driverController.x().toggleOnTrue(
+                                                                                     
+            // X Button: Toggle index belt and reverse feeder
+            m_driverController.leftBumper().toggleOnTrue(
                 new ConditionalCommand(
                     m_index.runIndex(1),
                     new ParallelCommandGroup(
@@ -287,8 +233,8 @@ public class RobotContainer {
                     m_index.runIndex(1)
                     ),
                     () -> Constants.overrideEnabled
-            )
-        );
+                )
+            );
     }
                                                         
     private void configureIntakeBindings() {
@@ -302,28 +248,21 @@ public class RobotContainer {
             )
         );
 
+        // D-pad Up: Pivot up
         m_driverController.povUp().whileTrue(
             m_pivot.runPivot(1.0)
         );
-                
+        // D-pad Down: Pivot down        
         m_driverController.povDown().whileTrue(
             m_pivot.runPivot(-1.0)
         );
+                                   
+    }
 
-        m_operatorController.povUp().toggleOnTrue(
-            m_climb.getReady()
-        );
-
-        m_operatorController.povDown().toggleOnTrue(
-            m_climb.climb()
-        );
-                        
-        // Left Bumper: Brake (X-pattern wheel lock)
-        m_driverController.leftBumper().whileTrue(m_climb.runClimbDown());
-                
-        // Right Bumper: Climb up
-        m_driverController.rightBumper().whileTrue(m_climb.runClimbUp());
-                       
+    private void configureClimbBindings() {
+        // Climb controls
+        m_driverController.povRight().whileTrue(m_climb.runClimbUp());
+        m_driverController.povLeft().whileTrue(m_climb.runClimbDown());
     }
                     
     private void configureDefaultCommands() {
@@ -360,6 +299,29 @@ public class RobotContainer {
 
 
         }
+
+        private void configureOperatorBindings() {
+            m_operatorController.leftTrigger().whileTrue(
+                new ConditionalCommand(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    () -> Constants.overrideEnabled
+                )
+            );
+
+
+        // Right Bumper: Slow drive mode
+        m_operatorController.rightBumper().whileTrue(
+            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+        );
+         
+        // Left Bumper: Brake (X-pattern wheel lock)
+        m_operatorController.leftBumper().whileTrue(drivetrain.brakeCommand());
+
+
+        }
+
+
 
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
