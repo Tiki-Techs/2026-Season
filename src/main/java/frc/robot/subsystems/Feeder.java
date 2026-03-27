@@ -19,7 +19,7 @@ public class Feeder extends SubsystemBase {
         var currentLimits = new CurrentLimitsConfigs()
             .withStatorCurrentLimit(40)
             .withStatorCurrentLimitEnable(true)
-            .withSupplyCurrentLimit(25)
+            .withSupplyCurrentLimit(40)
             .withSupplyCurrentLimitEnable(true);
         feederMotor.getConfigurator().apply(new TalonFXConfiguration().withCurrentLimits(currentLimits));
     }

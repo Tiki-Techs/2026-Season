@@ -144,6 +144,7 @@ public class RobotContainer {
     }
 
     private void configureDrivetrainBindings() {
+
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
                 .withVelocityX(MathUtil.applyDeadband(-m_driverController.getLeftY(), 0.15) * maxSpeed)
@@ -177,6 +178,13 @@ public class RobotContainer {
 
             // 3. Calculate target angle using the predicted pose
             Rotation2d targetAngle = FieldAiming.getAngleToHub(futurePose);
+
+            // Add 180° offset for red alliance (robot faces opposite direction)
+            var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
+            if (alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red) {
+                targetAngle = targetAngle.plus(Rotation2d.fromDegrees(180));
+            }
+
             double distance = FieldAiming.getDistanceToHub(state.Pose);
 
             // 4. Apply Request with FieldCentricFacingAngle for smooth rotation
@@ -187,8 +195,16 @@ public class RobotContainer {
         }));
 
         
-        // Start Button: Reset heading
-        m_driverController.start().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        // X: Reset heading
+        m_driverController.x().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+
+        // B: Brake (X-pattern wheel lock)
+        m_driverController.b().whileTrue(drivetrain.brakeCommand());
+
+        // A: Slow drive mode
+        m_driverController.a().whileTrue(
+            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+        );
 
         }
         
