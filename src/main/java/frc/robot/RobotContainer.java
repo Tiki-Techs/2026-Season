@@ -179,15 +179,7 @@ public class RobotContainer {
             Rotation2d targetAngle = FieldAiming.getAngleToHub(futurePose);
             double distance = FieldAiming.getDistanceToHub(state.Pose);
 
-            // 4. LOGGING - Send everything to SmartDashboard for tuning
-            SmartDashboard.putNumber("AutoAim/Distance Meters", distance);
-            SmartDashboard.putNumber("AutoAim/Target Heading", targetAngle.getDegrees());
-            SmartDashboard.putNumber("AutoAim/Current Heading", state.Pose.getRotation().getDegrees());
-            SmartDashboard.putNumber("AutoAim/Heading Error", targetAngle.minus(state.Pose.getRotation()).getDegrees());
-            SmartDashboard.putNumber("AutoAim/Lookahead Offset",
-                targetAngle.minus(FieldAiming.getAngleToHub(state.Pose)).getDegrees());
-
-            // 5. Apply Request with FieldCentricFacingAngle for smooth rotation
+            // 4. Apply Request with FieldCentricFacingAngle for smooth rotation
             return autoAim
                 .withVelocityX(vx)
                 .withVelocityY(vy)
@@ -204,7 +196,7 @@ public class RobotContainer {
         private void configureShooterBindings() {
                 
             // Right Trigger: Flow
-            m_driverController.rightTrigger().onTrue(
+            m_driverController.rightTrigger().whileTrue(
                 new ConditionalCommand(
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
@@ -272,12 +264,6 @@ public class RobotContainer {
         m_pivot.setDefaultCommand(m_pivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
-
-        // Calibration at start of auto is handled in getAutonomousCommand() to ensure
-        // the auto routine waits for calibration to finish before running.
-
-        // Calibrate subsystems on teleop start if not already calibrated
-        RobotModeTriggers.teleop().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
 
         // Configure Limelight 4 IMU modes for better pose estimation
         // Mode 1 (seeding) during disabled - syncs internal IMU with Pigeon
