@@ -28,13 +28,8 @@ public class Pivot extends SubsystemBase {
     private boolean isCalibrated = false;
     private double lowerEncoderPos = 0.0;
     private double upperEncoderPos = 0.0;
-    private int pivotLoopCounter = 0;
 
-    public Pivot() {
-        SparkMaxConfig config = new SparkMaxConfig();
-        config.idleMode(IdleMode.kBrake);
-        pivotArm.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
-    }
+    public Pivot() {}
 
 
 

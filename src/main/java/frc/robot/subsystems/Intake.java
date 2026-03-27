@@ -1,23 +1,20 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.config.SparkMaxConfig;
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.hardware.TalonFX;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.IntakeConstants;
 
 /** Controls the intake rollers for collecting game pieces. */
 public class Intake extends SubsystemBase {
 
-    private final SparkMax intakeMotor = new SparkMax(IntakeConstants.INTAKE_MOTOR, MotorType.kBrushless);
+    private final TalonFX intakeMotor = new TalonFX(IntakeConstants.INTAKE_MOTOR, "CANivore");
 
     public Intake() {
-        SparkMaxConfig config = new SparkMaxConfig();
-        intakeMotor.configureAsync(config, SparkMax.ResetMode.kNoResetSafeParameters, SparkMax.PersistMode.kNoPersistParameters);
     }
 
     /** Runs the intake at a specified speed (-1.0 to 1.0). */

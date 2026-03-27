@@ -144,6 +144,7 @@ public class RobotContainer {
     }
 
     private void configureDrivetrainBindings() {
+
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> drive
                 .withVelocityX(MathUtil.applyDeadband(-m_driverController.getLeftY(), 0.15) * maxSpeed)
@@ -177,17 +178,16 @@ public class RobotContainer {
 
             // 3. Calculate target angle using the predicted pose
             Rotation2d targetAngle = FieldAiming.getAngleToHub(futurePose);
+
+            // Add 180° offset for red alliance (robot faces opposite direction)
+            var alliance = edu.wpi.first.wpilibj.DriverStation.getAlliance();
+            if (alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red) {
+                targetAngle = targetAngle.plus(Rotation2d.fromDegrees(180));
+            }
+
             double distance = FieldAiming.getDistanceToHub(state.Pose);
 
-            // 4. LOGGING - Send everything to SmartDashboard for tuning
-            SmartDashboard.putNumber("AutoAim/Distance Meters", distance);
-            SmartDashboard.putNumber("AutoAim/Target Heading", targetAngle.getDegrees());
-            SmartDashboard.putNumber("AutoAim/Current Heading", state.Pose.getRotation().getDegrees());
-            SmartDashboard.putNumber("AutoAim/Heading Error", targetAngle.minus(state.Pose.getRotation()).getDegrees());
-            SmartDashboard.putNumber("AutoAim/Lookahead Offset",
-                targetAngle.minus(FieldAiming.getAngleToHub(state.Pose)).getDegrees());
-
-            // 5. Apply Request with FieldCentricFacingAngle for smooth rotation
+            // 4. Apply Request with FieldCentricFacingAngle for smooth rotation
             return autoAim
                 .withVelocityX(vx)
                 .withVelocityY(vy)
@@ -195,8 +195,16 @@ public class RobotContainer {
         }));
 
         
-        // Start Button: Reset heading
-        m_driverController.start().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        // X: Reset heading
+        m_driverController.x().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+
+        // B: Brake (X-pattern wheel lock)
+        m_driverController.b().whileTrue(drivetrain.brakeCommand());
+
+        // A: Slow drive mode
+        m_driverController.a().whileTrue(
+            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+        );
 
         }
         
@@ -204,7 +212,7 @@ public class RobotContainer {
         private void configureShooterBindings() {
                 
             // Right Trigger: Flow
-            m_driverController.rightTrigger().onTrue(
+            m_driverController.rightTrigger().whileTrue(
                 new ConditionalCommand(
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
@@ -272,12 +280,6 @@ public class RobotContainer {
         m_pivot.setDefaultCommand(m_pivot.stopAll());
         m_index.setDefaultCommand(m_index.stopAll());
         m_climb.setDefaultCommand(m_climb.stopAll());
-
-        // Calibration at start of auto is handled in getAutonomousCommand() to ensure
-        // the auto routine waits for calibration to finish before running.
-
-        // Calibrate subsystems on teleop start if not already calibrated
-        RobotModeTriggers.teleop().onTrue(Commands.defer(m_pivot::calibratePivot, Set.of(m_pivot)).unless(m_pivot::isCalibrated));
 
         // Configure Limelight 4 IMU modes for better pose estimation
         // Mode 1 (seeding) during disabled - syncs internal IMU with Pigeon
