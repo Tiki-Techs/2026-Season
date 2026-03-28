@@ -5,22 +5,9 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibratePivot"
-                }
-              }
-            ]
-          }
-        },
-        {
           "type": "path",
           "data": {
-            "pathName": "dp1"
+            "pathName": "cliM1"
           }
         },
         {
@@ -30,7 +17,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "dp2"
+                  "pathName": "cliM2"
                 }
               },
               {
@@ -61,7 +48,13 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "dp3"
+                  "pathName": "cliM3"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "windUpShooter"
                 }
               },
               {
@@ -69,6 +62,18 @@
                 "data": {
                   "name": "stopIntake"
                 }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
               }
             ]
           }
@@ -80,7 +85,7 @@
               {
                 "type": "wait",
                 "data": {
-                  "waitTime": 4.0
+                  "waitTime": 3.75
                 }
               },
               {
@@ -90,12 +95,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "dp4"
           }
         },
         {
@@ -105,34 +104,16 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "dp5"
+                  "pathName": "cliM4"
                 }
               },
               {
                 "type": "named",
                 "data": {
-                  "name": "runIntake"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runIndex"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "reverseFeeder"
+                  "name": "stopShooter"
                 }
               }
             ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "dp6"
           }
         },
         {
@@ -140,15 +121,9 @@
           "data": {
             "commands": [
               {
-                "type": "wait",
+                "type": "path",
                 "data": {
-                  "waitTime": 4.0
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "Shoot"
+                  "pathName": "cliM5"
                 }
               }
             ]
@@ -158,6 +133,6 @@
     }
   },
   "resetOdom": true,
-  "folder": null,
+  "folder": "Climbs ;(",
   "choreoAuto": false
 }

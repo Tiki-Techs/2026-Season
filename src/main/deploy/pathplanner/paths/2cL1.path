@@ -8,36 +8,20 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 7.871770223737017,
-        "y": 7.317204530019217
+        "x": 7.871769233810449,
+        "y": 7.317171013667319
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
     },
     {
       "anchor": {
-        "x": 6.958189884649512,
-        "y": 7.322573203194321
+        "x": 7.972227151730259,
+        "y": 6.831650399290151
       },
       "prevControl": {
-        "x": 6.042772023288105,
-        "y": 7.4878786347236055
-      },
-      "nextControl": {
-        "x": 7.714003185076618,
-        "y": 7.18608903672103
-      },
-      "isLocked": false,
-      "linkedName": null
-    },
-    {
-      "anchor": {
-        "x": 7.610070984915705,
-        "y": 6.815554569653948
-      },
-      "prevControl": {
-        "x": 7.500348852953587,
-        "y": 7.044338737223122
+        "x": 7.8625050197681405,
+        "y": 7.060434566859326
       },
       "nextControl": null,
       "isLocked": false,
@@ -46,8 +30,8 @@
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 1.0,
-      "rotationDegrees": 0.0
+      "waypointRelativePos": 0.2175066312997346,
+      "rotationDegrees": 180.0
     }
   ],
   "constraintZones": [],
@@ -69,7 +53,7 @@
   "folder": "2cLeft",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

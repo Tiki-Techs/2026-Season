@@ -203,6 +203,7 @@ public class Vision extends SubsystemBase {
                     // Higher stdDev = less trust in vision, more reliance on odometry
                     // Floor at 0.5 to prevent over-trusting vision at close range
                     double xyStdDev = Math.max(0.5, 0.7 * mt2.avgTagDist / mt2.tagCount);
+                    double thetaStdDev = Math.max(0.5, 0.9 * mt2.avgTagDist / mt2.tagCount);
 
                     SmartDashboard.putNumber("Vision/" + limelightName + "/StdDev", xyStdDev);
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", true);

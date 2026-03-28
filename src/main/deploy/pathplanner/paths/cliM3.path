@@ -3,37 +3,32 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 2.7974179236912153,
-        "y": 5.648606921029281
+        "x": 0.46352262644188047,
+        "y": 7.161614906827899
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.2260159716060333,
-        "y": 6.670692102928127
+        "x": 1.4635226264418804,
+        "y": 7.161614906827899
       },
       "isLocked": false,
-      "linkedName": "2cL3"
+      "linkedName": "cliM2"
     },
     {
       "anchor": {
-        "x": 3.6022094055013305,
-        "y": 7.4432919254658385
+        "x": 2.1455368234250214,
+        "y": 4.401180124223602
       },
       "prevControl": {
-        "x": 3.3874994541496752,
-        "y": 7.315230858819609
+        "x": 1.3326974267968046,
+        "y": 5.519840283939661
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "Default-DS-Left-Start"
+      "linkedName": "cliM3"
     }
   ],
-  "rotationTargets": [
-    {
-      "waypointRelativePos": 0.22546419098143228,
-      "rotationDegrees": -45.0
-    }
-  ],
+  "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
   "eventMarkers": [],
@@ -46,14 +41,14 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 3.0,
-    "rotation": 180.0
+    "velocity": 0,
+    "rotation": -7.495857639729868
   },
   "reversed": false,
-  "folder": "2cLeft",
+  "folder": "dcClimbMiddle",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -42.57669365451482
+    "rotation": 90.0
   },
   "useDefaultConstraints": true
 }

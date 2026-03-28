@@ -4,7 +4,9 @@
   "holonomicMode": true,
   "pathFolders": [
     "dtopPaths",
+    "dcClimbMiddle",
     "Preload Paths",
+    "Misc path conversions",
     "Default Starting Position",
     "D Paths",
     "2cRight",
@@ -12,6 +14,7 @@
     "2cLeft"
   ],
   "autoFolders": [
+    "Climbs ;(",
     "Practice Autos"
   ],
   "defaultMaxVel": 5.0,

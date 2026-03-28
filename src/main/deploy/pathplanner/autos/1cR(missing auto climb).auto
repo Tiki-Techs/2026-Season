@@ -5,51 +5,6 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibratePivot"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "deadline",
-          "data": {
-            "commands": [
-              {
-                "type": "path",
-                "data": {
-                  "pathName": "2cMid1"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "runIntake"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "deadline",
-          "data": {
-            "commands": [
-              {
-                "type": "path",
-                "data": {
-                  "pathName": "2cMid2"
-                }
-              }
-            ]
-          }
-        },
-        {
           "type": "deadline",
           "data": {
             "commands": [
@@ -62,10 +17,16 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "Shoot"
+                  "name": "calibratePivot"
                 }
               }
             ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "2c1"
           }
         },
         {
@@ -75,20 +36,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "2cMid3"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "deadline",
-          "data": {
-            "commands": [
-              {
-                "type": "path",
-                "data": {
-                  "pathName": "2cMid4"
+                  "pathName": "2c2"
                 }
               },
               {
@@ -96,6 +44,18 @@
                 "data": {
                   "name": "runIntake"
                 }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "reverseFeeder"
+                }
               }
             ]
           }
@@ -107,7 +67,31 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "2cMid5"
+                  "pathName": "2c3"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "windUpShooter"
                 }
               }
             ]
@@ -120,7 +104,7 @@
               {
                 "type": "wait",
                 "data": {
-                  "waitTime": 4.0
+                  "waitTime": 3.75
                 }
               },
               {
@@ -131,11 +115,43 @@
               }
             ]
           }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cR4(climb)"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "cliM5"
+                }
+              }
+            ]
+          }
         }
       ]
     }
   },
   "resetOdom": true,
-  "folder": null,
+  "folder": "Climbs ;(",
   "choreoAuto": false
 }

@@ -24,6 +24,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -119,8 +120,15 @@ public class RobotContainer {
 
         // Reverse feeder
         NamedCommands.registerCommand("reverseFeeder", m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED));
+        
+        // Stops feeder
+        NamedCommands.registerCommand("stopFeeder", m_feeder.stopAll());
+
         // Shoot command (spins up shooter, then feeds when at speed)
         NamedCommands.registerCommand("Shoot", PIDShooter_Feeder_Index());
+        NamedCommands.registerCommand("windUpShooter", windUpShooter());
+        NamedCommands.registerCommand("stopShoot", Stop_PIDShooter_Feeder_Index());
+
 
 
         // Calibration commands
@@ -158,7 +166,7 @@ public class RobotContainer {
         autoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
         // Right Bumper: Auto-aim to goal with lookahead
-        m_driverController.rightBumper().whileTrue(drivetrain.applyRequest(() -> {
+        m_driverController.leftBumper().whileTrue(drivetrain.applyRequest(() -> {
             var state = drivetrain.getState();
 
             // 1. Get raw inputs from controller (reduced to 50% for better control while aiming)
@@ -196,7 +204,7 @@ public class RobotContainer {
 
         
         // X: Reset heading
-        m_driverController.x().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        m_driverController.x().onTrue(drivetrain.runOnce(() -> drivetrain.getPigeon2().setYaw(0)));
 
         // B: Brake (X-pattern wheel lock)
         m_driverController.b().whileTrue(drivetrain.brakeCommand());
@@ -231,9 +239,28 @@ public class RobotContainer {
                     () -> Constants.overrideEnabled
                 )
             );
+
+            // Start Button: Fixed speed shooting (waits until at speed before feeding)
+            m_driverController.start().whileTrue(
+                new SequentialCommandGroup(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(-ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                    new ParallelCommandGroup(
+                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                    )
+                )
+            );
+
+
+        
+
+
+            
                                                                                      
             // X Button: Toggle index belt and reverse feeder
-            m_driverController.leftBumper().toggleOnTrue(
+            m_driverController.rightBumper().toggleOnTrue(
                 new ConditionalCommand(
                     m_index.runIndex(1),
                     new ParallelCommandGroup(
@@ -305,7 +332,7 @@ public class RobotContainer {
         private void configureOperatorBindings() {
             m_operatorController.leftTrigger().whileTrue(
                 new ConditionalCommand(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                    m_shooter.runPIDShooter(-40),
                     m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
                     () -> Constants.overrideEnabled
                 )
@@ -340,5 +367,23 @@ public class RobotContainer {
                 m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
             )
         );
+    }
+
+    /** Creates a command that spins up the shooter, then feeds when at speed. */
+    public Command Stop_PIDShooter_Feeder_Index() {
+       
+            return new ParallelCommandGroup(
+                m_shooter.runPIDShooter(0),
+                m_index.runIndex(0),
+                m_feeder.runFeeder(0)
+            );
+        
+    }
+    // temp test command
+     public Command windUpShooter() {
+            return new ParallelCommandGroup(
+                m_shooter.runPIDShooter(-30)
+            );
+        
     }
 }

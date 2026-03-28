@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.539159226190476,
-        "y": 0.5113392857142867
+        "x": 3.4734427684117124,
+        "y": 0.6991393078970713
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.539159226190476,
-        "y": 0.5113392857142864
+        "x": 4.473442768411712,
+        "y": 0.6991393078970711
       },
       "isLocked": true,
       "linkedName": "Default-DS-Right-Start"
@@ -48,7 +48,7 @@
   "folder": "Default Starting Position",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

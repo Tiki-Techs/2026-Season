@@ -71,10 +71,12 @@ public class Shooter extends SubsystemBase {
         shooterThree.getConfigurator().apply(talonConfigTwoThree);
 
         // Distance (meters) to shooter speed (RPS) lookup table
-        distanceToShooterSpeed.put(2.88, 65.0);
-        distanceToShooterSpeed.put(4.1, 80.0);
-        distanceToShooterSpeed.put(1.9685, 53.0);
-        distanceToShooterSpeed.put(3.1877, 70.0);
+        distanceToShooterSpeed.put(2.0, 48.0);  
+        distanceToShooterSpeed.put(3.0, 58.0);
+        distanceToShooterSpeed.put(4.0, 68.0);
+        distanceToShooterSpeed.put(5.0, 80.0);
+
+
     }
 
     /** Gets the ideal shooter speed for a given distance in meters. */

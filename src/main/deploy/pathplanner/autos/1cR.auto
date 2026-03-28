@@ -5,32 +5,6 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibratePivot"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "deadline",
-          "data": {
-            "commands": [
-              {
-                "type": "wait",
-                "data": {
-                  "waitTime": 1.0
-                }
-              }
-            ]
-          }
-        },
-        {
           "type": "path",
           "data": {
             "pathName": "2c1"
@@ -68,9 +42,40 @@
           }
         },
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "2c3"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c3"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "windUpShooter"
+                }
+              }
+            ]
           }
         },
         {
@@ -93,9 +98,135 @@
           }
         },
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "2c4"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c4"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c5"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "reverseFeeder"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c6"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c7"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "windUpShooter"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2c8"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 5.0
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Shoot"
+                }
+              }
+            ]
           }
         }
       ]

@@ -5,32 +5,6 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "calibratePivot"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "deadline",
-          "data": {
-            "commands": [
-              {
-                "type": "wait",
-                "data": {
-                  "waitTime": 1.0
-                }
-              }
-            ]
-          }
-        },
-        {
           "type": "path",
           "data": {
             "pathName": "2cL1"
@@ -68,9 +42,40 @@
           }
         },
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "2cL3"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL3"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "windUpShooter"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              }
+            ]
           }
         },
         {
@@ -93,15 +98,116 @@
           }
         },
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "2cL4"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL4"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopShooter"
+                }
+              }
+            ]
           }
         },
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "2cL5"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL5"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "runIndex"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "reverseFeeder"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL6"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "2cL7"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIntake"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopFeeder"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "stopIndex"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deadline",
+          "data": {
+            "commands": [
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 5.0
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Shoot"
+                }
+              }
+            ]
           }
         }
       ]

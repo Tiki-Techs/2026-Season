@@ -3,61 +3,40 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 4.0
+        "x": 1.05,
+        "y": 5.5
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.1280654761874835,
-        "y": 5.64674851190305
+        "x": 1.05,
+        "y": 5.25
       },
       "isLocked": false,
-      "linkedName": "Default-DS-Center-Start"
+      "linkedName": "cliM4"
     },
     {
       "anchor": {
-        "x": 0.433117559520817,
-        "y": 5.29449866903283
+        "x": 1.05,
+        "y": 4.690905057675243
       },
       "prevControl": {
-        "x": 0.43311755952081704,
-        "y": 4.818196638758585
-      },
-      "nextControl": {
-        "x": 0.43311755952081704,
-        "y": 5.890054972091446
-      },
-      "isLocked": false,
-      "linkedName": null
-    },
-    {
-      "anchor": {
-        "x": 0.433117559520817,
-        "y": 6.912656249998289
-      },
-      "prevControl": {
-        "x": 0.433117559520817,
-        "y": 6.6255431547601935
+        "x": 1.05,
+        "y": 4.940905057675243
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "2cMid1"
+      "linkedName": null
     }
   ],
-  "rotationTargets": [
-    {
-      "waypointRelativePos": 0.653153153153153,
-      "rotationDegrees": 90.0
-    }
-  ],
+  "rotationTargets": [],
   "constraintZones": [
     {
       "name": "Constraints Zone",
-      "minWaypointRelativePos": 0.9726027397260263,
-      "maxWaypointRelativePos": 2.0,
+      "minWaypointRelativePos": 0,
+      "maxWaypointRelativePos": 1.0,
       "constraints": {
-        "maxVelocity": 1.0,
-        "maxAcceleration": 1.0,
+        "maxVelocity": 0.5,
+        "maxAcceleration": 2.5,
         "maxAngularVelocity": 540.0,
         "maxAngularAcceleration": 720.0,
         "nominalVoltage": 12.0,
@@ -80,10 +59,10 @@
     "rotation": 90.0
   },
   "reversed": false,
-  "folder": "2cMiddle",
+  "folder": "dcClimbMiddle",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 90.0
   },
   "useDefaultConstraints": true
 }
