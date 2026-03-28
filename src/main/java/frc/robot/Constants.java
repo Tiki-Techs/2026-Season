@@ -57,7 +57,7 @@ public final class Constants {
         public static final double KI = 0;
         public static final double KD = 0;
 
-        public static final double SHOOTER_TARGET_RPS = 68.0;
+        public static final double SHOOTER_TARGET_RPS = 79.0;
         public static final double SHOOTER_DEFAULT_SPEED = 1.0;
     }
 
@@ -70,7 +70,7 @@ public final class Constants {
     public static final class PivotConstants {
         private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
-        public static final int LOWER_LIMIT_SWITCH_DIO = 7;
+        public static final int LOWER_LIMIT_SWITCH_DIO = 8;
         public static final double HOMING_SPEED = 0.6;
         public static final double PIVOT_SPEED = 0.6;
     }

@@ -8,8 +8,8 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 7.871770223737016,
-        "y": 7.317204530019217
+        "x": 7.871769233810449,
+        "y": 7.317171013667319
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
@@ -30,7 +30,7 @@
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.24801061007957487,
+      "waypointRelativePos": 0.2175066312997346,
       "rotationDegrees": 180.0
     }
   ],

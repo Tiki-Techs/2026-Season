@@ -204,7 +204,7 @@ public class RobotContainer {
 
         
         // X: Reset heading
-        m_driverController.x().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        m_driverController.x().onTrue(drivetrain.runOnce(() -> drivetrain.getPigeon2().setYaw(0)));
 
         // B: Brake (X-pattern wheel lock)
         m_driverController.b().whileTrue(drivetrain.brakeCommand());
@@ -382,7 +382,7 @@ public class RobotContainer {
     // temp test command
      public Command windUpShooter() {
             return new ParallelCommandGroup(
-                m_shooter.runPIDShooter(30)
+                m_shooter.runPIDShooter(-30)
             );
         
     }

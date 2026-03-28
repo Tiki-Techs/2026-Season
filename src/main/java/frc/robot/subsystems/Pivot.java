@@ -113,7 +113,12 @@ public class Pivot extends SubsystemBase {
 
     public Command runPivot(double pivotSpeed) {
         return new RunCommand(() -> {
-            pivotArm.set(pivotSpeed);
+            // Stop if trying to move down (positive speed) and lower limit is pressed
+            if (pivotSpeed > 0 && isLowerLimitPressed()) {
+                pivotArm.set(stopSpeed);
+            } else {
+                pivotArm.set(pivotSpeed);
+            }
         }, this);
     }
 

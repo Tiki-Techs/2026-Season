@@ -8,8 +8,8 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.7430729166666663,
-        "y": 4.028474702380953
+        "x": 3.0871428571428567,
+        "y": 4.022928127772848
       },
       "isLocked": false,
       "linkedName": "Default-DS-Center-Start"
@@ -20,8 +20,8 @@
         "y": 4.0
       },
       "prevControl": {
-        "x": 2.991034226190476,
-        "y": 4.035
+        "x": 2.676699201419698,
+        "y": 4.022928127772848
       },
       "nextControl": null,
       "isLocked": false,
@@ -48,7 +48,7 @@
   "folder": "Preload Paths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 180.0
+    "rotation": 0.0
   },
   "useDefaultConstraints": true
 }
