@@ -20,11 +20,11 @@
         "y": 5.29449866903283
       },
       "prevControl": {
-        "x": 0.433117559520817,
+        "x": 0.43311755952081704,
         "y": 4.818196638758585
       },
       "nextControl": {
-        "x": 0.433117559520817,
+        "x": 0.43311755952081704,
         "y": 5.890054972091446
       },
       "isLocked": false,
@@ -83,7 +83,7 @@
   "folder": "2cMiddle",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

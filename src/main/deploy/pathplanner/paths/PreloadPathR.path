@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.539159226190476,
-        "y": 0.5113392857142867
+        "x": 3.4734427684117124,
+        "y": 0.6991393078970713
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.4385937499999994,
-        "y": 0.3444568452380965
+        "x": 2.372877292221236,
+        "y": 0.5322568674208812
       },
       "isLocked": false,
       "linkedName": "Default-DS-Right-Start"
@@ -59,7 +59,7 @@
   "folder": "Preload Paths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

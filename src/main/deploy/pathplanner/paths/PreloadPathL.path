@@ -8,8 +8,8 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.4472317269299015,
-        "y": 6.2230612707039334
+        "x": 2.0167701863354033,
+        "y": 7.354764862466726
       },
       "isLocked": false,
       "linkedName": "Default-DS-Left-Start"
@@ -20,8 +20,8 @@
         "y": 5.9664880952380965
       },
       "prevControl": {
-        "x": 2.429858630952381,
-        "y": 6.397157738095238
+        "x": 2.097249334516415,
+        "y": 7.121375332741792
       },
       "nextControl": null,
       "isLocked": false,
@@ -59,7 +59,7 @@
   "folder": "Preload Paths",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

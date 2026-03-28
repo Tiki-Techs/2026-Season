@@ -20,8 +20,8 @@
         "y": 5.141588287488908
       },
       "prevControl": {
-        "x": 2.1240063498225377,
-        "y": 6.015978168441289
+        "x": 2.3064951197870447,
+        "y": 5.922236024844719
       },
       "nextControl": null,
       "isLocked": false,
@@ -37,7 +37,7 @@
         "y": 4.0
       },
       "rotationOffset": 0.0,
-      "minWaypointRelativePos": 0.10410958904109684,
+      "minWaypointRelativePos": 0.7382550335570472,
       "maxWaypointRelativePos": 1.0,
       "name": "Point Towards Zone"
     }

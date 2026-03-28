@@ -8,27 +8,36 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.804601209647305,
-        "y": 3.992517541136769
+        "x": 3.062999112688553,
+        "y": 5.214019520851818
       },
-      "isLocked": true,
+      "isLocked": false,
       "linkedName": "Default-DS-Center-Start"
     },
     {
       "anchor": {
-        "x": 1.5342376742458868,
-        "y": 4.0
+        "x": 0.46352262644188047,
+        "y": 4.932342502218278
       },
       "prevControl": {
-        "x": 1.2420098259894725,
-        "y": 4.004651321550594
+        "x": 1.3326974267968053,
+        "y": 5.262307009760425
       },
       "nextControl": null,
-      "isLocked": true,
-      "linkedName": null
+      "isLocked": false,
+      "linkedName": "cliM1"
     }
   ],
-  "rotationTargets": [],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.2652519893899197,
+      "rotationDegrees": -85.04979053151149
+    },
+    {
+      "waypointRelativePos": 0.4151193633952253,
+      "rotationDegrees": 7.682034333547147
+    }
+  ],
   "constraintZones": [],
   "pointTowardsZones": [],
   "eventMarkers": [],
@@ -42,10 +51,10 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": 90.0
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "dcClimbMiddle",
   "idealStartingState": {
     "velocity": 0,
     "rotation": 180.0

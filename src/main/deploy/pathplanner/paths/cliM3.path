@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5,
-        "y": 4.0
+        "x": 0.46352262644188047,
+        "y": 7.161614906827899
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.804601209647305,
-        "y": 3.992517541136769
+        "x": 1.4635226264418804,
+        "y": 7.161614906827899
       },
-      "isLocked": true,
-      "linkedName": "Default-DS-Center-Start"
+      "isLocked": false,
+      "linkedName": "cliM2"
     },
     {
       "anchor": {
-        "x": 1.5342376742458868,
-        "y": 4.0
+        "x": 2.1455368234250214,
+        "y": 4.401180124223602
       },
       "prevControl": {
-        "x": 1.2420098259894725,
-        "y": 4.004651321550594
+        "x": 1.3326974267968046,
+        "y": 5.519840283939661
       },
       "nextControl": null,
-      "isLocked": true,
-      "linkedName": null
+      "isLocked": false,
+      "linkedName": "cliM3"
     }
   ],
   "rotationTargets": [],
@@ -42,13 +42,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 0.0
+    "rotation": -7.495857639729868
   },
   "reversed": false,
-  "folder": "Default Starting Position",
+  "folder": "dcClimbMiddle",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 180.0
+    "rotation": 90.0
   },
   "useDefaultConstraints": true
 }

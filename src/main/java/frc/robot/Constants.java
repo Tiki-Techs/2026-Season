@@ -57,7 +57,7 @@ public final class Constants {
         public static final double KI = 0;
         public static final double KD = 0;
 
-        public static final double SHOOTER_TARGET_RPS = 10.0;
+        public static final double SHOOTER_TARGET_RPS = 68.0;
         public static final double SHOOTER_DEFAULT_SPEED = 1.0;
     }
 
