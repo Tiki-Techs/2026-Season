@@ -4,8 +4,6 @@
 
 package frc.robot;
 
-import java.util.Set;
-
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -24,7 +22,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
-import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -36,6 +33,10 @@ import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.PivotConstants;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.commands.PivotCommandAuto;
+import frc.robot.commands.ShootCommandAuto;
+import frc.robot.commands.ShootCommandAutoCenter;
+import frc.robot.commands.ShootCommandAutoLong;
 import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.*;
@@ -54,6 +55,14 @@ public class RobotContainer {
     private final Climb m_climb = new Climb();
 
     // Autonomous
+    ShootCommandAutoCenter centerShootCommand = new ShootCommandAutoCenter(m_shooter, m_index, m_feeder, m_vision);
+    ShootCommandAutoLong longShootAutoCommand = new ShootCommandAutoLong(m_shooter, m_index, m_feeder, m_vision);
+    ShootCommandAuto shootCommandAuto = new ShootCommandAuto(m_shooter, m_index, m_feeder, m_vision);
+    PivotCommandAuto pivotCommandAuto = new PivotCommandAuto(m_pivot);
+
+    ParallelCommandGroup intakeCommandParallel = new ParallelCommandGroup(m_intake.runIntake(IntakeConstants.INTAKE_SPEED), m_index.runIndex(1.0));
+
+
     private final SendableChooser<Command> autoChooser;
     private final Field2d m_field = new Field2d();
 
@@ -102,6 +111,15 @@ public class RobotContainer {
     }
 
     private void registerNamedCommands() {
+
+        NamedCommands.registerCommand("ShootCommandAuto", shootCommandAuto);
+        NamedCommands.registerCommand("PivotCommandAuto", pivotCommandAuto);    
+        NamedCommands.registerCommand("CenterShootCommand", centerShootCommand);    
+        NamedCommands.registerCommand("IntakeCommand", intakeCommandParallel);    
+        NamedCommands.registerCommand("ShootCommandAutoLong", longShootAutoCommand);
+
+
+
         // Intake pivot commands
         NamedCommands.registerCommand("LowerIntake", m_pivot.lowerArmManual(PivotConstants.PIVOT_SPEED));
         NamedCommands.registerCommand("RaiseIntake", m_pivot.raiseArmManual(PivotConstants.PIVOT_SPEED));
@@ -111,7 +129,7 @@ public class RobotContainer {
         NamedCommands.registerCommand("RaiseClimb", m_climb.runClimbUp());
 
         // Intake roller command
-        NamedCommands.registerCommand("runIntake", m_intake.runIntake(IntakeConstants.INTAKE_SPEED));
+        NamedCommands.registerCommand("runIntake", m_intake.runIntake(-IntakeConstants.INTAKE_SPEED));
         NamedCommands.registerCommand("stopIntake", m_intake.stopAll());
 
         // Index 
@@ -255,11 +273,6 @@ public class RobotContainer {
 
 
         
-
-
-            
-                                                                                     
-            // X Button: Toggle index belt and reverse feeder
             m_driverController.rightBumper().toggleOnTrue(
                 new ConditionalCommand(
                     m_index.runIndex(1),
@@ -277,8 +290,8 @@ public class RobotContainer {
         // Left Trigger: Run intake rollers
         m_driverController.leftTrigger().whileTrue(
             new ConditionalCommand(
-                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
                 m_intake.runIntake(IntakeConstants.INTAKE_SPEED),
+                m_intake.runIntake(-IntakeConstants.INTAKE_SPEED),
                 () -> Constants.overrideEnabled
             )
         );
@@ -355,6 +368,36 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /** Creates a command that spins up the shooter, then feeds when at speed. */
     public Command PIDShooter_Feeder_Index() {

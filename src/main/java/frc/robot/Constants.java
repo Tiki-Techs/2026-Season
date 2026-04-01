@@ -78,7 +78,7 @@ public final class Constants {
     public static final class IntakeConstants {
         private IntakeConstants() {}
         public static final int INTAKE_MOTOR = 30;
-        public static final double INTAKE_SPEED = -1.0;
+        public static final double INTAKE_SPEED = 1.0;
     }
 
     public static final class VisionConstants {

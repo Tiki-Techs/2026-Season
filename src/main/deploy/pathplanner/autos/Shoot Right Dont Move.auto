@@ -1,0 +1,31 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Right Start"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "PivotCommandAuto"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "ShootCommandAuto"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}
