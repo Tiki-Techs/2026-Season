@@ -123,6 +123,15 @@ public class Shooter extends SubsystemBase {
         }, this);
     }
 
+    /** Runs all shooter motors open-loop. Positive speed = reverse of normal shooting direction. */
+    public Command runOpenLoop(double speed) {
+        return new RunCommand(() -> {
+            shooterOne.set(speed);
+            shooterTwo.set(speed);
+            shooterThree.set(speed);
+        }, this);
+    }
+
     public void setShooterTargetVelocity(double velocityRPS) {
         this.shooterTargetVelocity = velocityRPS;
     }

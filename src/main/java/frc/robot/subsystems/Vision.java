@@ -8,14 +8,27 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.VisionConstants;
 import frc.robot.FieldAiming;
 import frc.robot.LimelightHelpers;
+import frc.robot.commands.autoclimb.AutoclimbConstants;
 
 /** Handles Limelight camera processing, pose estimation, and target tracking. */
 public class Vision extends SubsystemBase {
+
+    /**
+     * Controls how pose estimates are fed to the drivetrain pose estimator.
+     *
+     * FUSED_MEGATAG2: Normal operation — MegaTag2 updates from all limelights.
+     * SINGLE_TAG:     Final climb approach — only the one reference tag for the
+     *                 selected engagement target is used. MegaTag2 updates are
+     *                 suppressed. Falls back to FUSED_MEGATAG2 if the tag is
+     *                 not visible for SINGLE_TAG_TIMEOUT_S seconds.
+     */
+    public enum LocalizationMode { FUSED_MEGATAG2, SINGLE_TAG }
 
     private final SwerveSubsystem drivetrain;
     private final StructPublisher<Pose2d> posePublisher;
@@ -32,16 +45,55 @@ public class Vision extends SubsystemBase {
 
     private double lastTargetAngle = 0.0;
 
+    // Localization mode state
+    private LocalizationMode m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+    private int m_singleTagId = -1;
+    private double m_lastSingleTagSeenTimestamp = 0.0;
+
     public Vision(SwerveSubsystem drivetrain) {
         this.drivetrain = drivetrain;
         posePublisher = NetworkTableInstance.getDefault()
             .getStructTopic("RobotPose", Pose2d.struct).publish();
 
-        m_aimController = new PIDController(3.5, 0.8, 0.2);  // Faster, stronger integral
+        m_aimController = new PIDController(3.5, 0.8, 0.2);
         m_aimController.enableContinuousInput(-Math.PI, Math.PI);
-        m_aimController.setTolerance(Math.toRadians(1.0)); // 1° tolerance
-        m_aimController.setIZone(Math.toRadians(10.0)); // Integrate when within 10°
+        m_aimController.setTolerance(Math.toRadians(1.0));
+        m_aimController.setIZone(Math.toRadians(10.0));
     }
+
+    // =========================================================================
+    // LOCALIZATION MODE API
+    // =========================================================================
+
+    /**
+     * Switches to single-tag localization mode for final climb approach.
+     * MegaTag2 updates are suppressed; only {@code tagId} is used.
+     * Call {@link #resumeFusedMode()} to revert.
+     *
+     * @param tagId  AprilTag ID to use for pose estimation (nearest tower tag)
+     */
+    public void setLocalizationMode(LocalizationMode mode, int tagId) {
+        m_localizationMode = mode;
+        m_singleTagId = tagId;
+        m_lastSingleTagSeenTimestamp = Timer.getFPGATimestamp();
+    }
+
+    /**
+     * Returns to normal MegaTag2 fused localization.
+     * Called when autoclimb completes or aborts.
+     */
+    public void resumeFusedMode() {
+        m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+        m_singleTagId = -1;
+    }
+
+    public LocalizationMode getLocalizationMode() {
+        return m_localizationMode;
+    }
+
+    // =========================================================================
+    // EXISTING PUBLIC API
+    // =========================================================================
 
     /** Calculates forward velocity for ranging to a target using cached tag distance. */
     public double limelight_range_proportional() {
@@ -58,7 +110,6 @@ public class Vision extends SubsystemBase {
     /** Calculates angular velocity for aiming at a target using proportional control (climb limelight only). */
     public double limelight_aim_proportional() {
         double kP = 1.5;
-        double deadzone = 0.5; // degrees - tight deadzone for accuracy
 
         if (!cachedClimbTV) return 0.0;
 
@@ -95,19 +146,18 @@ public class Vision extends SubsystemBase {
     /** Calculates the distance from the robot's current position to the goal. */
     public double getDistanceToGoal() {
         Pose2d currentPose = drivetrain.getState().Pose;
-        // Use FieldGeomUtils for consistency
         return FieldAiming.getDistanceToHub(currentPose);
     }
 
-    /** Checks if the robot is within shooting range (not in the neutral zone). */
+    /** Checks if the robot is within shooting range. */
     public boolean isInShootingRange() {
         Pose2d currentPose = drivetrain.getState().Pose;
-        // Use FieldGeomUtils for consistency
         return FieldAiming.isInScoringRange(currentPose);
     }
 
- 
-
+    // =========================================================================
+    // PERIODIC
+    // =========================================================================
 
     @Override
     public void periodic() {
@@ -121,21 +171,22 @@ public class Vision extends SubsystemBase {
         cachedClimbTX = 0.0;
         double bestTagDist = Double.MAX_VALUE;
 
-        // For averaging TX from multiple hub tags
         double txSum = 0.0;
         int hubTagCount = 0;
-
-        // For climb limelight TX averaging
         double climbTxSum = 0.0;
         int climbHubTagCount = 0;
 
-        // Get hub tag IDs for current alliance (for TX-based aiming)
         var alliance = DriverStation.getAlliance();
         int[] hubTagIds = (alliance.isPresent() && alliance.get() == Alliance.Red)
             ? VisionConstants.RED_HUB_TAG_IDS
             : VisionConstants.BLUE_HUB_TAG_IDS;
 
-        boolean rejectAllUpdates = Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720;
+        boolean rejectAllUpdates =
+            Math.abs(drivetrain.getPigeon2().getAngularVelocityZWorld().getValueAsDouble()) > 720;
+
+        if (m_localizationMode == LocalizationMode.SINGLE_TAG) {
+            updateSingleTagLocalization(currentPose, rejectAllUpdates);
+        }
 
         for (int i = 0; i < VisionConstants.ALL_LIMELIGHTS.length; i++) {
             String limelightName = VisionConstants.ALL_LIMELIGHTS[i];
@@ -150,7 +201,8 @@ public class Vision extends SubsystemBase {
                 0, 0, 0, 0, 0
             );
 
-            LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
+            LimelightHelpers.PoseEstimate mt2 =
+                LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
             SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
             SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
@@ -162,7 +214,6 @@ public class Vision extends SubsystemBase {
                 SmartDashboard.putNumber("Vision/" + limelightName + "/PoseX", mt2.pose.getX());
                 SmartDashboard.putNumber("Vision/" + limelightName + "/PoseY", mt2.pose.getY());
 
-                // Reject poses outside the field (bad data from transitional frames)
                 double poseX = mt2.pose.getX();
                 double poseY = mt2.pose.getY();
                 if (poseX < -VisionConstants.FIELD_BORDER_MARGIN
@@ -172,7 +223,6 @@ public class Vision extends SubsystemBase {
                     continue;
                 }
 
-                // Check if this is a hub tag for TX-based aiming
                 boolean isHubTag = false;
                 for (int id : hubTagIds) {
                     if (tagId == id) {
@@ -181,48 +231,47 @@ public class Vision extends SubsystemBase {
                     }
                 }
 
-                // Accumulate TX from all visible hub tags to aim at center
                 if (tv && isHubTag) {
                     txSum += tx;
                     hubTagCount++;
 
-                    // Track climb limelight TX separately for aim control
                     if (limelightName.equals(VisionConstants.LIMELIGHT_CLIMB)) {
                         climbTxSum += tx;
                         climbHubTagCount++;
                     }
 
-                    // Track closest tag distance
                     if (mt2.avgTagDist < bestTagDist) {
                         bestTagDist = mt2.avgTagDist;
                         cachedTagDist = mt2.avgTagDist;
                     }
                 }
 
-                if (!rejectAllUpdates) {
-                    // Higher stdDev = less trust in vision, more reliance on odometry
-                    // Floor at 0.5 to prevent over-trusting vision at close range
+                // Only feed MegaTag2 in FUSED mode
+                if (!rejectAllUpdates && m_localizationMode == LocalizationMode.FUSED_MEGATAG2) {
                     double xyStdDev = Math.max(0.5, 0.7 * mt2.avgTagDist / mt2.tagCount);
-                    double thetaStdDev = Math.max(0.5, 0.9 * mt2.avgTagDist / mt2.tagCount);
 
                     SmartDashboard.putNumber("Vision/" + limelightName + "/StdDev", xyStdDev);
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", true);
 
-                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds, VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+                    drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds,
+                        VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+                } else if (m_localizationMode == LocalizationMode.SINGLE_TAG) {
+                    SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", false);
+                    SmartDashboard.putString("Vision/" + limelightName + "/RejectReason",
+                        "SINGLE_TAG mode active");
                 } else {
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", false);
-                    SmartDashboard.putString("Vision/" + limelightName + "/RejectReason", "High angular velocity");
+                    SmartDashboard.putString("Vision/" + limelightName + "/RejectReason",
+                        "High angular velocity");
                 }
             }
         }
 
-        // Average TX from all hub tags to aim at hub center
         if (hubTagCount > 0) {
             cachedTV = true;
             cachedTX = txSum / hubTagCount;
         }
 
-        // Average TX from climb limelight hub tags for aim control
         if (climbHubTagCount > 0) {
             cachedClimbTV = true;
             cachedClimbTX = climbTxSum / climbHubTagCount;
@@ -233,12 +282,13 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putBoolean("Vision/ClimbLimelightTV", cachedClimbTV);
         SmartDashboard.putNumber("Vision/ClimbLimelightTX", cachedClimbTX);
         SmartDashboard.putNumber("Vision/ClimbAimOutput", limelight_aim_proportional());
+        SmartDashboard.putString("Vision/LocalizationMode", m_localizationMode.name());
 
-        // Debug info for auto-align
         Pose2d pose = drivetrain.getState().Pose;
         double targetAngle = isInShootingRange()
             ? Math.atan2(getGoalY() - pose.getY(), getGoalX() - pose.getX())
-            : (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red ? 0 : Math.PI);
+            : (DriverStation.getAlliance().isPresent()
+                && DriverStation.getAlliance().get() == Alliance.Red ? 0 : Math.PI);
         double currentHeading = pose.getRotation().getRadians();
         double error = targetAngle - currentHeading;
         while (error > Math.PI) error -= 2 * Math.PI;
@@ -248,5 +298,83 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putNumber("Vision/CurrentHeadingDeg", Math.toDegrees(currentHeading));
         SmartDashboard.putNumber("Vision/AngleErrorDeg", Math.toDegrees(error));
         SmartDashboard.putBoolean("Vision/PIDAtSetpoint", m_aimController.atSetpoint());
+    }
+
+    // =========================================================================
+    // SINGLE-TAG LOCALIZATION (called from periodic when in SINGLE_TAG mode)
+    // =========================================================================
+
+    /**
+     * Checks limelight-right and limelight-left for the target tag ID.
+     * If found, feeds a tight-stddev pose estimate to the drivetrain.
+     * If not found for SINGLE_TAG_TIMEOUT_S, logs a warning and reverts to FUSED_MEGATAG2.
+     */
+    private void updateSingleTagLocalization(Pose2d currentPose, boolean rejectHighOmega) {
+        if (rejectHighOmega) return;
+
+        boolean tagFound = false;
+
+        String[] nearLimelights = {
+            VisionConstants.LIMELIGHT_RIGHT,
+            VisionConstants.LIMELIGHT_LEFT
+        };
+
+        for (String limelightName : nearLimelights) {
+            int tagId = (int) LimelightHelpers.getFiducialID(limelightName);
+            boolean tv  = LimelightHelpers.getTV(limelightName);
+
+            if (!tv || tagId != m_singleTagId) continue;
+
+            // Use single-tag (non-MegaTag2) pose estimate for maximum accuracy
+            LimelightHelpers.SetRobotOrientation(
+                limelightName,
+                currentPose.getRotation().getDegrees(),
+                0, 0, 0, 0, 0
+            );
+
+            LimelightHelpers.PoseEstimate singleTagEstimate =
+                LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+
+            if (singleTagEstimate == null || singleTagEstimate.tagCount < 1) continue;
+
+            double poseX = singleTagEstimate.pose.getX();
+            double poseY = singleTagEstimate.pose.getY();
+            if (poseX < -VisionConstants.FIELD_BORDER_MARGIN
+                || poseX > VisionConstants.FIELD_LENGTH_METERS + VisionConstants.FIELD_BORDER_MARGIN
+                || poseY < -VisionConstants.FIELD_BORDER_MARGIN
+                || poseY > VisionConstants.FIELD_WIDTH_METERS + VisionConstants.FIELD_BORDER_MARGIN) {
+                continue;
+            }
+
+            // Feed with tight stddev — we're very close to a known reference
+            drivetrain.addVisionMeasurement(
+                singleTagEstimate.pose,
+                singleTagEstimate.timestampSeconds,
+                VecBuilder.fill(AutoclimbConstants.SINGLE_TAG_XY_STD_DEV,
+                                AutoclimbConstants.SINGLE_TAG_XY_STD_DEV,
+                                9999999)
+            );
+
+            SmartDashboard.putBoolean("Vision/SingleTag/Found", true);
+            SmartDashboard.putNumber("Vision/SingleTag/TagId", tagId);
+            SmartDashboard.putString("Vision/SingleTag/Limelight", limelightName);
+
+            m_lastSingleTagSeenTimestamp = Timer.getFPGATimestamp();
+            tagFound = true;
+            break; // Use first limelight that sees the tag
+        }
+
+        if (!tagFound) {
+            SmartDashboard.putBoolean("Vision/SingleTag/Found", false);
+
+            double timeSinceSeen = Timer.getFPGATimestamp() - m_lastSingleTagSeenTimestamp;
+            if (timeSinceSeen > AutoclimbConstants.SINGLE_TAG_TIMEOUT_S) {
+                // Tag lost for too long — fall back to fused mode with a warning
+                SmartDashboard.putString("Vision/SingleTag/FallbackReason",
+                    "Tag " + m_singleTagId + " not seen for " +
+                    String.format("%.1f", timeSinceSeen) + "s — reverting to MegaTag2");
+                m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+            }
+        }
     }
 }

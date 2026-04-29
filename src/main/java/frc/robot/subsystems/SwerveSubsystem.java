@@ -289,4 +289,16 @@ public class SwerveSubsystem extends TunerSwerveDrivetrain implements Subsystem 
     public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
     }
+
+    /**
+     * Returns the average stator current across all four drive motors (amps).
+     * Used by autoclimb ENGAGING state to detect drivetrain stall against the tower.
+     */
+    public double getAverageDriveStatorCurrent() {
+        double total = 0;
+        for (int i = 0; i < 4; i++) {
+            total += getModule(i).getDriveMotor().getStatorCurrent().getValueAsDouble();
+        }
+        return total / 4.0;
+    }
 }

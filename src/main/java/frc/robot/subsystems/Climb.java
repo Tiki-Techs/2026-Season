@@ -1,125 +1,167 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.ClimbConstants;
+import frc.robot.commands.autoclimb.AutoclimbConstants;
 
+/**
+ * Controls the climb mechanism (TalonFX CAN 31, CANivore bus).
+ *
+ * Encoder convention (set by calibrateClimb):
+ *   0.0            = upper hard stop (arm fully retracted)
+ *   negative value = arm extended downward (more negative = further down)
+ *
+ * IMPORTANT: calibrateClimb() MUST complete successfully before any
+ * position-based command (raiseToRungHeight, lift, stow) is called.
+ * Soft limits are NOT applied at construction — only after calibration.
+ */
 public class Climb extends SubsystemBase {
 
     private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR, "CANivore");
     private final DigitalInput upperLimitSwitch = new DigitalInput(ClimbConstants.UPPER_LIMIT_SWITCH);
     private final DigitalInput lowerLimitSwitch = new DigitalInput(ClimbConstants.LOWER_LIMIT_SWITCH);
+
     private boolean isCalibrated = false;
+    private double measuredLowerRotations = AutoclimbConstants.SOFT_LIMIT_REVERSE_ROTATIONS;
+
+    private final PositionVoltage m_posRequest = new PositionVoltage(0).withSlot(0);
 
     public Climb() {
         TalonFXConfiguration config = new TalonFXConfiguration();
+
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+
         config.CurrentLimits = new CurrentLimitsConfigs()
             .withStatorCurrentLimit(40)
             .withStatorCurrentLimitEnable(true)
-            .withSupplyCurrentLimit(40
-            )
+            .withSupplyCurrentLimit(40)
             .withSupplyCurrentLimitEnable(true);
+
+        // Slot 0 — PositionVoltage gains. Tune CLIMBER_KP with Phoenix Tuner X on robot.
+        config.Slot0 = new Slot0Configs()
+            .withKP(AutoclimbConstants.CLIMBER_KP);
+
+        // NOTE: Soft limits are NOT enabled here. They are applied only after calibration
+        // completes (see calibrateClimb). Enabling them in the constructor with encoder=0
+        // would block the upward calibration move immediately.
+
         climbMotor.getConfigurator().apply(config);
     }
 
-    /** Continuously stops the climb motor. Use as default command. */
-    public Command stopAll() {
-        return new RunCommand(() -> climbMotor.set(0), this);
-    }
+    // =========================================================================
+    // CALIBRATION
+    // =========================================================================
 
-    /** Calibrates the climb by finding the lower limit, then raising to the top. */
+    /**
+     * Finds the upper limit switch, zeros the encoder, then descends to the lower limit.
+     *
+     * After this command finishes:
+     *   - encoder position = 0 at upper hard stop
+     *   - soft limits are enabled at [+0.5, SOFT_LIMIT_REVERSE_ROTATIONS]
+     *   - isCalibrated() returns true
+     *
+     * The command completes when the lower limit switch is triggered.
+     */
     public Command calibrateClimb() {
         return new SequentialCommandGroup(
-            new InstantCommand(() -> {}, this),
 
-            // Move up until upper limit switch is triggered (bypasses pivot interlock)
-            new RunCommand(() -> {
-                if (!upperLimitSwitch.get()) {
-                    climbMotor.set(0);
-                    return;
-                }
-                climbMotor.set(0.5);
-            }, this).until(() -> !upperLimitSwitch.get()),
-
-            // Zero encoder at bottom
+            // Disable soft limits and clear calibration flag before moving
             new InstantCommand(() -> {
-                climbMotor.set(0.0);
+                isCalibrated = false;
+                applySoftLimits(false);
+            }, this),
+
+            // Drive UP until upper limit switch is triggered
+            new RunCommand(() -> climbMotor.set(ClimbConstants.CALIB_SPEED_UP), this)
+                .until(this::isUpperLimitPressed),
+
+            // Zero encoder ONLY — soft limits not applied yet so downward run isn't blocked
+            new InstantCommand(() -> {
+                climbMotor.set(0);
                 climbMotor.setPosition(0.0);
+            }, this),
+
+            // Drive DOWN until lower limit switch (15s timeout if switch never triggers)
+            new RunCommand(() -> climbMotor.set(-ClimbConstants.CALIB_SPEED_DOWN), this)
+                .until(this::isLowerLimitPressed)
+                .withTimeout(15.0),
+
+            // Record measured travel, enable soft limits, mark calibrated
+            new InstantCommand(() -> {
+                climbMotor.set(0);
+                measuredLowerRotations = climbMotor.getPosition().getValueAsDouble();
+                applySoftLimits(true);
                 isCalibrated = true;
             }, this)
-            
-            ,
-
-            // Go back down
-            new RunCommand(() -> {
-                if (!lowerLimitSwitch.get()) {
-                    climbMotor.set(0);
-                } else {
-                    climbMotor.set(-0.75);
-                }
-            }, this).until(() -> !lowerLimitSwitch.get()),
-
-            new InstantCommand(() -> climbMotor.set(0.0), this)
         );
     }
 
-    public boolean isCalibrated() {
-        return isCalibrated;
+    // =========================================================================
+    // POSITION COMMANDS (require isCalibrated == true)
+    // =========================================================================
+
+    /**
+     * Drives the arm to CLIMBER_RUNG_HEIGHT_ROTATIONS and holds.
+     * Used in the LIFTING phase of autoclimb to position the O ring at rung level.
+     * Runs until interrupted.
+     */
+    public Command raiseToRungHeight() {
+        if (!isCalibrated) return warnNotCalibrated("raiseToRungHeight");
+        return new RunCommand(() ->
+            climbMotor.setControl(m_posRequest
+                .withPosition(AutoclimbConstants.CLIMBER_RUNG_HEIGHT_ROTATIONS)),
+            this
+        );
     }
 
-    /** Gets the current climb position in motor rotations. */
-    public double getPosition() {
-        return climbMotor.getPosition().getValueAsDouble();
-    }
-    
-    public Command getReady() {
-        return new RunCommand(() -> {
-            double currentPos = getPosition();
-            if (currentPos < -9.0) {
-                climbMotor.set(1.0);  // Move up if below target
-            } else if (currentPos > -9.0) {
-                climbMotor.set(-1.0); // Move down if above target
-            } else {
-                climbMotor.set(0);
-            }
-        }, this).until(() -> Math.abs(getPosition() - (-9.2)) < 0.5);
+    /**
+     * Drives the arm to CLIMBER_LIFT_ROTATIONS (fully retracted, lifts the robot).
+     * Runs until interrupted.
+     */
+    public Command lift() {
+        if (!isCalibrated) return warnNotCalibrated("lift");
+        return new RunCommand(() ->
+            climbMotor.setControl(m_posRequest
+                .withPosition(AutoclimbConstants.CLIMBER_LIFT_ROTATIONS)),
+            this
+        );
     }
 
-    public Command climb() {
-        return new RunCommand(() -> {
-            climbMotor.set(1.0);
-        }, this).until(() -> !lowerLimitSwitch.get());
+    /**
+     * Drives the arm to the stow position near the upper hard stop.
+     * Completes when within tolerance of the stow position.
+     */
+    public Command stow() {
+        if (!isCalibrated) return warnNotCalibrated("stow");
+        return new RunCommand(() ->
+            climbMotor.setControl(m_posRequest
+                .withPosition(AutoclimbConstants.CLIMBER_STOW_ROTATIONS)),
+            this
+        ).until(() -> isNearPosition(AutoclimbConstants.CLIMBER_STOW_ROTATIONS));
     }
 
+    // =========================================================================
+    // MANUAL COMMANDS
+    // =========================================================================
 
-    public boolean isUpperLimitPressed() {
-        return !upperLimitSwitch.get();
-    }
-
-    public boolean isLowerLimitPressed() {
-        return !lowerLimitSwitch.get();
-    }
-
-    /** Returns true if the climb is at the lower limit (down position). */
-    public boolean isClimbDown() {
-        return !lowerLimitSwitch.get();
-    }
-
-    /** Runs the climb motor up. Stops at upper limit switch. */
+    /** Runs climb motor upward. Stops at upper limit switch. */
     public Command runClimbUp() {
         return new RunCommand(() -> {
-            if (!upperLimitSwitch.get()) {
+            if (isUpperLimitPressed()) {
                 climbMotor.set(0);
             } else {
                 climbMotor.set(1.0);
@@ -127,20 +169,10 @@ public class Climb extends SubsystemBase {
         }, this);
     }
 
-    public Command runHopperUp() {
-        return new RunCommand(() -> {
-            if (!upperLimitSwitch.get()) {
-                climbMotor.set(0);
-            } else {
-                climbMotor.set(1.0);
-            }
-        }, this);
-    }
-
-    /** Runs the climb motor down. */
+    /** Runs climb motor downward. Stops at lower limit switch. */
     public Command runClimbDown() {
         return new RunCommand(() -> {
-            if (!lowerLimitSwitch.get()) {
+            if (isLowerLimitPressed()) {
                 climbMotor.set(0);
             } else {
                 climbMotor.set(-1.0);
@@ -148,22 +180,76 @@ public class Climb extends SubsystemBase {
         }, this);
     }
 
-    public Command runHopperDown() {
+    /**
+     * Fast duty-cycle retract toward upper limit switch — for abort/emergency.
+     * Does not use PositionVoltage. Stops at upper limit.
+     */
+    public Command emergencyRetract() {
         return new RunCommand(() -> {
-            if(!lowerLimitSwitch.get()) {
+            if (isUpperLimitPressed()) {
                 climbMotor.set(0);
-                return;
+            } else {
+                climbMotor.set(1.0);
             }
-            climbMotor.set(-.1);
-        }, this);
+        }, this).until(this::isUpperLimitPressed);
     }
 
+    /** Continuously stops the climb motor. Use as default command. */
+    public Command stopAll() {
+        return new RunCommand(() -> climbMotor.set(0), this);
+    }
+
+    // =========================================================================
+    // STATE ACCESSORS
+    // =========================================================================
+
+    public boolean isCalibrated()       { return isCalibrated; }
+    public boolean isUpperLimitPressed(){ return !upperLimitSwitch.get(); }
+    public boolean isLowerLimitPressed(){ return !lowerLimitSwitch.get(); }
+    public double  getPosition()        { return climbMotor.getPosition().getValueAsDouble(); }
+    public double  getStatorCurrent()   { return climbMotor.getStatorCurrent().getValueAsDouble(); }
+
+    public boolean isAtRungHeight() {
+        return isNearPosition(AutoclimbConstants.CLIMBER_RUNG_HEIGHT_ROTATIONS);
+    }
+
+    // =========================================================================
+    // PRIVATE HELPERS
+    // =========================================================================
+
+    private boolean isNearPosition(double targetRotations) {
+        return Math.abs(getPosition() - targetRotations)
+            < AutoclimbConstants.CLIMBER_POSITION_TOLERANCE_ROTATIONS;
+    }
+
+    private void applySoftLimits(boolean enabled) {
+        var cfg = new SoftwareLimitSwitchConfigs()
+            .withForwardSoftLimitThreshold(AutoclimbConstants.SOFT_LIMIT_FORWARD_ROTATIONS)
+            .withForwardSoftLimitEnable(enabled)
+            .withReverseSoftLimitThreshold(measuredLowerRotations)
+            .withReverseSoftLimitEnable(enabled);
+        climbMotor.getConfigurator().apply(cfg);
+    }
+
+    /** Returns a no-op command and logs a warning when called before calibration. */
+    private Command warnNotCalibrated(String methodName) {
+        return new InstantCommand(() ->
+            System.err.println("[Climb] WARNING: " + methodName +
+                " called before calibration. Run calibrateClimb() first.")
+        , this);
+    }
+
+    // =========================================================================
+    // PERIODIC
+    // =========================================================================
 
     @Override
     public void periodic() {
-        SmartDashboard.putBoolean("Climb/IsCalibrated", isCalibrated);
-        SmartDashboard.putBoolean("Climb/UpperLimit", isUpperLimitPressed());
-        SmartDashboard.putBoolean("Climb/LowerLimit", isLowerLimitPressed());
-        SmartDashboard.putNumber("Climb/Position", climbMotor.getPosition().getValueAsDouble());
+        SmartDashboard.putBoolean("Climb/IsCalibrated",          isCalibrated);
+        SmartDashboard.putBoolean("Climb/UpperLimit",             isUpperLimitPressed());
+        SmartDashboard.putBoolean("Climb/LowerLimit",             isLowerLimitPressed());
+        SmartDashboard.putNumber("Climb/Position",                getPosition());
+        SmartDashboard.putNumber("Climb/StatorCurrent",           getStatorCurrent());
+        SmartDashboard.putNumber("Climb/MeasuredLowerRotations",  measuredLowerRotations);
     }
 }

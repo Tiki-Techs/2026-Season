@@ -36,6 +36,10 @@ public final class Constants {
         public static final int CLIMB_MOTOR = 31;
         public static final int UPPER_LIMIT_SWITCH = 6;
         public static final int LOWER_LIMIT_SWITCH = 0;
+
+        // Calibration speeds — tune if motor overshoots a limit
+        public static final double CALIB_SPEED_UP   = 0.60; // Duty cycle toward upper limit
+        public static final double CALIB_SPEED_DOWN = 0.75; // Duty cycle toward lower limit
     }
 
     public static final class IndexConstants {
@@ -70,15 +74,39 @@ public final class Constants {
     public static final class PivotConstants {
         private PivotConstants() {}
         public static final int PIVOT_MOTOR = 15;
+        // Note: lower limit switch was removed from robot; DIO 8 kept here in case it is re-added
         public static final int LOWER_LIMIT_SWITCH_DIO = 8;
-        public static final double HOMING_SPEED = 0.6;
-        public static final double PIVOT_SPEED = 0.6;
+
+        // Calibration: drive slowly to each physical hard stop, detect stall via current spike
+        public static final double AUTO_PIVOT_SPEED = 0.15;   // Speed for calibration moves and auto-raise (dump)
+        public static final double STALL_CURRENT_AMPS = 18.0; // SparkMax output current threshold for stall
+        public static final double STALL_DURATION_S   = 0.15; // Must exceed threshold for this long
+
+        // Normal operation speeds
+        public static final double RAISE_SPEED       = 0.35;  // Speed when raising arm
+        public static final double LOWER_SPEED       = 0.30;  // Speed when lowering arm
+        public static final double SLOW_ZONE_SPEED   = 0.12;  // Speed in the slow zone near each limit
+        public static final double SLOW_ZONE_FRACTION = 0.30; // Fraction of total travel that is the slow zone
+
+        // Legacy — kept for backward compatibility; not used in new code
+        public static final double HOMING_SPEED = 0.15;
+        public static final double PIVOT_SPEED  = 0.35;
+    }
+
+    public static final class DumpConstants {
+        private DumpConstants() {}
+        // Dump: raises pivot, runs feeder+shooter forward at low speed, reverses index
+        public static final double DUMP_SHOOTER_RPS  = -20.0; // Negative = forward (same sign as normal shot)
+        public static final double DUMP_FEEDER_SPEED = -1.0;  // Forward = same sign as FeederConstants.FEEDER_SPEED
+        public static final double DUMP_INDEX_SPEED  = -1.0;  // Negative = reverse (push balls back to intake)
     }
 
     public static final class IntakeConstants {
         private IntakeConstants() {}
-        public static final int INTAKE_MOTOR = 30;
-        public static final double INTAKE_SPEED = 1.0;
+        public static final int INTAKE_LEFT_MOTOR = 33;
+        public static final int INTAKE_RIGHT_MOTOR = 34;
+
+        public static final double INTAKE_SPEED = 5.0;
     }
 
     public static final class VisionConstants {

@@ -18,7 +18,6 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
@@ -35,9 +34,9 @@ import frc.robot.Constants.PivotConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.PivotCommandAuto;
 import frc.robot.commands.ShootCommandAuto;
+import frc.robot.commands.autoclimb.AutoclimbCommand;
 import frc.robot.commands.ShootCommandAutoCenter;
 import frc.robot.commands.ShootCommandAutoLong;
-import frc.robot.commands.SlowDriveTrain;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.*;
 
@@ -76,18 +75,10 @@ public class RobotContainer {
             .withRotationalDeadband(maxAngularRate * 0.1)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-    private final SwerveRequest.FieldCentric limelight = new SwerveRequest.FieldCentric()
-            .withDeadband(0)
-            .withRotationalDeadband(0)
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
     private final SwerveRequest.FieldCentricFacingAngle autoAim = new SwerveRequest.FieldCentricFacingAngle()
             .withDeadband(maxSpeed * 0.1)
             .withRotationalDeadband(maxAngularRate * 0.1)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
-    // Slow drive command
-    private final SlowDriveTrain slowDriveTrain = new SlowDriveTrain();
 
     // Controllers
     private final CommandXboxController m_driverController =
@@ -183,7 +174,7 @@ public class RobotContainer {
         autoAim.HeadingController.setPID(10.0, 0.0, 0.1);
         autoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
-        // Right Bumper: Auto-aim to goal with lookahead
+        // Left Bumper: Auto-aim to goal with lookahead
         m_driverController.leftBumper().whileTrue(drivetrain.applyRequest(() -> {
             var state = drivetrain.getState();
 
@@ -211,8 +202,6 @@ public class RobotContainer {
                 targetAngle = targetAngle.plus(Rotation2d.fromDegrees(180));
             }
 
-            double distance = FieldAiming.getDistanceToHub(state.Pose);
-
             // 4. Apply Request with FieldCentricFacingAngle for smooth rotation
             return autoAim
                 .withVelocityX(vx)
@@ -221,15 +210,19 @@ public class RobotContainer {
         }));
 
         
-        // X: Reset heading
-        m_driverController.x().onTrue(drivetrain.runOnce(() -> drivetrain.getPigeon2().setYaw(0)));
+        // Back (⊟): Reset heading  (X reassigned to autoclimb)
+        m_driverController.back().onTrue(drivetrain.runOnce(() -> drivetrain.getPigeon2().setYaw(0)));
 
         // B: Brake (X-pattern wheel lock)
         m_driverController.b().whileTrue(drivetrain.brakeCommand());
 
-        // A: Slow drive mode
-        m_driverController.a().whileTrue(
-            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+        // A: Calibrate Climb
+        m_driverController.a().onTrue(
+            m_climb.calibrateClimb().finallyDo((interrupted) -> {
+            if (interrupted) {
+                m_climb.emergencyRetract().schedule();
+            }
+            })
         );
 
         }
@@ -271,18 +264,23 @@ public class RobotContainer {
                 )
             );
 
-
-        
-            m_driverController.rightBumper().toggleOnTrue(
-                new ConditionalCommand(
-                    m_index.runIndex(1),
+            // Right Bumper: aim to our side of field and shoot at fixed speed (for human player feeding from side)
+            m_driverController.rightBumper().whileTrue(
+                new SequentialCommandGroup(
+                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
+                        .until(() -> m_shooter.isAtTargetSpeed(-ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
+                        // aim at our side of the field, not the hub, to make it easier for the human player to feed balls in
+                        
                     new ParallelCommandGroup(
-                    m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
-                    m_index.runIndex(1)
-                    ),
-                    () -> Constants.overrideEnabled
+                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
+                        m_index.runIndex(IndexConstants.INDEX_SPEED),
+                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                    )
                 )
             );
+
+
+        
     }
                                                         
     private void configureIntakeBindings() {
@@ -298,19 +296,29 @@ public class RobotContainer {
 
         // D-pad Up: Pivot up
         m_driverController.povUp().whileTrue(
-            m_pivot.runPivot(1.0)
-        );
-        // D-pad Down: Pivot down        
-        m_driverController.povDown().whileTrue(
             m_pivot.runPivot(-1.0)
+        );
+        // D-pad Down: Pivot down
+        m_driverController.povDown().whileTrue(
+            m_pivot.runPivot(1.0)
         );
                                    
     }
 
     private void configureClimbBindings() {
-        // Climb controls
+        // Manual climb controls
         m_driverController.povRight().whileTrue(m_climb.runClimbUp());
         m_driverController.povLeft().whileTrue(m_climb.runClimbDown());
+
+
+        // X: Autoclimb — hold to run, release to abort
+        m_driverController.x().whileTrue(
+            new AutoclimbCommand(drivetrain, m_climb, m_vision)
+                .finallyDo((interrupted) -> {
+                    if (interrupted) m_climb.emergencyRetract().schedule();
+                    m_vision.resumeFusedMode();
+                })
+        );
     }
                     
     private void configureDefaultCommands() {
@@ -339,6 +347,13 @@ public class RobotContainer {
             frc.robot.LimelightHelpers.SetIMUMode("limelight-left", 4);
         }));
 
+        // Auto-calibrate pivot and climb on first teleop enable only
+        RobotModeTriggers.teleop().onTrue(
+            new ParallelCommandGroup(
+                m_pivot.calibratePivot().unless(m_pivot::isCalibrated),
+                m_climb.calibrateClimb().unless(m_climb::isCalibrated)
+            )
+        );
 
         }
 
@@ -352,11 +367,16 @@ public class RobotContainer {
             );
 
 
-        // Right Bumper: Slow drive mode
+        // Right Bumper: Dump Balls (index out, feeder/shooter reversed, pivot auto-raises)
         m_operatorController.rightBumper().whileTrue(
-            slowDriveTrain.slowDown(drivetrain, maxSpeed, maxAngularRate, m_driverController)
+            new ParallelCommandGroup(
+                m_shooter.runOpenLoop(0.3),
+                m_index.runIndex(-IndexConstants.INDEX_SPEED),
+                m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                m_pivot.raiseToTop()
+            )
         );
-         
+
         // Left Bumper: Brake (X-pattern wheel lock)
         m_operatorController.leftBumper().whileTrue(drivetrain.brakeCommand());
 
@@ -368,30 +388,6 @@ public class RobotContainer {
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
