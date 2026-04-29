@@ -3,7 +3,6 @@ package frc.robot.subsystems;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -235,7 +234,7 @@ public class Vision extends SubsystemBase {
                     txSum += tx;
                     hubTagCount++;
 
-                    if (limelightName.equals(VisionConstants.LIMELIGHT_CLIMB)) {
+                    if (limelightName.equals(VisionConstants.LIMELIGHT_PIVOT)) {
                         climbTxSum += tx;
                         climbHubTagCount++;
                     }

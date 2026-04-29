@@ -79,32 +79,22 @@ public class Climb extends SubsystemBase {
     public Command calibrateClimb() {
         return new SequentialCommandGroup(
 
-            // Disable soft limits and clear calibration flag before moving
+            // Clear calibration flag and disable soft limits
             new InstantCommand(() -> {
                 isCalibrated = false;
                 applySoftLimits(false);
             }, this),
 
-            // Drive UP until upper limit switch is triggered
-            new RunCommand(() -> climbMotor.set(ClimbConstants.CALIB_SPEED_UP), this)
-                .until(this::isUpperLimitPressed),
-
-            // Zero encoder ONLY — soft limits not applied yet so downward run isn't blocked
-            new InstantCommand(() -> {
-                climbMotor.set(0);
-                climbMotor.setPosition(0.0);
-            }, this),
-
-            // Drive DOWN until lower limit switch (15s timeout if switch never triggers)
+            // Drive DOWN to lower limit switch (single trip — limit switches replace encoder homing)
             new RunCommand(() -> climbMotor.set(-ClimbConstants.CALIB_SPEED_DOWN), this)
                 .until(this::isLowerLimitPressed)
                 .withTimeout(15.0),
 
-            // Record measured travel, enable soft limits, mark calibrated
+            // Zero encoder at lower position, mark calibrated
             new InstantCommand(() -> {
                 climbMotor.set(0);
-                measuredLowerRotations = climbMotor.getPosition().getValueAsDouble();
-                applySoftLimits(true);
+                climbMotor.setPosition(0.0);
+                measuredLowerRotations = 0.0;
                 isCalibrated = true;
             }, this)
         );
@@ -115,17 +105,18 @@ public class Climb extends SubsystemBase {
     // =========================================================================
 
     /**
-     * Drives the arm to CLIMBER_RUNG_HEIGHT_ROTATIONS and holds.
-     * Used in the LIFTING phase of autoclimb to position the O ring at rung level.
+     * Drives the arm upward until the upper limit switch is hit.
+     * Used in the LIFTING phase of autoclimb to raise to max height before pull-down.
      * Runs until interrupted.
      */
     public Command raiseToRungHeight() {
-        if (!isCalibrated) return warnNotCalibrated("raiseToRungHeight");
-        return new RunCommand(() ->
-            climbMotor.setControl(m_posRequest
-                .withPosition(AutoclimbConstants.CLIMBER_RUNG_HEIGHT_ROTATIONS)),
-            this
-        );
+        return new RunCommand(() -> {
+            if (isUpperLimitPressed()) {
+                climbMotor.set(0);
+            } else {
+                climbMotor.set(1.0);
+            }
+        }, this);
     }
 
     /**
@@ -210,7 +201,7 @@ public class Climb extends SubsystemBase {
     public double  getStatorCurrent()   { return climbMotor.getStatorCurrent().getValueAsDouble(); }
 
     public boolean isAtRungHeight() {
-        return isNearPosition(AutoclimbConstants.CLIMBER_RUNG_HEIGHT_ROTATIONS);
+        return isUpperLimitPressed();
     }
 
     // =========================================================================

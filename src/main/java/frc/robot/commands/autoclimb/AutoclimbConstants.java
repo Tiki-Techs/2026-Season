@@ -83,13 +83,12 @@ public final class AutoclimbConstants {
     // -------------------------------------------------------------------------
 
     /**
-     * Translation from robot CENTER to climber O CENTER, in robot frame.
+     * Translation from robot CENTER to climber center, in robot frame.
      * Back-mounted: X is negative (behind robot center), Y near zero.
-     * PLACEHOLDER — measure from CAD.
-     * Original: (-12.0", 0.0")
+     * Measured: 13.5" behind robot center.
      */
     public static final Translation2d CLIMBER_OFFSET_FROM_ROBOT_CENTER =
-        new Translation2d(Units.inchesToMeters(-12.0), 0.0);
+        new Translation2d(Units.inchesToMeters(-13.5), 0.0);
 
     /**
      * Climber motor position for O at Level 1 rung height (27" + clearance).
@@ -159,7 +158,7 @@ public final class AutoclimbConstants {
     /** Extra time given to auto routines before accepting current pose and engaging anyway. */
     public static final double AUTO_FALLBACK_EXTRA_S    = 0.5;
     public static final double ALIGNED_HOLD_TIMEOUT_S   = 1.0;
-    public static final double LIFTING_TIMEOUT_S        = 5.0;
+    public static final double LIFTING_TIMEOUT_S        = 12.0;
 
     // -------------------------------------------------------------------------
     // APPROACH
@@ -213,7 +212,7 @@ public final class AutoclimbConstants {
     // ENGAGING STATE
     // -------------------------------------------------------------------------
 
-    /** Backward velocity during ENGAGING (robot frame -X, m/s). */
+    /** Velocity during ENGAGING (robot frame ±Y, m/s). Slides robot parallel to driver station wall. */
     public static final double ENGAGE_VELOCITY_MPS = 0.15;
 
     /** Distance to travel backward during ENGAGING before transitioning to LIFTING (meters). */

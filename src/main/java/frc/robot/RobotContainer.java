@@ -150,6 +150,15 @@ public class RobotContainer {
         // Calibration commands
         NamedCommands.registerCommand("calibratePivot", m_pivot.calibratePivot());
         NamedCommands.registerCommand("calibrateClimb", m_climb.calibrateClimb());
+
+        // Autoclimb — full autonomous cage-climb sequence
+        NamedCommands.registerCommand("autoclimb",
+            new AutoclimbCommand(drivetrain, m_climb, m_vision)
+                .finallyDo((interrupted) -> {
+                    if (interrupted) m_climb.emergencyRetract().schedule();
+                    m_vision.resumeFusedMode();
+                })
+        );
     }
 
     private void configureBindings() {
@@ -189,9 +198,9 @@ public class RobotContainer {
         m_driverController.leftBumper().whileTrue(drivetrain.applyRequest(() -> {
             var state = drivetrain.getState();
 
-            // 1. Get raw inputs from controller (reduced to 50% for better control while aiming)
-            double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
-            double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+            // 1. Get raw inputs from controller (reduced speed for better control while aiming)
+            double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
+            double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
 
             /* 2. POSE PREDICTION (Lookahead)
              * Predict where the robot will be in 50ms to compensate for
@@ -227,16 +236,7 @@ public class RobotContainer {
         // B: Brake (X-pattern wheel lock)
         m_driverController.b().whileTrue(drivetrain.brakeCommand());
 
-        // A: Calibrate Climb
-        m_driverController.a().onTrue(
-            m_climb.calibrateClimb().finallyDo((interrupted) -> {
-            if (interrupted) {
-                m_climb.emergencyRetract().schedule();
-            }
-            })
-        );
-
-        }
+}
         
         
         private void configureShooterBindings() {
@@ -247,7 +247,11 @@ public class RobotContainer {
                     new ParallelCommandGroup(
                         m_shooter.runPIDShooter(ShooterConstants.SHOOTER_TARGET_RPS),
                         m_index.runIndex(-IndexConstants.INDEX_SPEED),
-                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED)
+                        m_feeder.runFeeder(FeederConstants.FEEDER_SPEED),
+                        new SequentialCommandGroup(
+                            new edu.wpi.first.wpilibj2.command.WaitCommand(CornerDumpConstants.INTAKE_ASSIST_DELAY_S),
+                            m_pivot.raiseToIntakeAssistPosition()
+                        )
                     ),
                     new SequentialCommandGroup(
                         m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
@@ -255,11 +259,19 @@ public class RobotContainer {
                         new ParallelCommandGroup(
                             m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                             m_index.runIndex(IndexConstants.INDEX_SPEED),
-                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
+                            new SequentialCommandGroup(
+                                new edu.wpi.first.wpilibj2.command.WaitCommand(CornerDumpConstants.INTAKE_ASSIST_DELAY_S),
+                                m_pivot.raiseToIntakeAssistPosition()
                             )
+                        )
                     ),
                     () -> Constants.overrideEnabled
                 )
+            );
+            // When right trigger released, lower pivot back down fast
+            m_driverController.rightTrigger().onFalse(
+                m_pivot.lowerToBottom().until(m_pivot::isAtLowerLimit).withTimeout(3.0)
             );
 
             // Start Button: Fixed speed shooting (waits until at speed before feeding)
@@ -277,9 +289,13 @@ public class RobotContainer {
 
             // Right Bumper: Corner dump — auto-aims toward the nearest corner of our side of the
             // field (avoiding the hub), spins up shooter to distance-based speed, waits until aimed,
-            // then feeds. 0.5s after feeding starts, raises pivot halfway and runs intake to push
+            // then feeds. 0.5s after feeding starts, raises pivot 3/4 up and runs intake to push
             // any balls stuck in the pivot/intake into the hopper.
             m_driverController.rightBumper().whileTrue(cornerDump());
+            // When right bumper released, lower pivot back down fast
+            m_driverController.rightBumper().onFalse(
+                m_pivot.lowerToBottom().until(m_pivot::isAtLowerLimit).withTimeout(3.0)
+            );
 
 
         
@@ -342,19 +358,19 @@ public class RobotContainer {
         RobotModeTriggers.autonomous().onTrue(new InstantCommand(() -> {
             frc.robot.LimelightHelpers.SetIMUMode("limelight-right", 4);
             frc.robot.LimelightHelpers.SetIMUMode("limelight-left", 4);
+            frc.robot.LimelightHelpers.SetIMUMode("limelight-pivot", 4);
         }));
 
         RobotModeTriggers.teleop().onTrue(new InstantCommand(() -> {
             frc.robot.LimelightHelpers.SetIMUMode("limelight-right", 4);
             frc.robot.LimelightHelpers.SetIMUMode("limelight-left", 4);
+            frc.robot.LimelightHelpers.SetIMUMode("limelight-pivot", 4);
         }));
 
-        // Auto-calibrate pivot and climb on first teleop enable only
+        // Auto-calibrate pivot on first teleop enable only.
+        // Climb is excluded — it has hardware limit switches and can be calibrated manually via A button.
         RobotModeTriggers.teleop().onTrue(
-            new ParallelCommandGroup(
-                m_pivot.calibratePivot().unless(m_pivot::isCalibrated),
-                m_climb.calibrateClimb().unless(m_climb::isCalibrated)
-            )
+            m_pivot.calibratePivot().unless(m_pivot::isCalibrated)
         );
 
         }
@@ -455,8 +471,8 @@ public class RobotContainer {
                 var state = drivetrain.getState();
                 Pose2d currentPose = state.Pose;
 
-                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
-                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
+                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
 
                 Rotation2d targetAngle = FieldAiming.getAngleToCorner(currentPose);
 
@@ -473,13 +489,19 @@ public class RobotContainer {
                 Rotation2d targetAngle = FieldAiming.getAngleToCorner(pose);
                 double headingErrorDeg = Math.abs(
                     targetAngle.minus(pose.getRotation()).getDegrees());
-                return headingErrorDeg < CornerDumpConstants.HEADING_TOLERANCE_DEGREES;
+                boolean headingOk = headingErrorDeg < CornerDumpConstants.HEADING_TOLERANCE_DEGREES;
+                boolean speedOk = m_shooter.isAtCornerDumpTargetSpeed(
+                    FieldAiming.getDistanceToCorner(pose),
+                    CornerDumpConstants.SHOOTER_SPEED_TOLERANCE);
+                return headingOk && speedOk;
             },
             drivetrain
         );
 
-        Command spinUpAndAim = new ParallelCommandGroup(
-            aimUntilReady,
+        // Use raceWith so the group ends as soon as aimUntilReady finishes (both conditions met).
+        // ParallelCommandGroup would wait for ALL to finish — but cornerDumpShooter is a RunCommand
+        // that never ends, so Phase 2 would never start.
+        Command spinUpAndAim = aimUntilReady.raceWith(
             m_shooter.cornerDumpShooter(() -> FieldAiming.getDistanceToCorner(drivetrain.getState().Pose))
         );
 
@@ -489,8 +511,8 @@ public class RobotContainer {
             // Continuous auto-aim + drive (same as phase 1 but now feeding)
             drivetrain.applyRequest(() -> {
                 Pose2d currentPose = drivetrain.getState().Pose;
-                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
-                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
+                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * DriveConstants.SLOW_DRIVE_MULTIPLIER * maxSpeed;
                 Rotation2d targetAngle = FieldAiming.getAngleToCorner(currentPose);
                 return cornerDumpAutoAim
                     .withVelocityX(vx)
@@ -508,7 +530,7 @@ public class RobotContainer {
                 new ParallelCommandGroup(
                     // Raise pivot to halfway point and hold — returns automatically when
                     // button is released and default stopAll() command takes over
-                    m_pivot.raiseToHalfway(),
+                    m_pivot.raiseToIntakeAssistPosition(),
                     // Run intake to flush balls into hopper
                     m_intake.runIntake(-IntakeConstants.INTAKE_SPEED)
                 )

@@ -24,6 +24,9 @@ public final class Constants {
             TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
         public static final double MAX_ANGULAR_SPEED_RADIANS_PER_SECOND =
             RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+
+        /** Speed multiplier applied during auto-aim modes (hub aim, corner dump). Tune to balance control vs. brownout. */
+        public static final double SLOW_DRIVE_MULTIPLIER = 0.75;
     }
 
     // Swerve system IDs (DO NOT USE THESE AGAIN):
@@ -78,15 +81,18 @@ public final class Constants {
         public static final int LOWER_LIMIT_SWITCH_DIO = 8;
 
         // Calibration: drive slowly to each physical hard stop, detect stall via current spike
-        public static final double AUTO_PIVOT_SPEED = 0.15;   // Speed for calibration moves and auto-raise (dump)
+        public static final double AUTO_PIVOT_SPEED = 0.30;   // Speed for calibration moves only
         public static final double STALL_CURRENT_AMPS = 18.0; // SparkMax output current threshold for stall
         public static final double STALL_DURATION_S   = 0.15; // Must exceed threshold for this long
 
         // Normal operation speeds
-        public static final double RAISE_SPEED       = 0.35;  // Speed when raising arm
+        public static final double RAISE_SPEED       = 0.35;  // Speed when raising arm manually (d-pad)
+        public static final double DUMP_RAISE_SPEED  = 0.10;  // Speed for raising during shooting intake assist — tune this if arm raises too fast/slow with a full hopper
         public static final double LOWER_SPEED       = 0.30;  // Speed when lowering arm
+        public static final double FAST_LOWER_SPEED  = 0.70;  // Speed for rapid return-to-bottom after shooting
         public static final double SLOW_ZONE_SPEED   = 0.12;  // Speed in the slow zone near each limit
         public static final double SLOW_ZONE_FRACTION = 0.30; // Fraction of total travel that is the slow zone
+        public static final double INTAKE_ASSIST_PIVOT_FRACTION = 0.75; // How far up (0.0–1.0) to raise during shooting; 0.75 = 3/4 of the way up
 
         // Legacy — kept for backward compatibility; not used in new code
         public static final double HOMING_SPEED = 0.15;
@@ -123,12 +129,8 @@ public final class Constants {
         /** Robot must be within this many degrees of the corner target before feeding begins. */
         public static final double HEADING_TOLERANCE_DEGREES = 5.0;
 
-        // ---- Pivot raise fraction for intake assist ----
-        /**
-         * Fraction of total pivot travel to raise during intake assist phase (0.0 - 1.0).
-         * 0.5 = halfway up. Adjust if needed.
-         */
-        public static final double INTAKE_ASSIST_PIVOT_FRACTION = 0.5;
+        /** Shooter must be within this many RPS of its distance-based target before feeding starts. */
+        public static final double SHOOTER_SPEED_TOLERANCE = 5.0;
 
         /** Delay after shooting starts before raising pivot and running intake (seconds). */
         public static final double INTAKE_ASSIST_DELAY_S = 0.5;
@@ -146,8 +148,8 @@ public final class Constants {
         private VisionConstants() {}
         public static final String LIMELIGHT_RIGHT = "limelight-right";
         public static final String LIMELIGHT_LEFT = "limelight-left";
-        public static final String LIMELIGHT_CLIMB = "limelight-climb";
-        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT, LIMELIGHT_CLIMB};
+        public static final String LIMELIGHT_PIVOT = "limelight-pivot";
+        public static final String[] ALL_LIMELIGHTS = {LIMELIGHT_RIGHT, LIMELIGHT_LEFT, LIMELIGHT_PIVOT};
 
         public static final double TARGET_DISTANCE_METERS = 1.5;
 

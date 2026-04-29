@@ -21,8 +21,8 @@ import frc.robot.Constants.PivotConstants;
  * Hardware: SparkMax (CAN 15) + NEO brushless. No limit switches.
  *
  * Calibration (current-spike hard stop detection):
- *   1. Drive DOWN slowly until motor stalls against lower hard stop → zero encoder (lowerEncoderPos = 0).
- *   2. Drive UP slowly until motor stalls against upper hard stop → record upperEncoderPos (negative).
+ *   1. Drive UP slowly until motor stalls against upper hard stop → zero encoder (upperEncoderPos = 0).
+ *   2. Drive DOWN slowly until motor stalls against lower hard stop → record lowerEncoderPos (positive).
  *
  * All movement commands use encoder soft limits computed from calibration.
  */
@@ -32,8 +32,8 @@ public class Pivot extends SubsystemBase {
     private final RelativeEncoder encoder = pivotArm.getEncoder();
 
     private boolean isCalibrated = false;
-    private double lowerEncoderPos = 0.0;   // Encoder position at lower physical stop (set to 0 after calibration)
-    private double upperEncoderPos = -7.5;  // Encoder position at upper physical stop (measured by calibration)
+    private double upperEncoderPos = 0.0;   // Encoder position at upper physical stop (zeroed during calibration)
+    private double lowerEncoderPos = 7.5;   // Encoder position at lower physical stop (measured by calibration)
 
     // Timer used inside calibratePivot() to confirm stall duration
     private final Timer stallTimer = new Timer();
@@ -57,9 +57,9 @@ public class Pivot extends SubsystemBase {
     /**
      * Finds both physical hard stops using current-spike stall detection.
      *
-     * Step 1 — lower stop: drive down slowly; when output current exceeds
-     *   STALL_CURRENT_AMPS for STALL_DURATION_S, motor is stalled → zero encoder.
-     * Step 2 — upper stop: drive up slowly; same stall detection → record upperEncoderPos.
+     * Step 1 — upper stop: drive up slowly; when output current exceeds
+     *   STALL_CURRENT_AMPS for STALL_DURATION_S, motor is stalled → zero encoder (upperEncoderPos = 0).
+     * Step 2 — lower stop: drive down slowly; same stall detection → record lowerEncoderPos (positive).
      *
      * After this command completes, isCalibrated() returns true and all movement
      * commands have valid soft limits.
@@ -74,32 +74,7 @@ public class Pivot extends SubsystemBase {
                 stallTimer.stop();
             }, this),
 
-            // Step 1: drive DOWN until stall
-            new RunCommand(() -> {
-                double current = pivotArm.getOutputCurrent();
-                if (current > PivotConstants.STALL_CURRENT_AMPS) {
-                    stallTimer.start();
-                } else {
-                    stallTimer.reset();
-                    stallTimer.stop();
-                }
-                pivotArm.set(PivotConstants.AUTO_PIVOT_SPEED);
-            }, this).until(() -> stallTimer.hasElapsed(PivotConstants.STALL_DURATION_S)),
-
-            // Zero encoder at lower hard stop
-            new InstantCommand(() -> {
-                pivotArm.set(0);
-                encoder.setPosition(0.0);
-                lowerEncoderPos = 0.0;
-                stallTimer.reset();
-                stallTimer.stop();
-            }, this),
-
-            // Brief pause before driving the other way
-            new RunCommand(() -> pivotArm.set(0), this)
-                .withTimeout(0.1),
-
-            // Step 2: drive UP until stall
+            // Step 1: drive UP until stall
             new RunCommand(() -> {
                 double current = pivotArm.getOutputCurrent();
                 if (current > PivotConstants.STALL_CURRENT_AMPS) {
@@ -111,10 +86,35 @@ public class Pivot extends SubsystemBase {
                 pivotArm.set(-PivotConstants.AUTO_PIVOT_SPEED);
             }, this).until(() -> stallTimer.hasElapsed(PivotConstants.STALL_DURATION_S)),
 
-            // Record upper encoder position and mark calibrated
+            // Zero encoder at upper hard stop
             new InstantCommand(() -> {
                 pivotArm.set(0);
-                upperEncoderPos = encoder.getPosition();
+                encoder.setPosition(0.0);
+                upperEncoderPos = 0.0;
+                stallTimer.reset();
+                stallTimer.stop();
+            }, this),
+
+            // Brief pause before driving the other way
+            new RunCommand(() -> pivotArm.set(0), this)
+                .withTimeout(0.1),
+
+            // Step 2: drive DOWN until stall
+            new RunCommand(() -> {
+                double current = pivotArm.getOutputCurrent();
+                if (current > PivotConstants.STALL_CURRENT_AMPS) {
+                    stallTimer.start();
+                } else {
+                    stallTimer.reset();
+                    stallTimer.stop();
+                }
+                pivotArm.set(PivotConstants.AUTO_PIVOT_SPEED);
+            }, this).until(() -> stallTimer.hasElapsed(PivotConstants.STALL_DURATION_S)),
+
+            // Record lower encoder position and mark calibrated
+            new InstantCommand(() -> {
+                pivotArm.set(0);
+                lowerEncoderPos = encoder.getPosition();
                 isCalibrated = true;
                 stallTimer.reset();
                 stallTimer.stop();
@@ -239,41 +239,56 @@ public class Pivot extends SubsystemBase {
     }
 
     /**
-     * Drives pivot to the halfway point between lower and upper hard stops, then holds.
-     * Used by the corner dump intake assist phase to partially raise the pivot so
-     * balls stuck in the intake/pivot area fall into the hopper.
-     * Runs until interrupted. Returns to stopped when button is released (default command).
-     *
-     * The halfway target is computed from calibrated encoder positions, so this command
-     * is safe to call at any time -- it will stop immediately if not yet calibrated.
+     * Drives pivot to the INTAKE_ASSIST_PIVOT_FRACTION point (default 3/4) and holds.
+     * Used by the intake assist phase of shooting to help flush balls into the hopper.
+     * Runs until interrupted.
      */
-    public Command raiseToHalfway() {
+    public Command raiseToIntakeAssistPosition() {
         return new RunCommand(() -> {
             if (!isCalibrated) {
                 pivotArm.set(0);
                 return;
             }
             double pos = encoder.getPosition();
-            double halfwayPos = (lowerEncoderPos + upperEncoderPos) / 2.0;
-            double distToHalfway = pos - halfwayPos; // positive = below halfway (need to raise)
+            double targetPos = lowerEncoderPos + (upperEncoderPos - lowerEncoderPos) * PivotConstants.INTAKE_ASSIST_PIVOT_FRACTION;
+            double distToTarget = pos - targetPos; // positive = below target (need to raise)
             double totalTravel = Math.abs(upperEncoderPos - lowerEncoderPos);
             double slowZone = totalTravel * PivotConstants.SLOW_ZONE_FRACTION;
 
-            if (Math.abs(distToHalfway) < 0.05) {
-                // At halfway target — hold position
+            if (Math.abs(distToTarget) < 0.05) {
                 pivotArm.set(0);
-            } else if (distToHalfway > 0) {
-                // Below halfway — raise (negative = raise due to motor inversion)
-                double speed = (distToHalfway < slowZone)
+            } else if (distToTarget > 0) {
+                // Below target — raise
+                double speed = (distToTarget < slowZone)
                     ? -PivotConstants.SLOW_ZONE_SPEED
-                    : -PivotConstants.RAISE_SPEED;
+                    : -PivotConstants.DUMP_RAISE_SPEED;
                 pivotArm.set(speed);
             } else {
-                // Above halfway — lower back to halfway
-                double speed = (Math.abs(distToHalfway) < slowZone)
+                // Above target — lower back
+                double speed = (Math.abs(distToTarget) < slowZone)
                     ? PivotConstants.SLOW_ZONE_SPEED
                     : PivotConstants.LOWER_SPEED;
                 pivotArm.set(speed);
+            }
+        }, this);
+    }
+
+    /**
+     * Drives pivot back to the lower (deployed) position quickly.
+     * Used when a shooting button is released to return the arm fast.
+     * Runs until interrupted or isAtLowerLimit() returns true.
+     */
+    public Command lowerToBottom() {
+        return new RunCommand(() -> {
+            if (!isCalibrated) {
+                pivotArm.set(0);
+                return;
+            }
+            double distToLower = Math.abs(encoder.getPosition() - lowerEncoderPos);
+            if (distToLower < 0.05) {
+                pivotArm.set(0);
+            } else {
+                pivotArm.set(PivotConstants.FAST_LOWER_SPEED);
             }
         }, this);
     }

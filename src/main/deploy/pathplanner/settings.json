@@ -3,18 +3,20 @@
   "robotLength": 0.86,
   "holonomicMode": true,
   "pathFolders": [
-    "dtopPaths",
-    "dcClimbMiddle",
-    "Preload Paths",
-    "Misc path conversions",
-    "Default Starting Position",
-    "D Paths",
-    "2cRight",
+    "2cLeft",
     "2cMiddle",
-    "2cLeft"
+    "2cRight",
+    "D Paths",
+    "Default Starting Position",
+    "Misc path conversions",
+    "autoclimb",
+    "Preload Paths",
+    "dcClimbMiddle",
+    "dtopPaths"
   ],
   "autoFolders": [
     "Climbs ;(",
+    "autoclimbpathtest",
     "Practice Autos"
   ],
   "defaultMaxVel": 5.0,

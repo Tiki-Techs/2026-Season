@@ -208,16 +208,16 @@ public class AutoclimbCommand extends Command {
             }
 
             case ENGAGING: {
-                // Drive backward in robot frame (back of robot faces tower)
+                // Slide parallel to driver station wall (±Y) so pipe threads through N opening
                 drivetrain.setControl(
                     engageRequest
-                        .withVelocityX(-AutoclimbConstants.ENGAGE_VELOCITY_MPS)
-                        .withVelocityY(0)
+                        .withVelocityX(0)
+                        .withVelocityY(-target.approachYSign * AutoclimbConstants.ENGAGE_VELOCITY_MPS)
                         .withRotationalRate(0)
                 );
 
-                double distTraveled = pose.getTranslation()
-                    .getDistance(engageStartPose.getTranslation());
+                // Measure Y-axis displacement only (we're sliding in Y)
+                double distTraveled = Math.abs(pose.getY() - engageStartPose.getY());
                 double avgCurrent = drivetrain.getAverageDriveStatorCurrent();
 
                 SmartDashboard.putNumber("Autoclimb/EngageDistM", distTraveled);
@@ -253,10 +253,11 @@ public class AutoclimbCommand extends Command {
                 switch (liftPhase) {
                     case RAISING:
                         raiseCommand.execute();
-                        if (climb.isAtRungHeight()) {
+                        // Switch to pull-down once arm reaches upper limit switch
+                        if (climb.isUpperLimitPressed()) {
                             raiseCommand.end(false);
                             raiseCommand = null;
-                            liftSubCommand = climb.lift();
+                            liftSubCommand = climb.runClimbDown();
                             liftSubCommand.initialize();
                             liftPhase = LiftPhase.LIFTING_PHASE;
                         }
@@ -355,14 +356,8 @@ public class AutoclimbCommand extends Command {
                 break;
 
             case LIFTING:
-                if (!climb.isCalibrated()) {
-                    SmartDashboard.putString("Autoclimb/State", "ABORTED: climb not calibrated");
-                    currentState = State.ABORTED;
-                    stateTimer.reset();
-                    stateTimer.start();
-                    return;
-                }
-                raiseCommand = climb.raiseToRungHeight();
+                // Use limit-switch-based raise — no encoder calibration required
+                raiseCommand = climb.runClimbUp();
                 raiseCommand.initialize();
                 liftPhase = LiftPhase.RAISING;
                 break;
