@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
 import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.CornerDumpConstants;
 import frc.robot.Constants.FeederConstants;
 import frc.robot.Constants.IndexConstants;
 import frc.robot.Constants.IntakeConstants;
@@ -76,6 +77,12 @@ public class RobotContainer {
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
     private final SwerveRequest.FieldCentricFacingAngle autoAim = new SwerveRequest.FieldCentricFacingAngle()
+            .withDeadband(maxSpeed * 0.1)
+            .withRotationalDeadband(maxAngularRate * 0.1)
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+
+    // Separate swerve request for corner dump auto-aim (same config, distinct instance)
+    private final SwerveRequest.FieldCentricFacingAngle cornerDumpAutoAim = new SwerveRequest.FieldCentricFacingAngle()
             .withDeadband(maxSpeed * 0.1)
             .withRotationalDeadband(maxAngularRate * 0.1)
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
@@ -174,6 +181,10 @@ public class RobotContainer {
         autoAim.HeadingController.setPID(10.0, 0.0, 0.1);
         autoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
+        // Configure PID for corner dump auto-aim rotation controller (same gains)
+        cornerDumpAutoAim.HeadingController.setPID(10.0, 0.0, 0.1);
+        cornerDumpAutoAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
+
         // Left Bumper: Auto-aim to goal with lookahead
         m_driverController.leftBumper().whileTrue(drivetrain.applyRequest(() -> {
             var state = drivetrain.getState();
@@ -264,20 +275,11 @@ public class RobotContainer {
                 )
             );
 
-            // Right Bumper: aim to our side of field and shoot at fixed speed (for human player feeding from side)
-            m_driverController.rightBumper().whileTrue(
-                new SequentialCommandGroup(
-                    m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS)
-                        .until(() -> m_shooter.isAtTargetSpeed(-ShooterConstants.SHOOTER_TARGET_RPS, 5.0)),
-                        // aim at our side of the field, not the hub, to make it easier for the human player to feed balls in
-                        
-                    new ParallelCommandGroup(
-                        m_shooter.runPIDShooter(-ShooterConstants.SHOOTER_TARGET_RPS),
-                        m_index.runIndex(IndexConstants.INDEX_SPEED),
-                        m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
-                    )
-                )
-            );
+            // Right Bumper: Corner dump — auto-aims toward the nearest corner of our side of the
+            // field (avoiding the hub), spins up shooter to distance-based speed, waits until aimed,
+            // then feeds. 0.5s after feeding starts, raises pivot halfway and runs intake to push
+            // any balls stuck in the pivot/intake into the hopper.
+            m_driverController.rightBumper().whileTrue(cornerDump());
 
 
         
@@ -424,5 +426,95 @@ public class RobotContainer {
                 m_shooter.runPIDShooter(-30)
             );
         
+    }
+
+    /**
+     * Corner dump command — one button does everything:
+     *
+     * 1. Spins up shooter to distance-based speed for the selected corner target.
+     * 2. Auto-aims the drivetrain toward the nearest corner of our alliance's side
+     *    (audience or scoring side chosen by robot Y position). Full drive stick is
+     *    still available at 50% speed so the driver can reposition while aiming.
+     * 3. Waits until the heading is within HEADING_TOLERANCE_DEGREES of the corner.
+     * 4. Starts feeding (index + feeder) once aimed.
+     * 5. 0.5s after feeding starts, raises pivot halfway and runs intake to flush
+     *    any balls stuck in the pivot/intake into the hopper.
+     * 6. When the button is released, everything stops and the pivot returns to its
+     *    original position automatically (default commands take over).
+     *
+     * Tune corner positions in CornerDumpConstants. Tune shooter speeds in
+     * Shooter.distanceToCornerDumpSpeed.
+     */
+    public Command cornerDump() {
+
+        // Phase 1: spin up shooter and auto-aim simultaneously. Ends when heading is close enough.
+        // The shooter runs in parallel with the aim check so it's already spinning when feeding starts.
+        Command aimUntilReady = new edu.wpi.first.wpilibj2.command.FunctionalCommand(
+            () -> {},
+            () -> {
+                var state = drivetrain.getState();
+                Pose2d currentPose = state.Pose;
+
+                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
+                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+
+                Rotation2d targetAngle = FieldAiming.getAngleToCorner(currentPose);
+
+                drivetrain.setControl(
+                    cornerDumpAutoAim
+                        .withVelocityX(vx)
+                        .withVelocityY(vy)
+                        .withTargetDirection(targetAngle)
+                );
+            },
+            (interrupted) -> {},
+            () -> {
+                Pose2d pose = drivetrain.getState().Pose;
+                Rotation2d targetAngle = FieldAiming.getAngleToCorner(pose);
+                double headingErrorDeg = Math.abs(
+                    targetAngle.minus(pose.getRotation()).getDegrees());
+                return headingErrorDeg < CornerDumpConstants.HEADING_TOLERANCE_DEGREES;
+            },
+            drivetrain
+        );
+
+        Command spinUpAndAim = new ParallelCommandGroup(
+            aimUntilReady,
+            m_shooter.cornerDumpShooter(() -> FieldAiming.getDistanceToCorner(drivetrain.getState().Pose))
+        );
+
+        // Phase 2: aimed — feed balls while continuing to auto-aim and run shooter.
+        // After INTAKE_ASSIST_DELAY_S seconds, also raise pivot halfway and run intake.
+        Command feedAndAssist = new ParallelCommandGroup(
+            // Continuous auto-aim + drive (same as phase 1 but now feeding)
+            drivetrain.applyRequest(() -> {
+                Pose2d currentPose = drivetrain.getState().Pose;
+                double vx = -MathUtil.applyDeadband(m_driverController.getLeftY(), 0.15) * 0.5 * maxSpeed;
+                double vy = -MathUtil.applyDeadband(m_driverController.getLeftX(), 0.15) * 0.5 * maxSpeed;
+                Rotation2d targetAngle = FieldAiming.getAngleToCorner(currentPose);
+                return cornerDumpAutoAim
+                    .withVelocityX(vx)
+                    .withVelocityY(vy)
+                    .withTargetDirection(targetAngle);
+            }),
+            // Distance-based shooter speed, continuously updated
+            m_shooter.cornerDumpShooter(() -> FieldAiming.getDistanceToCorner(drivetrain.getState().Pose)),
+            // Feed index and feeder
+            m_index.runIndex(IndexConstants.INDEX_SPEED),
+            m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED),
+            // After the delay, raise pivot halfway and run intake to flush stuck balls
+            new SequentialCommandGroup(
+                new edu.wpi.first.wpilibj2.command.WaitCommand(CornerDumpConstants.INTAKE_ASSIST_DELAY_S),
+                new ParallelCommandGroup(
+                    // Raise pivot to halfway point and hold — returns automatically when
+                    // button is released and default stopAll() command takes over
+                    m_pivot.raiseToHalfway(),
+                    // Run intake to flush balls into hopper
+                    m_intake.runIntake(-IntakeConstants.INTAKE_SPEED)
+                )
+            )
+        );
+
+        return new SequentialCommandGroup(spinUpAndAim, feedAndAssist);
     }
 }

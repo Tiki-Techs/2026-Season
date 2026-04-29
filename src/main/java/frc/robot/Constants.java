@@ -93,12 +93,45 @@ public final class Constants {
         public static final double PIVOT_SPEED  = 0.35;
     }
 
-    public static final class DumpConstants {
-        private DumpConstants() {}
-        // Dump: raises pivot, runs feeder+shooter forward at low speed, reverses index
-        public static final double DUMP_SHOOTER_RPS  = -20.0; // Negative = forward (same sign as normal shot)
-        public static final double DUMP_FEEDER_SPEED = -1.0;  // Forward = same sign as FeederConstants.FEEDER_SPEED
-        public static final double DUMP_INDEX_SPEED  = -1.0;  // Negative = reverse (push balls back to intake)
+    public static final class CornerDumpConstants {
+        private CornerDumpConstants() {}
+
+        // ---- Corner target positions (meters, field coordinates) ----
+        // These are inset 1.5m from the true field corners to keep balls in bounds.
+        // Adjust CORNER_INSET_X and CORNER_INSET_Y to move the target point.
+        // The correct X corner (near Red wall or near Blue wall) is chosen automatically
+        // based on alliance. Y is chosen based on which half of the field the robot is on.
+
+        /** How far inward from the alliance wall (X axis) the target sits. Tune this. */
+        public static final double CORNER_INSET_X = 1.5;
+
+        /** How far inward from the audience/scoring-table wall (Y axis) the target sits. Tune this. */
+        public static final double CORNER_INSET_Y = 1.5;
+
+        // Derived corner target X positions (calculated from field length and inset)
+        public static final double RED_CORNER_X   = VisionConstants.FIELD_LENGTH_METERS - CORNER_INSET_X;
+        public static final double BLUE_CORNER_X  = CORNER_INSET_X;
+
+        // Derived corner target Y positions (audience side = high Y, scoring side = low Y)
+        public static final double AUDIENCE_CORNER_Y = VisionConstants.FIELD_WIDTH_METERS - CORNER_INSET_Y;
+        public static final double SCORING_CORNER_Y  = CORNER_INSET_Y;
+
+        // Y midpoint of the field — used to decide which corner (audience vs scoring) to target
+        public static final double FIELD_Y_MIDPOINT = VisionConstants.FIELD_WIDTH_METERS / 2.0;
+
+        // ---- Heading tolerance for "aimed enough to shoot" ----
+        /** Robot must be within this many degrees of the corner target before feeding begins. */
+        public static final double HEADING_TOLERANCE_DEGREES = 5.0;
+
+        // ---- Pivot raise fraction for intake assist ----
+        /**
+         * Fraction of total pivot travel to raise during intake assist phase (0.0 - 1.0).
+         * 0.5 = halfway up. Adjust if needed.
+         */
+        public static final double INTAKE_ASSIST_PIVOT_FRACTION = 0.5;
+
+        /** Delay after shooting starts before raising pivot and running intake (seconds). */
+        public static final double INTAKE_ASSIST_DELAY_S = 0.5;
     }
 
     public static final class IntakeConstants {

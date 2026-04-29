@@ -238,6 +238,46 @@ public class Pivot extends SubsystemBase {
         }, this);
     }
 
+    /**
+     * Drives pivot to the halfway point between lower and upper hard stops, then holds.
+     * Used by the corner dump intake assist phase to partially raise the pivot so
+     * balls stuck in the intake/pivot area fall into the hopper.
+     * Runs until interrupted. Returns to stopped when button is released (default command).
+     *
+     * The halfway target is computed from calibrated encoder positions, so this command
+     * is safe to call at any time -- it will stop immediately if not yet calibrated.
+     */
+    public Command raiseToHalfway() {
+        return new RunCommand(() -> {
+            if (!isCalibrated) {
+                pivotArm.set(0);
+                return;
+            }
+            double pos = encoder.getPosition();
+            double halfwayPos = (lowerEncoderPos + upperEncoderPos) / 2.0;
+            double distToHalfway = pos - halfwayPos; // positive = below halfway (need to raise)
+            double totalTravel = Math.abs(upperEncoderPos - lowerEncoderPos);
+            double slowZone = totalTravel * PivotConstants.SLOW_ZONE_FRACTION;
+
+            if (Math.abs(distToHalfway) < 0.05) {
+                // At halfway target — hold position
+                pivotArm.set(0);
+            } else if (distToHalfway > 0) {
+                // Below halfway — raise (negative = raise due to motor inversion)
+                double speed = (distToHalfway < slowZone)
+                    ? -PivotConstants.SLOW_ZONE_SPEED
+                    : -PivotConstants.RAISE_SPEED;
+                pivotArm.set(speed);
+            } else {
+                // Above halfway — lower back to halfway
+                double speed = (Math.abs(distToHalfway) < slowZone)
+                    ? PivotConstants.SLOW_ZONE_SPEED
+                    : PivotConstants.LOWER_SPEED;
+                pivotArm.set(speed);
+            }
+        }, this);
+    }
+
     /** Continuously stops the pivot motor. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> pivotArm.set(0), this);
