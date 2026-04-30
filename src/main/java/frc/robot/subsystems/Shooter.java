@@ -72,7 +72,7 @@ public class Shooter extends SubsystemBase {
 
         // Distance (meters) to shooter speed (RPS) lookup table
         // 2–5m calibrated on the field; 6–7m extrapolated (~11 RPS/m)
-        distanceToShooterSpeed.put(2.0, 51.0);
+        distanceToShooterSpeed.put(2.0, 60.0);
         distanceToShooterSpeed.put(3.0, 62.0);
         distanceToShooterSpeed.put(4.0, 73.0);
         distanceToShooterSpeed.put(5.0, 84.0);

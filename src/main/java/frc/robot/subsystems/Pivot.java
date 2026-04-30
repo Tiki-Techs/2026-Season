@@ -297,6 +297,11 @@ public class Pivot extends SubsystemBase {
         }, this);
     }
 
+    /** Raw motor output with no soft limits. For emergency/backup controls only. */
+    public Command runRawPivot(double speed) {
+        return new RunCommand(() -> pivotArm.set(speed), this);
+    }
+
     /** Continuously stops the pivot motor. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> pivotArm.set(0), this);

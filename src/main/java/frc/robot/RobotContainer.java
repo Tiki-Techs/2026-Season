@@ -24,6 +24,7 @@ import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 
 import frc.robot.Constants.DriveConstants;
@@ -257,7 +258,8 @@ public class RobotContainer {
                     ),
                     new SequentialCommandGroup(
                         m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal())
-                            .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0)),
+                            .until(() -> m_shooter.isAtAutoAimTargetSpeed(m_vision.getDistanceToGoal(), 5.0))
+                            .withTimeout(1.0),
                         new ParallelCommandGroup(
                             m_shooter.autoAimShooter(() -> m_vision.getDistanceToGoal()),
                             m_index.runIndex(IndexConstants.INDEX_SPEED),
@@ -340,6 +342,12 @@ public class RobotContainer {
         m_driverController.povLeft().whileTrue(m_climb.runClimbDown());
 
 
+        // When climb leaves bottom: auto-raise pivot (no lock — operator D-pad Up locks manually)
+        Trigger climbLowerLimit = new Trigger(m_climb::isLowerLimitPressed);
+        climbLowerLimit.onFalse(
+            m_pivot.runPivot(-PivotConstants.RAISE_SPEED).withTimeout(3.0)
+        );
+
         // X: Autoclimb — hold to run, release to abort
         m_driverController.x().whileTrue(
             new AutoclimbCommand(drivetrain, m_climb, m_vision)
@@ -384,6 +392,11 @@ public class RobotContainer {
             m_pivot.calibratePivot().unless(m_pivot::isCalibrated)
         );
 
+        // Reset pivot deploy lock on each teleop enable
+        RobotModeTriggers.teleop().onTrue(
+            new InstantCommand(() -> m_pivot.resetDeployLock())
+        );
+
         }
 
         private void configureOperatorBindings() {
@@ -409,6 +422,19 @@ public class RobotContainer {
         // Left Bumper: Brake (X-pattern wheel lock)
         m_operatorController.leftBumper().whileTrue(drivetrain.brakeCommand());
 
+        // Backup pivot deploy/lock controls (in case climb limit switches don't trigger)
+        // Uses raw motor output to bypass soft limits for maximum force
+        // D-pad Down: manually deploy pivot
+        m_operatorController.povDown().whileTrue(
+            m_pivot.runRawPivot(1.0)
+        );
+        // D-pad Up: manually raise pivot and lock it from deploying
+        m_operatorController.povUp().whileTrue(
+            m_pivot.runRawPivot(-1.0)
+        );
+        m_operatorController.povUp().onFalse(
+            new InstantCommand(() -> m_pivot.setDeployLocked(true))
+        );
 
         }
 
@@ -512,7 +538,7 @@ public class RobotContainer {
         // Use raceWith so the group ends as soon as aimUntilReady finishes (both conditions met).
         // ParallelCommandGroup would wait for ALL to finish — but cornerDumpShooter is a RunCommand
         // that never ends, so Phase 2 would never start.
-        Command spinUpAndAim = aimUntilReady.raceWith(
+        Command spinUpAndAim = aimUntilReady.withTimeout(1.0).raceWith(
             m_shooter.cornerDumpShooter(() -> FieldAiming.getDistanceToCorner(drivetrain.getState().Pose))
         );
 

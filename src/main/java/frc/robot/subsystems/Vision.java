@@ -246,15 +246,34 @@ public class Vision extends SubsystemBase {
                     }
                 }
 
-                // Only feed MegaTag1 in FUSED mode
+                // Feed pose estimates in FUSED mode
                 if (!rejectAllUpdates && m_localizationMode == LocalizationMode.FUSED_MEGATAG1) {
-                    double xyStdDev = Math.max(0.2, 0.4 * mt2.avgTagDist / mt2.tagCount);
+                    // MegaTag2 (gyro-fused) — primary, tighter stddev
+                    double mt2StdDev = Math.max(0.2, 0.4 * mt2.avgTagDist / mt2.tagCount);
 
-                    SmartDashboard.putNumber("Vision/" + limelightName + "/StdDev", xyStdDev);
+                    SmartDashboard.putNumber("Vision/" + limelightName + "/MT2StdDev", mt2StdDev);
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", true);
 
                     drivetrain.addVisionMeasurement(mt2.pose, mt2.timestampSeconds,
-                        VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+                        VecBuilder.fill(mt2StdDev, mt2StdDev, 9999999));
+
+                    // MegaTag1 (pure vision, no gyro) — secondary, looser stddev
+                    // Catches gyro drift that MegaTag2 can't detect
+                    LimelightHelpers.PoseEstimate mt1 =
+                        LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+                    if (mt1 != null && mt1.tagCount >= 1) {
+                        double mt1PoseX = mt1.pose.getX();
+                        double mt1PoseY = mt1.pose.getY();
+                        if (mt1PoseX > -VisionConstants.FIELD_BORDER_MARGIN
+                            && mt1PoseX < VisionConstants.FIELD_LENGTH_METERS + VisionConstants.FIELD_BORDER_MARGIN
+                            && mt1PoseY > -VisionConstants.FIELD_BORDER_MARGIN
+                            && mt1PoseY < VisionConstants.FIELD_WIDTH_METERS + VisionConstants.FIELD_BORDER_MARGIN) {
+                            double mt1StdDev = Math.max(0.5, 0.7 * mt1.avgTagDist / mt1.tagCount);
+                            drivetrain.addVisionMeasurement(mt1.pose, mt1.timestampSeconds,
+                                VecBuilder.fill(mt1StdDev, mt1StdDev, 9999999));
+                            SmartDashboard.putNumber("Vision/" + limelightName + "/MT1StdDev", mt1StdDev);
+                        }
+                    }
                 } else if (m_localizationMode == LocalizationMode.SINGLE_TAG) {
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", false);
                     SmartDashboard.putString("Vision/" + limelightName + "/RejectReason",
