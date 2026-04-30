@@ -172,6 +172,22 @@ public class Climb extends SubsystemBase {
     }
 
     /**
+     * Lowers the arm at reduced speed for the auto-climb engagement phase.
+     * Slow speed lets the O settle gently onto the rung before bearing robot weight.
+     * Stops at lower limit switch (or stalls naturally when rung is loaded inside the O).
+     * The TalonFX 40A current limit protects the motor if the rung blocks full travel.
+     */
+    public Command lowerForClimb() {
+        return new RunCommand(() -> {
+            if (isLowerLimitPressed()) {
+                climbMotor.set(0);
+            } else {
+                climbMotor.set(-AutoclimbConstants.LOWER_CLIMB_SPEED);
+            }
+        }, this);
+    }
+
+    /**
      * Fast duty-cycle retract toward upper limit switch — for abort/emergency.
      * Does not use PositionVoltage. Stops at upper limit.
      */
@@ -188,6 +204,30 @@ public class Climb extends SubsystemBase {
     /** Continuously stops the climb motor. Use as default command. */
     public Command stopAll() {
         return new RunCommand(() -> climbMotor.set(0), this);
+    }
+
+    /**
+     * Raises the motor directly — no subsystem requirement declared.
+     * For use by AutoclimbCommand inline only (avoids scheduler conflict with stopAll default).
+     */
+    public void raiseMotor() {
+        if (isUpperLimitPressed()) {
+            climbMotor.set(0);
+        } else {
+            climbMotor.set(1.0);
+        }
+    }
+
+    /**
+     * Lowers the motor slowly — no subsystem requirement declared.
+     * For use by AutoclimbCommand inline only (avoids scheduler conflict with stopAll default).
+     */
+    public void lowerMotorSlow() {
+        if (isLowerLimitPressed()) {
+            climbMotor.set(0);
+        } else {
+            climbMotor.set(-AutoclimbConstants.LOWER_CLIMB_SPEED);
+        }
     }
 
     // =========================================================================

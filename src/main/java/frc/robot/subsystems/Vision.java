@@ -21,13 +21,13 @@ public class Vision extends SubsystemBase {
     /**
      * Controls how pose estimates are fed to the drivetrain pose estimator.
      *
-     * FUSED_MEGATAG2: Normal operation — MegaTag2 updates from all limelights.
+     * FUSED_MEGATAG1: Normal operation — MegaTag1 updates from all limelights.
      * SINGLE_TAG:     Final climb approach — only the one reference tag for the
-     *                 selected engagement target is used. MegaTag2 updates are
-     *                 suppressed. Falls back to FUSED_MEGATAG2 if the tag is
+     *                 selected engagement target is used. MegaTag1 updates are
+     *                 suppressed. Falls back to FUSED_MEGATAG1 if the tag is
      *                 not visible for SINGLE_TAG_TIMEOUT_S seconds.
      */
-    public enum LocalizationMode { FUSED_MEGATAG2, SINGLE_TAG }
+    public enum LocalizationMode { FUSED_MEGATAG1, SINGLE_TAG }
 
     private final SwerveSubsystem drivetrain;
     private final StructPublisher<Pose2d> posePublisher;
@@ -45,7 +45,7 @@ public class Vision extends SubsystemBase {
     private double lastTargetAngle = 0.0;
 
     // Localization mode state
-    private LocalizationMode m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+    private LocalizationMode m_localizationMode = LocalizationMode.FUSED_MEGATAG1;
     private int m_singleTagId = -1;
     private double m_lastSingleTagSeenTimestamp = 0.0;
 
@@ -66,7 +66,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Switches to single-tag localization mode for final climb approach.
-     * MegaTag2 updates are suppressed; only {@code tagId} is used.
+     * MegaTag1 updates are suppressed; only {@code tagId} is used.
      * Call {@link #resumeFusedMode()} to revert.
      *
      * @param tagId  AprilTag ID to use for pose estimation (nearest tower tag)
@@ -78,11 +78,11 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Returns to normal MegaTag2 fused localization.
+     * Returns to normal MegaTag1 fused localization.
      * Called when autoclimb completes or aborts.
      */
     public void resumeFusedMode() {
-        m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+        m_localizationMode = LocalizationMode.FUSED_MEGATAG1;
         m_singleTagId = -1;
     }
 
@@ -203,6 +203,7 @@ public class Vision extends SubsystemBase {
             LimelightHelpers.PoseEstimate mt2 =
                 LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
+
             SmartDashboard.putBoolean("Vision/" + limelightName + "/TV", tv);
             SmartDashboard.putNumber("Vision/" + limelightName + "/TX", tx);
             SmartDashboard.putNumber("Vision/" + limelightName + "/TagID", tagId);
@@ -245,9 +246,9 @@ public class Vision extends SubsystemBase {
                     }
                 }
 
-                // Only feed MegaTag2 in FUSED mode
-                if (!rejectAllUpdates && m_localizationMode == LocalizationMode.FUSED_MEGATAG2) {
-                    double xyStdDev = Math.max(0.5, 0.7 * mt2.avgTagDist / mt2.tagCount);
+                // Only feed MegaTag1 in FUSED mode
+                if (!rejectAllUpdates && m_localizationMode == LocalizationMode.FUSED_MEGATAG1) {
+                    double xyStdDev = Math.max(0.2, 0.4 * mt2.avgTagDist / mt2.tagCount);
 
                     SmartDashboard.putNumber("Vision/" + limelightName + "/StdDev", xyStdDev);
                     SmartDashboard.putBoolean("Vision/" + limelightName + "/PoseAccepted", true);
@@ -306,7 +307,7 @@ public class Vision extends SubsystemBase {
     /**
      * Checks limelight-right and limelight-left for the target tag ID.
      * If found, feeds a tight-stddev pose estimate to the drivetrain.
-     * If not found for SINGLE_TAG_TIMEOUT_S, logs a warning and reverts to FUSED_MEGATAG2.
+     * If not found for SINGLE_TAG_TIMEOUT_S, logs a warning and reverts to FUSED_MEGATAG1.
      */
     private void updateSingleTagLocalization(Pose2d currentPose, boolean rejectHighOmega) {
         if (rejectHighOmega) return;
@@ -324,7 +325,7 @@ public class Vision extends SubsystemBase {
 
             if (!tv || tagId != m_singleTagId) continue;
 
-            // Use single-tag (non-MegaTag2) pose estimate for maximum accuracy
+            // Use single-tag (non-MegaTag1) pose estimate for maximum accuracy
             LimelightHelpers.SetRobotOrientation(
                 limelightName,
                 currentPose.getRotation().getDegrees(),
@@ -332,7 +333,7 @@ public class Vision extends SubsystemBase {
             );
 
             LimelightHelpers.PoseEstimate singleTagEstimate =
-                LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+                LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
             if (singleTagEstimate == null || singleTagEstimate.tagCount < 1) continue;
 
@@ -371,8 +372,8 @@ public class Vision extends SubsystemBase {
                 // Tag lost for too long — fall back to fused mode with a warning
                 SmartDashboard.putString("Vision/SingleTag/FallbackReason",
                     "Tag " + m_singleTagId + " not seen for " +
-                    String.format("%.1f", timeSinceSeen) + "s — reverting to MegaTag2");
-                m_localizationMode = LocalizationMode.FUSED_MEGATAG2;
+                    String.format("%.1f", timeSinceSeen) + "s — reverting to MegaTag1");
+                m_localizationMode = LocalizationMode.FUSED_MEGATAG1;
             }
         }
     }

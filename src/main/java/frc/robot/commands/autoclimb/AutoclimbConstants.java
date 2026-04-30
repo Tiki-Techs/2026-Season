@@ -9,247 +9,156 @@ import frc.robot.Constants.DriveConstants;
 /**
  * All tunables, field geometry, and tolerances for the autoclimb system.
  *
- * FIELD ORIGIN: top-right corner of field as drawn.
- *   +X toward Red Alliance, +Y away from Scoring Table, +Z up.
+ * FIELD ORIGIN: Blue alliance wall = X=0, bottom of field = Y=0, +X toward Red wall.
  * All constants are in METERS internally. Original inch values noted in comments.
  *
- * Tower geometry from drawing GE-26500 (page 28):
- *   Two uprights, 32.250" centerline-to-centerline
- *   Rung horizontal projection: 5.875" from upright centerline each side
- *   Engage 1.0" inboard from rung end for slip-off margin → 4.875" from upright centerline
+ * CLIMB SEQUENCE:
+ *   1. PATHFINDING:    PathPlanner drives to the target pose (beside the rung,
+ *                      robot facing 90 deg Blue / -90 deg Red so the back faces the rung).
+ *   2. RAISE_CLIMB:    Arm extends to upper limit switch (above rung height). Drivetrain locked.
+ *   3. DRIVE_BACKWARD: Robot drives robot-relative -X (backward) at BACKWARD_DRIVE_SPEED_MPS
+ *                      for DRIVE_BACKWARD_TIMEOUT_S seconds, sliding the O over the rung.
+ *   4. LOWER_AND_LIFT: Arm lowers slowly at LOWER_CLIMB_SPEED. O settles on rung, robot lifts.
+ *   5. CLIMBED:        Drivetrain brakes locked. Motor holds in brake mode.
  *
- * HEADING CONVENTION:
- *   This file uses WPILib heading (CCW positive, 0° = +X field direction).
- *   Red targets: 180° (robot front toward field center / Blue side, back toward Red wall)
- *   Blue targets: 0°  (robot front toward field center / Red side, back toward Blue wall)
- *   NOTE: The field manual uses a different convention; the spec's "Red=0°, Blue=180°"
- *   maps to WPILib 180° and 0° respectively.
+ * HEADING CONVENTION (WPILib, CCW positive, 0 deg = toward Red wall):
+ *   Blue:  90 deg — robot back faces Blue climb structure
+ *   Red:  -90 deg — robot back faces Red climb structure
+ *
+ * "Drive backward" = robot-relative -X. At 90 deg heading that is field -Y.
+ * At -90 deg heading that is field +Y. RobotCentric handles both with no sign logic.
  */
 public final class AutoclimbConstants {
     private AutoclimbConstants() {}
 
     // -------------------------------------------------------------------------
-    // FIELD GEOMETRY — Tower upright centerline X positions
+    // FIELD GEOMETRY
+    // From 2026 field drawings (all inches converted to meters):
+    //   Full field length = 651.22" (16.544 m)
+    //   Uprights at 115.05" from each alliance wall
+    //   Field width = 317.69" (8.069 m), midline = 158.845" (4.035 m)
     // -------------------------------------------------------------------------
 
-    /** Red tower upright centerline X. Original: 609.465 inches */
-    public static final double UPRIGHT_X_RED_M = Units.inchesToMeters(609.465);
+    /** Blue alliance climb upright X (meters). Original: 115.05" from Blue wall. */
+    public static final double UPRIGHT_X_BLUE_M = Units.inchesToMeters(115.05);
 
-    /** Blue tower upright centerline X. Original: 42.075 inches */
-    public static final double UPRIGHT_X_BLUE_M = Units.inchesToMeters(42.075);
+    /** Red alliance climb upright X (meters). Original: 651.22 - 115.05 = 536.17" from Blue wall. */
+    public static final double UPRIGHT_X_RED_M  = Units.inchesToMeters(536.17);
+
+    /**
+     * Field midline Y (meters). The climb structure sits on the midline.
+     * Original: 317.69 / 2 = 158.845"
+     * Adjust this Y if you want to target a specific rung position.
+     */
+
+
+    public static final double CLIMB_CENTER_Y_M = Units.inchesToMeters(188.845);
 
     // -------------------------------------------------------------------------
-    // ENGAGEMENT POINTS — Translation2d in field coordinates (meters)
-    // Naming: (alliance)_(tag)_(side relative to upright center, from field top)
-    // AUDIENCE = +Y side of upright, SCORING = -Y side of upright
+    // TARGET POSE
     //
-    // Original inch values in parentheses.
-    // -------------------------------------------------------------------------
-
-    /** Red Tag 15, Audience side. Original: (609.465", 182.720") */
-    public static final Translation2d ENGAGE_RED_TAG15_AUDIENCE =
-        new Translation2d(Units.inchesToMeters(609.465), Units.inchesToMeters(182.720));
-
-    /** Red Tag 15, Scoring side. Original: (609.465", 172.970") */
-    public static final Translation2d ENGAGE_RED_TAG15_SCORING =
-        new Translation2d(Units.inchesToMeters(609.465), Units.inchesToMeters(172.970));
-
-    /** Red Tag 16, Audience side. Original: (609.465", 150.470") */
-    public static final Translation2d ENGAGE_RED_TAG16_AUDIENCE =
-        new Translation2d(Units.inchesToMeters(609.465), Units.inchesToMeters(150.470));
-
-    /** Red Tag 16, Scoring side. Original: (609.465", 140.720") */
-    public static final Translation2d ENGAGE_RED_TAG16_SCORING =
-        new Translation2d(Units.inchesToMeters(609.465), Units.inchesToMeters(140.720));
-
-    /** Blue Tag 31, Audience side. Original: (42.075", 134.970") */
-    public static final Translation2d ENGAGE_BLUE_TAG31_AUDIENCE =
-        new Translation2d(Units.inchesToMeters(42.075), Units.inchesToMeters(134.970));
-
-    /** Blue Tag 31, Scoring side. Original: (42.075", 144.720") */
-    public static final Translation2d ENGAGE_BLUE_TAG31_SCORING =
-        new Translation2d(Units.inchesToMeters(42.075), Units.inchesToMeters(144.720));
-
-    /** Blue Tag 32, Audience side. Original: (42.075", 167.220") */
-    public static final Translation2d ENGAGE_BLUE_TAG32_AUDIENCE =
-        new Translation2d(Units.inchesToMeters(42.075), Units.inchesToMeters(167.220));
-
-    /** Blue Tag 32, Scoring side. Original: (42.075", 177.220") */
-    public static final Translation2d ENGAGE_BLUE_TAG32_SCORING =
-        new Translation2d(Units.inchesToMeters(42.075), Units.inchesToMeters(177.220));
-
-    // -------------------------------------------------------------------------
-    // CLIMBER GEOMETRY — PLACEHOLDERS, measure from CAD before competition
+    // PathPlanner navigates the robot to a pose in front of the rung with the
+    // correct heading. After arriving, the robot raises its arm and drives backward
+    // to engage.
+    //
+    // X: UPRIGHT_X_BLUE_M or UPRIGHT_X_RED_M, offset by TARGET_POSE_X_OFFSET_M
+    //    so the robot center is in front of the rung (not crashed into it).
+    // Y: CLIMB_CENTER_Y_M (center rung). Adjust per-target in EngagementTarget.
+    //
+    // TARGET_POSE_X_OFFSET_M: distance the robot center sits in front of the
+    //   rung upright along the field X axis when PathPlanner finishes.
+    //   The arm is 13.5" behind robot center. Offset must be large enough that
+    //   the arm clears the rung horizontally while being raised.
+    //   PLACEHOLDER — tune by watching the arm clear the structure in practice.
     // -------------------------------------------------------------------------
 
     /**
-     * Translation from robot CENTER to climber center, in robot frame.
-     * Back-mounted: X is negative (behind robot center), Y near zero.
-     * Measured: 13.5" behind robot center.
+     * Distance from the upright X toward the robot's forward direction (meters).
+     * Blue robot approaches from -X side, so target X = UPRIGHT_X_BLUE_M - this value.
+     * Red robot approaches from +X side, so target X = UPRIGHT_X_RED_M + this value.
+     * PLACEHOLDER — start at 18" and adjust.
+     */
+    public static final double TARGET_POSE_X_OFFSET_M = Units.inchesToMeters(74.0);
+
+
+
+    // -------------------------------------------------------------------------
+    // CLIMBER GEOMETRY
+    // -------------------------------------------------------------------------
+
+    /**
+     * Translation from robot CENTER to climber, robot frame.
+     * Negative X = behind robot center. 13.5" measured from CAD.
      */
     public static final Translation2d CLIMBER_OFFSET_FROM_ROBOT_CENTER =
         new Translation2d(Units.inchesToMeters(-13.5), 0.0);
 
-    /**
-     * Climber motor position for O at Level 1 rung height (27" + clearance).
-     * Motor zeros at upper hard stop (0.0). Negative = below hard stop = O extended.
-     * PLACEHOLDER — jog climber to L1 rung height and read Climb/Position on SmartDashboard.
-     */
-    public static final double CLIMBER_RUNG_HEIGHT_ROTATIONS = -5.0; // PLACEHOLDER
+    // -------------------------------------------------------------------------
+    // CLIMBER MOTOR CONSTANTS
+    // -------------------------------------------------------------------------
 
-    /**
-     * Climber motor position for stowed / safe travel.
-     * Near upper hard stop but with margin to avoid fighting limit.
-     * PLACEHOLDER — verify on robot.
-     */
-    public static final double CLIMBER_STOW_ROTATIONS = -0.3; // PLACEHOLDER
+    public static final double CLIMBER_RUNG_HEIGHT_ROTATIONS        = -5.0;  // PLACEHOLDER
+    public static final double CLIMBER_STOW_ROTATIONS               = -0.3;  // PLACEHOLDER
+    public static final double CLIMBER_LIFT_ROTATIONS               = -9.2;
+    public static final double CLIMBER_POSITION_TOLERANCE_ROTATIONS =  0.5;
+    public static final double CLIMBER_KP                           =  2.0;
+    public static final double SOFT_LIMIT_FORWARD_ROTATIONS         =  0.5;
+    public static final double SOFT_LIMIT_REVERSE_ROTATIONS         = -9.5;
 
-    /**
-     * Climber motor position at lower limit (fully retracted to lift robot).
-     * Matches existing getReady()/climb() target from legacy Climb code.
-     */
-    public static final double CLIMBER_LIFT_ROTATIONS = -9.2;
+    // -------------------------------------------------------------------------
+    // LOWER-FOR-CLIMB SPEED
+    // -------------------------------------------------------------------------
 
     /**
-     * Position tolerance for "at rung height" check (motor rotations).
-     * PLACEHOLDER — tighten after CLIMBER_KP is tuned.
+     * Duty cycle magnitude for the slow lower phase (0.0-1.0).
+     * 45% lets the arm descend smoothly. The rung inside the O stalls the motor
+     * before it hits the lower limit switch; the 40A current limit protects it.
      */
-    public static final double CLIMBER_POSITION_TOLERANCE_ROTATIONS = 0.5;
-
-    // -------------------------------------------------------------------------
-    // CLIMBER GAINS — PLACEHOLDER, tune with Phoenix Tuner X on robot
-    // -------------------------------------------------------------------------
-
-    /** Slot 0 kP for PositionVoltage control (volts/rotation). PLACEHOLDER. */
-    public static final double CLIMBER_KP = 2.0;
-
-    // -------------------------------------------------------------------------
-    // SOFT LIMITS (motor rotations) — matches calibrated encoder convention
-    // -------------------------------------------------------------------------
-
-    /** Forward (positive / upward) soft limit. Slightly above zero to account for encoder drift. */
-    public static final double SOFT_LIMIT_FORWARD_ROTATIONS = 0.5;
-
-    /** Reverse (negative / downward) soft limit. Slightly below lower hard stop. */
-    public static final double SOFT_LIMIT_REVERSE_ROTATIONS = -9.5;
-
-    // -------------------------------------------------------------------------
-    // ALIGNMENT TOLERANCES
-    // -------------------------------------------------------------------------
-
-    /** X alignment tolerance (meters). Tight — rung must align with O opening. */
-    public static final double X_TOLERANCE_M = 0.02;
-
-    /** Y alignment tolerance (meters). Loose — O captures rung anywhere along its length. */
-    public static final double Y_TOLERANCE_M = 0.05;
-
-    /** Heading alignment tolerance (radians). ~1°. */
-    public static final double HEADING_TOLERANCE_RAD = Math.toRadians(1.0);
-
-    /** Duration tolerance must be held continuously before ENGAGING begins (seconds). */
-    public static final double TOLERANCE_DEBOUNCE_S = 0.25;
+    public static final double LOWER_CLIMB_SPEED = 0.45;
 
     // -------------------------------------------------------------------------
     // STATE TIMEOUTS (seconds)
     // -------------------------------------------------------------------------
 
-    public static final double PATHFINDING_TIMEOUT_S    = 4.0;
-    public static final double FINAL_APPROACH_TIMEOUT_S = 3.0;
-    /** Extra time given to auto routines before accepting current pose and engaging anyway. */
-    public static final double AUTO_FALLBACK_EXTRA_S    = 0.5;
-    public static final double ALIGNED_HOLD_TIMEOUT_S   = 1.0;
-    public static final double LIFTING_TIMEOUT_S        = 12.0;
-
-    // -------------------------------------------------------------------------
-    // APPROACH
-    // -------------------------------------------------------------------------
-
-    /** Standoff distance from capture pose along approach vector (meters). */
-    public static final double STANDOFF_DISTANCE_M = 1.5;
+    public static final double PATHFINDING_TIMEOUT_S    = 8.0;
+    public static final double RAISE_CLIMB_TIMEOUT_S    = 8.0;
 
     /**
-     * Distance threshold at which localization switches from MegaTag2 to single-tag
-     * relative pose (meters).
+     * How long the robot drives backward to slide the O over the rung end (seconds).
+     * At 0.2 m/s, 2.0 s = ~0.4 m of travel.
+     * TUNE THIS — increase if the O doesn't fully clear the rung, decrease if it overshoots.
      */
-    public static final double SINGLE_TAG_SWITCH_DISTANCE_M = 1.5;
+    public static final double DRIVE_BACKWARD_TIMEOUT_S = 2.0;
 
-    /** Time without seeing target tag before falling back to MegaTag2 (seconds). */
-    public static final double SINGLE_TAG_TIMEOUT_S = 0.5;
-
-    /**
-     * Standard deviation for single-tag final approach vision measurement (meters).
-     * Tighter than MegaTag2 since we're using one known reference tag at close range.
-     */
-    public static final double SINGLE_TAG_XY_STD_DEV = 0.05;
+    public static final double LOWER_LIFT_TIMEOUT_S     = 15.0;
 
     // -------------------------------------------------------------------------
-    // PATHFINDER CONSTRAINTS (60% of max speed/acceleration)
+    // DRIVE BACKWARD SPEED
+    // -------------------------------------------------------------------------
+
+    /**
+     * Robot-centric backward speed during DRIVE_BACKWARD (m/s).
+     * Applied as negative robot-X velocity (robot back moves toward rung).
+     * Conservative starting point — increase once engagement is confirmed reliable.
+     */
+    public static final double BACKWARD_DRIVE_SPEED_MPS = 0.2;
+
+    // -------------------------------------------------------------------------
+    // PATHFINDER CONSTRAINTS (60% of max)
     // -------------------------------------------------------------------------
 
     public static final PathConstraints PATH_CONSTRAINTS = new PathConstraints(
         DriveConstants.MAX_SPEED_METERS_PER_SECOND * 0.6,
-        DriveConstants.MAX_SPEED_METERS_PER_SECOND * 0.6, // approx max accel
+        DriveConstants.MAX_SPEED_METERS_PER_SECOND * 0.6,
         DriveConstants.MAX_ANGULAR_SPEED_RADIANS_PER_SECOND * 0.6,
         DriveConstants.MAX_ANGULAR_SPEED_RADIANS_PER_SECOND * 0.6
     );
 
     // -------------------------------------------------------------------------
-    // FINAL APPROACH PID
+    // VISION
     // -------------------------------------------------------------------------
 
-    /** ProfiledPIDController kP for X and Y translation (m/s per meter). */
-    public static final double TRANSLATION_KP = 4.0;
-
-    /** ProfiledPIDController max translation speed for final approach (m/s). */
-    public static final double APPROACH_MAX_SPEED_MPS =
-        DriveConstants.MAX_SPEED_METERS_PER_SECOND * 0.4;
-
-    /** ProfiledPIDController max translation acceleration for final approach (m/s²). */
-    public static final double APPROACH_MAX_ACCEL_MPSS =
-        DriveConstants.MAX_SPEED_METERS_PER_SECOND * 0.4;
-
-    // -------------------------------------------------------------------------
-    // ENGAGING STATE
-    // -------------------------------------------------------------------------
-
-    /** Velocity during ENGAGING (robot frame ±Y, m/s). Slides robot parallel to driver station wall. */
-    public static final double ENGAGE_VELOCITY_MPS = 0.15;
-
-    /** Distance to travel backward during ENGAGING before transitioning to LIFTING (meters). */
-    public static final double ENGAGE_DISTANCE_M = 0.10;
-
-    /** Hard timeout for ENGAGING state (seconds). Timeout → ABORTED, not LIFTING. */
-    public static final double ENGAGE_TIMEOUT_S = 2.0;
-
-    /**
-     * Average drivetrain drive motor stator current threshold for stall detection (amps).
-     * When drive motors stall against the tower, current spikes above this value.
-     */
-    public static final double ENGAGE_CURRENT_SPIKE_A = 30.0;
-
-    /**
-     * Duration current must exceed ENGAGE_CURRENT_SPIKE_A to trigger stall detection (seconds).
-     * Filters out transient spikes from acceleration.
-     */
-    public static final double ENGAGE_CURRENT_SPIKE_DURATION_S = 0.1;
-
-    // -------------------------------------------------------------------------
-    // LED HOOK (no LED subsystem exists; placeholder for future wiring)
-    // -------------------------------------------------------------------------
-    // When an LED subsystem is added, connect these patterns:
-    //   IDLE / ABORTED:      solid off or red
-    //   PATHFINDING:         breathing yellow
-    //   FINAL_APPROACH:      fast yellow blink
-    //   ALIGNED_HOLD:        solid green (LARGE VISUAL CUE — driver cannot see climber)
-    //   ENGAGING:            strobing white
-    //   LIFTING:             strobing blue
-    //   CLIMBED:             solid blue
-
-    // -------------------------------------------------------------------------
-    // DRIVER BINDING CONSTANTS — assign physical buttons to these
-    // -------------------------------------------------------------------------
-
-    // Autoclimb trigger: driver controller X button (configured in RobotContainer)
-    // Engagement target cycle button: PLACEHOLDER — assign in RobotContainer
-    // Reset heading: driver controller Start (Menu/three-lines) button
+    public static final double SINGLE_TAG_SWITCH_DISTANCE_M = 1.5;
+    public static final double SINGLE_TAG_TIMEOUT_S         = 0.5;
+    public static final double SINGLE_TAG_XY_STD_DEV        = 0.05;
 }

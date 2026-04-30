@@ -44,7 +44,7 @@ public class Pivot extends SubsystemBase {
         config.inverted(true); // Motor is physically wired backwards; invert so set(negative) = raise
         // Smart current limit prevents motor from burning out during normal operation.
         // Stall detection uses a lower software threshold so we can stop before the limit engages.
-        config.smartCurrentLimit(40);
+        config.smartCurrentLimit(20);
         pivotArm.configure(config,
             com.revrobotics.spark.SparkBase.ResetMode.kResetSafeParameters,
             com.revrobotics.spark.SparkBase.PersistMode.kNoPersistParameters);

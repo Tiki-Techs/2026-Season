@@ -287,6 +287,15 @@ public class RobotContainer {
                 )
             );
 
+            // A Button: Test RPS — runs shooter/index/feeder at the test speed from Constants
+            m_driverController.a().whileTrue(
+                new ParallelCommandGroup(
+                    m_shooter.runTestRPS(),
+                    m_index.runIndex(IndexConstants.INDEX_SPEED),
+                    m_feeder.runFeeder(-FeederConstants.FEEDER_SPEED)
+                )
+            );
+
             // Right Bumper: Corner dump — auto-aims toward the nearest corner of our side of the
             // field (avoiding the hub), spins up shooter to distance-based speed, waits until aimed,
             // then feeds. 0.5s after feeding starts, raises pivot 3/4 up and runs intake to push

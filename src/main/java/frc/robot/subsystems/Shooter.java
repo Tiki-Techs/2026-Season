@@ -35,7 +35,6 @@ public class Shooter extends SubsystemBase {
     private final StatusSignal<AngularVelocity> velocityThree;
 
     private final InterpolatingDoubleTreeMap distanceToShooterSpeed = new InterpolatingDoubleTreeMap();
-    private final InterpolatingDoubleTreeMap distanceToCornerDumpSpeed = new InterpolatingDoubleTreeMap();
     private final double minSpeed = 40.0;
     private final double maxSpeed = 100.0;
 
@@ -71,21 +70,14 @@ public class Shooter extends SubsystemBase {
         shooterTwo.getConfigurator().apply(talonConfigTwoThree);
         shooterThree.getConfigurator().apply(talonConfigTwoThree);
 
-        // Distance (meters) to shooter speed (RPS) lookup table — hub shots
-        distanceToShooterSpeed.put(2.0, 48.0);  
-        distanceToShooterSpeed.put(3.0, 58.0);
-        distanceToShooterSpeed.put(4.0, 68.0);
-        distanceToShooterSpeed.put(5.0, 80.0);
-
-        // Distance (meters) to shooter speed (RPS) lookup table — corner dump shots
-        // Seeded with the same real-world data as hub shots (2m @ 48 RPS lands ~2m out).
-        // Tune these independently once you have corner dump data from the field.
-        distanceToCornerDumpSpeed.put(2.0, 48.0);
-        distanceToCornerDumpSpeed.put(3.0, 58.0);
-        distanceToCornerDumpSpeed.put(4.0, 68.0);
-        distanceToCornerDumpSpeed.put(5.0, 80.0);
-        distanceToCornerDumpSpeed.put(6.0, 90.0);
-        distanceToCornerDumpSpeed.put(7.0, 100.0);
+        // Distance (meters) to shooter speed (RPS) lookup table
+        // 2–5m calibrated on the field; 6–7m extrapolated (~11 RPS/m)
+        distanceToShooterSpeed.put(2.0, 51.0);
+        distanceToShooterSpeed.put(3.0, 62.0);
+        distanceToShooterSpeed.put(4.0, 73.0);
+        distanceToShooterSpeed.put(5.0, 84.0);
+        distanceToShooterSpeed.put(6.0, 95.0);
+        distanceToShooterSpeed.put(7.0, 100.0);
 
 
     }
@@ -98,7 +90,7 @@ public class Shooter extends SubsystemBase {
 
     /** Gets the ideal shooter speed for a corner dump shot at a given distance in meters. */
     public double getCornerDumpSpeedForDistance(double distanceMeters) {
-        double speed = distanceToCornerDumpSpeed.get(distanceMeters);
+        double speed = distanceToShooterSpeed.get(distanceMeters);
         return Math.max(minSpeed, Math.min(maxSpeed, speed));
     }
 
@@ -154,6 +146,16 @@ public class Shooter extends SubsystemBase {
             shooterOne.set(0);
             shooterTwo.set(0);
             shooterThree.set(0);
+        }, this);
+    }
+
+    /** Runs all shooter motors at the test RPS defined in Constants. */
+    public Command runTestRPS() {
+        return new RunCommand(() -> {
+            double rps = ShooterConstants.SHOOTER_TEST_RPS;
+            shooterOne.setControl(shooterVoltageRequest.withVelocity(rps).withFeedForward(0.5));
+            shooterTwo.setControl(shooterVoltageRequest.withVelocity(rps).withFeedForward(0.5));
+            shooterThree.setControl(shooterVoltageRequest.withVelocity(rps).withFeedForward(0.5));
         }, this);
     }
 

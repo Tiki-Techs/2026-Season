@@ -66,6 +66,7 @@ public final class Constants {
 
         public static final double SHOOTER_TARGET_RPS = 79.0;
         public static final double SHOOTER_DEFAULT_SPEED = 1.0;
+        public static final double SHOOTER_TEST_RPS = 50.0;
     }
 
     public static final class FeederConstants {
@@ -87,7 +88,7 @@ public final class Constants {
 
         // Normal operation speeds
         public static final double RAISE_SPEED       = 0.35;  // Speed when raising arm manually (d-pad)
-        public static final double DUMP_RAISE_SPEED  = 0.10;  // Speed for raising during shooting intake assist — tune this if arm raises too fast/slow with a full hopper
+        public static final double DUMP_RAISE_SPEED  = 0.20;  // Speed for raising during shooting intake assist — tune this if arm raises too fast/slow with a full hopper
         public static final double LOWER_SPEED       = 0.30;  // Speed when lowering arm
         public static final double FAST_LOWER_SPEED  = 0.70;  // Speed for rapid return-to-bottom after shooting
         public static final double SLOW_ZONE_SPEED   = 0.12;  // Speed in the slow zone near each limit
@@ -141,7 +142,7 @@ public final class Constants {
         public static final int INTAKE_LEFT_MOTOR = 33;
         public static final int INTAKE_RIGHT_MOTOR = 34;
 
-        public static final double INTAKE_SPEED = 5.0;
+        public static final double INTAKE_SPEED = 40.0;
     }
 
     public static final class VisionConstants {
