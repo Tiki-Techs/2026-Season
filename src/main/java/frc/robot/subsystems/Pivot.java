@@ -32,6 +32,7 @@ public class Pivot extends SubsystemBase {
     private final RelativeEncoder encoder = pivotArm.getEncoder();
 
     private boolean isCalibrated = false;
+    private boolean deployLocked = false;
     private double upperEncoderPos = 0.0;   // Encoder position at upper physical stop (zeroed during calibration)
     private double lowerEncoderPos = 7.5;   // Encoder position at lower physical stop (measured by calibration)
 
@@ -157,6 +158,7 @@ public class Pivot extends SubsystemBase {
      */
     public Command lowerArmManual(double speed) {
         return new RunCommand(() -> {
+            if (deployLocked) { pivotArm.set(0); return; }
             double pos = encoder.getPosition();
             double distToLower = Math.abs(pos - lowerEncoderPos);
             double totalTravel = Math.abs(upperEncoderPos - lowerEncoderPos);
@@ -212,7 +214,9 @@ public class Pivot extends SubsystemBase {
             double totalTravel = Math.abs(upperEncoderPos - lowerEncoderPos);
             double slowZone = totalTravel * PivotConstants.SLOW_ZONE_FRACTION;
 
-            if (pivotSpeed > 0) {
+            if (pivotSpeed > 0 && deployLocked) {
+                pivotArm.set(0);
+            } else if (pivotSpeed > 0) {
                 // Moving toward lower hard stop
                 double distToLower = Math.abs(pos - lowerEncoderPos);
                 if (distToLower < 0.05) {
@@ -280,7 +284,7 @@ public class Pivot extends SubsystemBase {
      */
     public Command lowerToBottom() {
         return new RunCommand(() -> {
-            if (!isCalibrated) {
+            if (!isCalibrated || deployLocked) {
                 pivotArm.set(0);
                 return;
             }
@@ -316,6 +320,10 @@ public class Pivot extends SubsystemBase {
 
     public double getEncoderPosition() { return encoder.getPosition(); }
 
+    public boolean isDeployLocked() { return deployLocked; }
+    public void setDeployLocked(boolean locked) { deployLocked = locked; }
+    public void resetDeployLock() { deployLocked = false; }
+
     // =========================================================================
     // PERIODIC
     // =========================================================================
@@ -327,5 +335,6 @@ public class Pivot extends SubsystemBase {
         SmartDashboard.putNumber("Pivot/OutputCurrent", pivotArm.getOutputCurrent());
         SmartDashboard.putNumber("Pivot/LowerEncoderPos", lowerEncoderPos);
         SmartDashboard.putNumber("Pivot/UpperEncoderPos", upperEncoderPos);
+        SmartDashboard.putBoolean("Pivot/DeployLocked", deployLocked);
     }
 }

@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 
+
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.CornerDumpConstants;
 import frc.robot.Constants.FeederConstants;
@@ -221,6 +222,7 @@ public class RobotContainer {
             if (alliance.isPresent() && alliance.get() == edu.wpi.first.wpilibj.DriverStation.Alliance.Red) {
                 targetAngle = targetAngle.plus(Rotation2d.fromDegrees(180));
             }
+            
 
             // 4. Apply Request with FieldCentricFacingAngle for smooth rotation
             return autoAim

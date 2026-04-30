@@ -5,9 +5,22 @@
     "data": {
       "commands": [
         {
-          "type": "path",
+          "type": "deadline",
           "data": {
-            "pathName": "PreloadPathC"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "PreloadPathC"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "calibratePivot"
+                }
+              }
+            ]
           }
         },
         {
